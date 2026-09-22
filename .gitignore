@@ -1,2 +1,5 @@
-.wrangler/
 node_modules/
+.wrangler/
+public/
+db.json
+.deploy_git/
