@@ -1,0 +1,235 @@
+# CC Atelier × Nijika — Redefine override config
+# Put this file at the ROOT of your Hexo project as: _config.redefine.yml
+
+info:
+  title: CC Atelier
+  subtitle: Code · Research · Life · Rhythm
+  author: CC
+  url: https://ccatelier.top
+
+defaults:
+  favicon: /images/redefine-favicon.svg
+  logo:
+  avatar: /images/redefine-avatar.svg
+
+colors:
+  primary: "#F3C746"
+  secondary: "#E86F5A"
+  default_mode: light
+
+global:
+  fonts:
+    chinese:
+      enable: false
+      family:
+      url:
+    english:
+      enable: false
+      family:
+      url:
+    title:
+      enable: false
+      family:
+      url:
+  content_max_width: 1040px
+  sidebar_width: 220px
+  hover:
+    shadow: true
+    scale: false
+  scroll_progress:
+    bar: true
+    percentage: false
+  website_counter:
+    enable: false
+    site_pv: false
+    site_uv: false
+    post_pv: false
+  single_page: false
+  preloader:
+    enable: false
+    custom_message:
+  side_tools:
+    gear_rotation: false
+    auto_expand: false
+  open_graph:
+    enable: true
+    image:
+    description: Code, research, life, and a little rhythm.
+
+home_banner:
+  enable: true
+  style: static
+  image:
+    light: /images/wallhaven-wqery6-light.webp
+    dark: /images/wallhaven-wqery6-dark.webp
+  title: CC Atelier
+  subtitle:
+    text:
+      - "Code · Research · Life · Rhythm"
+      - "Learning in public, one beat at a time."
+      - "代码、研究、生活，以及一些喜欢的东西。"
+    hitokoto:
+      enable: false
+      show_author: false
+      api: https://v1.hitokoto.cn
+    typing_speed: 70
+    backing_speed: 38
+    starting_delay: 350
+    backing_delay: 1800
+    loop: true
+    smart_backspace: true
+  text_color:
+    light: "#26231F"
+    dark: "#F7F2E8"
+  text_style:
+    title_size: 3.35rem
+    subtitle_size: 1.15rem
+    line_height: 1.22
+  custom_font:
+    enable: false
+    family:
+    url:
+  social_links:
+    enable: true
+    style: center
+    links:
+      - icon: github
+        url: https://github.com/Hanbaor
+    qrs: []
+
+navbar:
+  auto_hide: false
+  color:
+    left: "#FFFDF7"
+    right: "#F5EACB"
+    transparency: 22
+  width:
+    home: 1240px
+    pages: 1080px
+  links:
+    Home:
+      path: /
+      icon: fa-regular fa-house
+    Archives:
+      path: /archives/
+      icon: fa-regular fa-archive
+    Categories:
+      path: /categories/
+      icon: fa-regular fa-folder
+    Tags:
+      path: /tags/
+      icon: fa-regular fa-tags
+    GitHub:
+      path: https://github.com/Hanbaor/ccatelier
+      icon: fa-brands fa-github
+  search:
+    enable: true
+    preload: true
+
+home:
+  sidebar:
+    enable: true
+    position: left
+    first_item: menu
+    announcement: "Building CC Atelier · 学习 / 项目 / 研究 / 生活"
+    show_on_mobile: false
+    links:
+      Archives:
+        path: /archives/
+        icon: fa-regular fa-archive
+      Categories:
+        path: /categories/
+        icon: fa-regular fa-folder
+      Tags:
+        path: /tags/
+        icon: fa-regular fa-tags
+  article_date_format: YYYY-MM-DD
+  excerpt_length: 170
+  categories:
+    enable: true
+    limit: 2
+  tags:
+    enable: true
+    limit: 3
+
+articles:
+  style:
+    font_size: 16.5px
+    line_height: 1.8
+    image_border_radius: 16px
+    image_alignment: center
+    image_caption: true
+    link_icon: true
+    delete_mask: false
+    title_alignment: left
+    headings_top_spacing:
+      h1: 3.0rem
+      h2: 2.35rem
+      h3: 1.9rem
+      h4: 1.55rem
+      h5: 1.35rem
+      h6: 1.2rem
+  word_count:
+    enable: false
+    count: false
+    min2read: false
+  author_label:
+    enable: false
+    auto: false
+    list: []
+  code_block:
+    copy: true
+    style: simple
+    highlight_theme:
+      light: github
+      dark: tokyo-night-dark
+    font:
+      enable: false
+      family:
+      url:
+  toc:
+    enable: true
+    max_depth: 3
+    number: false
+    expand: true
+    init_open: true
+  copyright:
+    enable: true
+    default: cc_by_nc_sa
+  lazyload: true
+  pangu_js: false
+  recommendation:
+    enable: false
+    title: 推荐阅读
+    limit: 3
+    mobile_limit: 2
+    placeholder:
+    skip_dirs: []
+
+comment:
+  enable: false
+  system: giscus
+
+footer:
+  runtime: true
+  icon: '<span class="cc-footer-beat">● ○ ○ ○</span>'
+  start: 2026/09/21 00:00:00
+  statistics: false
+  customize: "CC Atelier · Code · Research · Life · Rhythm"
+  icp:
+    enable: false
+    number:
+    url:
+
+inject:
+  enable: true
+  head:
+    - '<link rel="stylesheet" href="/css/ccatelier.css">'
+  footer:
+    - '<script defer src="/js/ccatelier.js"></script>'
+
+plugins:
+  feed:
+    enable: false
+  aplayer:
+    enable: false
