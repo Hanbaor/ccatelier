@@ -1,0 +1,21 @@
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101110"><meta name="color-scheme" content="dark light">
+  <title><%= page.nijika === 'cover' ? config.title : (page.title || nijika_list_title()) + ' · ' + config.title %></title>
+  <meta name="description" content="<%= page.description || config.description %>">
+  <link rel="canonical" href="<%= full_url_for(page.path || '') %>">
+  <%- open_graph({title:page.title || config.title, description:page.description || config.description, image:theme.nijika.cover, twitter_card:'summary_large_image'}) %>
+  <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
+  <% if (page.nijika === 'cover') { %><link rel="preload" as="image" href="<%= url_for(theme.nijika.cover) %>"><% } %>
+  <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.ttf') %>" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="<%= url_for('atelier/css/fonts.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/redefine.css') %>">
+  <% if (page.content && page.content.trim()) { %><link rel="stylesheet" href="<%= url_for('css/build/tailwind.css') %>"><% } %>
+  <% if (/\bfa-(solid|regular|brands)/.test(page.content || '')) { %>
+  <link rel="stylesheet" href="<%= url_for('fontawesome/fontawesome.min.css') %>"><link rel="stylesheet" href="<%= url_for('fontawesome/solid.min.css') %>"><link rel="stylesheet" href="<%= url_for('fontawesome/regular.min.css') %>"><link rel="stylesheet" href="<%= url_for('fontawesome/brands.min.css') %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= url_for('atelier/css/atelier.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/content.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/effects.css') %>">
+  <%- export_config() %>
+</head>

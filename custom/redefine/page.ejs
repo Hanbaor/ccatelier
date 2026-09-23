@@ -1,0 +1,5 @@
+<% if (['projects','research','life','about','categories','tags'].includes(page.nijika)) { %>
+  <%- partial('nijika/' + page.nijika) %>
+<% } else { %>
+  <%- partial('nijika/post') %>
+<% } %>

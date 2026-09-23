@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<%- partial('nijika/head') %>
+<body class="nijika dark-mode<%= page.nijika === 'cover' ? ' on-cover' : '' %>" data-root="<%= url_for('/') %>" data-search="<%= url_for(config.search.path) %>" data-section="<%= nijika_section() %>" data-cursor="<%= theme.nijika.cursor %>" data-motion="<%= theme.nijika.motion %>">
+  <script>try{if(localStorage.getItem('cc-theme')==='light'){document.body.classList.add('light','light-mode');document.body.classList.remove('dark-mode')}if(localStorage.getItem('cc-motion')==='off'||matchMedia('(prefers-reduced-motion: reduce)').matches)document.body.classList.add('motion-off')}catch{}</script>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="curtain" aria-hidden="true"></div><div class="surface-noise" aria-hidden="true"></div>
+  <%- partial('nijika/header') %>
+  <main id="main-content" tabindex="-1"><%- body %></main>
+  <%- partial('nijika/footer') %>
+  <noscript>
+    <style>.header-controls,.utility-controls,.photo-index{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}.no-script-nav{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;padding:18px;font-size:12px}</style>
+    <nav class="no-script-nav" aria-label="主导航"><% for (const [route, label] of [['notes','笔记'],['projects','项目'],['research','研究'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route + '/') %>"><%= label %></a><% } %></nav>
+  </noscript>
+  <%- partial('nijika/dialogs') %>
+  <div class="cursor-ring" aria-hidden="true"></div><div class="click-effects" aria-hidden="true"></div>
+  <div class="toast" role="status" id="toast"></div><div class="reading-progress" aria-hidden="true"><span></span></div>
+  <script type="module" src="<%= url_for('atelier/js/main.js') %>"></script>
+</body>
+</html>

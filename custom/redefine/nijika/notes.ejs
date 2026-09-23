@@ -1,0 +1,9 @@
+<section class="index-page content-view" aria-label="笔记目录">
+  <div class="feature-caption"><h1 tabindex="-1">笔记<span><%= nijika_count(site.posts.length) %></span></h1><a class="archive-link" href="<%= url_for('archives/') %>">归档 ↗</a></div>
+  <% const posts = page.posts.toArray(); if (posts.length) { const lead = posts[0]; %>
+  <article class="note-feature"><div class="feature-copy"><div class="minimal-meta"><span><%= lead.categories.length ? lead.categories.first().name : '随笔' %></span><time datetime="<%= date_xml(lead.date) %>"><%= date(lead.date,'YYYY.MM.DD') %></time></div><h2><a href="<%= url_for(lead.path) %>"><% if (lead.title === 'Hello CC Atelier') { %>Hello<br>CC Atelier<span>.</span><% } else { %><%= lead.title %><% } %></a></h2><a class="arrow-link" href="<%= url_for(lead.path) %>"><span>阅读</span><%- partial('nijika/arrow') %></a></div><a class="feature-image" href="<%= url_for(lead.path) %>" aria-label="阅读 <%= lead.title %>"><img src="<%= url_for(lead.cover || theme.nijika.stage) %>" alt="<%= lead.cover ? lead.title : '官方动画剧照：虹夏在 STARRY 的鼓组后' %>" fetchpriority="high"><span class="image-line" aria-hidden="true"></span><span class="photo-arrow" aria-hidden="true">↗</span></a></article>
+  <% if (posts.length > 1) { %><div class="post-list"><% posts.slice(1).forEach(post => { %><%- partial('nijika/post-row',{post}) %><% }) %></div><% } %>
+  <div class="index-bottom"><span class="thin-line"></span><span><%= nijika_count(page.current) %> / <%= nijika_count(page.total) %></span></div>
+  <%- partial('nijika/pagination') %>
+  <% } else { %><div class="quiet-message"><h2>第一篇，正在路上。</h2></div><% } %>
+</section>

@@ -3,17 +3,17 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
+title: CC Atelier
 subtitle: ''
-description: ''
+description: '记录代码、研究与生活。'
 keywords:
-author: John Doe
-language: en
-timezone: ''
+author: CC
+language: zh-CN
+timezone: Asia/Shanghai
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
-url: http://example.com
+url: https://ccatelier.top
 permalink: :year/:month/:day/:title/
 permalink_defaults:
 pretty_urls:
@@ -60,8 +60,8 @@ prismjs:
 # per_page: Posts displayed per page. (0 = disable pagination)
 # order_by: Posts order. (Order by date descending by default)
 index_generator:
-  path: ''
-  per_page: 10
+  path: notes
+  per_page: 6
   order_by: -date
 
 # Category & Tag
@@ -96,7 +96,13 @@ ignore:
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: landscape
+theme: redefine
+
+search:
+  path: search.json
+  field: post
+  content: true
+  format: striptags
 
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment

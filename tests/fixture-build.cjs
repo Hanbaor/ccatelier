@@ -1,0 +1,34 @@
+// Build into a separate, ignored sandbox. Never change published source content.
+const fs=require('node:fs');
+const path=require('node:path');
+const {execFileSync}=require('node:child_process');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const sandbox=path.join(root,'.nijika-qa');
+fs.mkdirSync(sandbox,{recursive:true});
+fs.cpSync(path.join(root,'source'),path.join(sandbox,'source'),{recursive:true});
+fs.copyFileSync(path.join(__dirname,'fixtures/reading.md'),path.join(sandbox,'source/_posts/fixture-reading.md'));
+fs.mkdirSync(path.join(sandbox,'source/verification-page'),{recursive:true});
+fs.writeFileSync(path.join(sandbox,'source/verification-page/index.md'),'---\ntitle: 写作模块页面\nlayout: page\n---\n\n{% folding title="页面折叠模块" %}\n普通 Markdown 页面也应加载写作模块样式。\n{% endfolding %}\n');
+for(let i=0;i<8;i++) fs.writeFileSync(path.join(sandbox,`source/_posts/fixture-${i}.md`),`---\ntitle: "验证文章 ${i} & <img onerror=alert(1)>"\ndate: 2026-09-${String(10+i).padStart(2,'0')} 12:00:00\npermalink: verification/post-${i}/\ncategories: [验证分类]\ntags: [排版]\n---\n\nFixture ${i}. 只在验证构建中存在。\n`);
+// The real template's url_for helpers must respect installations below a prefix.
+const config=path.join(sandbox,'config.yml');
+fs.writeFileSync(config,'source_dir: .nijika-qa/source\npublic_dir: .nijika-qa/public\nurl: https://ccatelier.top/lab\nroot: /lab/\nindex_generator:\n  path: notes\n  per_page: 3\n');
+const log=execFileSync(process.execPath,[path.join(root,'node_modules/hexo/bin/hexo'),'generate','--config',`_config.yml,${config}`,'--output',sandbox],{cwd:root,encoding:'utf8',timeout:120000});
+fs.writeFileSync(path.join(sandbox,'build.log'),log);
+const read=file=>fs.readFileSync(path.join(sandbox,'public',file),'utf8');
+assert.match(read('notes/page/2/index.html'),/href="\/lab\/verification\//);
+assert.match(read('notes/index.html'),/href="\/lab\/notes\/page\/2\/"/);
+const article=read('verification/reading/index.html');
+for(const expression of [/reading-toc/,/class="[^"\n]*highlight/,/data-rel="Javascript"/,/<table>/,/<img[^>]+ep08-4/,/role="tablist"/,/第二页内容/]) assert.match(article,expression);
+assert.match(article, /src="\/lab\/atelier\/images\/ep08-4.jpg"/);
+assert.match(read('verification/post-0/index.html'),/&lt;img onerror=alert\(1\)&gt;/);
+assert.doesNotMatch(read('verification/post-0/index.html'),/<img onerror=alert\(1\)>/);
+assert.match(read('index.html'),/href="\/lab\/notes\/"/);
+const index=JSON.parse(read('search.json'));
+assert.equal(index.length,10);
+assert.ok(index.every(item=>item.url.startsWith('/lab/')));
+assert.ok(index.every(item=>!item.url.includes('//')), 'custom permalinks must not become protocol-relative search URLs');
+assert.match(read('tags/排版/index.html'),/验证文章/);
+assert.match(read('verification-page/index.html'),/css\/build\/tailwind.css/);
+console.log('PASS: fixture build, 10 real generated posts, pagination, Unicode taxonomy, escaped titles, Redefine code/tabs, TOC and /lab/ URLs.');

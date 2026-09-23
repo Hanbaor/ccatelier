@@ -1,0 +1,77 @@
+# Nijika extends Redefine 2.9.0. Template overrides live in custom/redefine/.
+info:
+  title: CC Atelier
+  author: CC
+  url: https://ccatelier.top
+colors:
+  primary: '#ecda7a'
+  secondary: '#d77e70'
+  default_mode: dark
+defaults:
+  favicon: /atelier/images/favicon.svg
+global:
+  single_page: false
+  website_counter:
+    enable: false
+  preloader:
+    enable: false
+  open_graph:
+    enable: true
+    image: /atelier/images/ep05-3.jpg
+  google_analytics:
+    enable: false
+home_banner:
+  enable: false
+  subtitle:
+    text: []
+home:
+  sidebar:
+    enable: false
+navbar:
+  search:
+    enable: true
+articles:
+  style:
+    font_size: 16px
+    line_height: 2
+    image_caption: true
+    link_icon: false
+    delete_mask: false
+  toc:
+    enable: true
+    max_depth: 3
+    number: false
+  code_block:
+    copy: true
+    style: simple
+    highlight_theme:
+      light: github
+      dark: tokyo-night-dark
+  word_count:
+    enable: false
+  copyright:
+    enable: true
+    default: cc_by_nc_sa
+  lazyload: false
+comment:
+  enable: false
+footer:
+  runtime: false
+  statistics: false
+plugins:
+  feed:
+    enable: false
+  aplayer:
+    enable: false
+cdn:
+  enable: false
+inject:
+  enable: false
+nijika:
+  github: https://github.com/Hanbaor
+  repository: https://github.com/Hanbaor/ccatelier
+  cover: /atelier/images/ep05-3.jpg
+  stage: /atelier/images/ep08-4.jpg
+  portrait: /atelier/images/nijika.png
+  motion: true
+  cursor: true
