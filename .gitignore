@@ -4,4 +4,7 @@ public/
 db.json
 .deploy_git/
 .nijika-qa/
+.nijika-import/
 *-nijika.log
+
+__pycache__/

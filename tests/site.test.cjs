@@ -14,10 +14,10 @@ test('Redefine remains the active, pinned theme', () => {
 test('the entrance is separate from the real notes and article routes', () => {
   const cover = read('index.html');
   assert.match(cover, /class="[^"]*on-cover/);
-  assert.match(cover, /href="[^"]*\/notes\/"/);
+  assert.match(cover, /href="[^"]*\/atelier\/"[^>]*data-enter/);
   assert.doesNotMatch(cover, /这是我的第一篇博客文章/);
   const notes = read('notes/index.html');
-  assert.match(notes, /class="note-feature"/);
+  assert.match(read('atelier/index.html'), /aria-label="栏目"/);
   assert.match(notes, /aria-label="笔记目录"/);
   const article = read('2026/09/22/Hello-CC-Atelier/index.html');
   assert.match(article, /这是我的第一篇博客文章/);

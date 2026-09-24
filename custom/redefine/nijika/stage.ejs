@@ -1,0 +1,9 @@
+<section class="stage-room" aria-label="创作室">
+  <div class="stage-mast"><span><i class="live-dot" aria-hidden="true"></i> CC ATELIER</span><span>NIJIKA / THE BACKSTAGE</span></div>
+  <div class="stage-scene">
+    <div class="stage-statement"><span class="eyebrow">写作 · 代码 · 日常</span><h1 tabindex="-1">留一点热爱<span>给下一拍<i>。</i></span></h1><span class="stage-signature">a little light, a little louder.</span></div>
+    <div class="stage-visual" aria-label="虹夏的舞台"><div class="stage-halo" aria-hidden="true"></div><div class="stage-frame"><img src="<%= url_for(theme.nijika.stage) %>" alt="虹夏坐在 STARRY 舞台的鼓组后" fetchpriority="high"></div><span class="stage-triangle" aria-hidden="true"></span><div class="stage-credit"><span>伊地知虹夏</span><span>DRUMS / 結束バンド</span></div><span class="stage-orbit-label" aria-hidden="true">KEEP THE RHYTHM</span></div>
+    <a class="stage-writing" href="<%= url_for('notes/') %>"><span class="chapter-no">01 / WRITING</span><span class="stage-writing-title">笔记<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40 40 8M8 8h32v32"/></svg></span><span class="chapter-detail"><%= nijika_count(nijika_writing().length) %> 篇记录<span>打开手记</span></span></a>
+  </div>
+  <nav class="stage-chapters" aria-label="栏目"><a href="<%= url_for('projects/') %>"><small>02 / WORKS</small><strong>项目</strong><span>↗</span></a><a href="<%= url_for('research/') %>"><small>03 / RESEARCH</small><strong>研究</strong><span>↗</span></a><a href="<%= url_for('life/') %>"><small>04 / MOMENTS</small><strong>生活</strong><span>↗</span></a><a href="<%= url_for('about/') %>"><small>05 / ABOUT</small><strong>关于</strong><span>↗</span></a></nav>
+</section>

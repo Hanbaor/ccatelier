@@ -2,12 +2,28 @@
 const fs = require('node:fs');
 const path = require('node:path');
 let searchPatched = false;
+let indexPatched = false;
 
 hexo.extend.filter.register('stylus:renderer', style => style.include(hexo.base_dir));
+hexo.extend.filter.register('after_post_render', data => {
+  const root = hexo.config.root || '/';
+  if (root !== '/' && data.content) {
+    data.content = data.content.replace(/(<a\b[^>]*\bhref=["'])\/(hot100\/|series\/hot100\/)/g, '$1'+root+'$2');
+  }
+  return data;
+});
 
 // Keep the upstream npm theme intact. Load tracked customizations after its views.
 hexo.extend.filter.register('before_generate', function () {
   if (this.config.theme !== 'redefine') return;
+  // Exercise series have their own index, keeping other writing discoverable.
+  if (!indexPatched) {
+    const index = hexo.extend.generator.get('index');
+    if (index) hexo.extend.generator.register('index', function (locals) {
+      return index.call(this, {...locals, posts:locals.posts.filter(post => post.series !== 'hot100')});
+    });
+    indexPatched = true;
+  }
   // SearchDB joins root + post.path literally. Hexo 8 custom permalinks can
   // start with '/', producing //post/ on root deployments. Normalize only
   // those server-generated local paths; keep the upstream content indexing.
@@ -43,6 +59,21 @@ hexo.extend.generator.register('nijika-cover', function () {
 });
 
 hexo.extend.helper.register('nijika_count', count => String(count).padStart(2, '0'));
+hexo.extend.generator.register('nijika-stage', function () {
+  return {path:'atelier/index.html', layout:['nijika/stage'], data:{nijika:'atelier', title:'创作室'}};
+});
+hexo.extend.generator.register('nijika-hot100', function (locals) {
+  const posts = locals.posts.toArray().filter(post => post.series === 'hot100').sort((a,b) => a.series_order-b.series_order);
+  if (!posts.length) return [];
+  const introHtml = this.render.renderSync({text:locals.data.hot100?.introduction || '',engine:'md'});
+  return {path:'series/hot100/index.html', layout:['nijika/series'], data:{nijika:'notes', title:'LeetCode Hot100', seriesPosts:posts, introHtml}};
+});
+hexo.extend.helper.register('nijika_writing', function () {
+  return this.site.posts.sort('date', -1).toArray().filter(post => post.series !== 'hot100');
+});
+hexo.extend.helper.register('nijika_series', function () {
+  return this.site.posts.toArray().filter(post => post.series === 'hot100').sort((a,b) => a.series_order-b.series_order);
+});
 hexo.extend.helper.register('nijika_label', function () {
   if (this.is_post()) return '笔记 / 阅读';
   if (this.is_archive()) return '归档';
