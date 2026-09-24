@@ -1,0 +1,12 @@
+import {$,$$,toast} from './ui.js';
+import {element,action,download} from './archive-store.js';
+import {makeDialog} from './live-dialog.js';
+export function initCodeStudio(){
+ const containers=$$('.article-body .code-container');if(!containers.length)return;
+ const {dialog,open}=makeDialog('code-studio-dialog','代码工作台'),tools=element('div','live-dialog-tools'),lines=element('div','code-lines'),status=element('p','live-status','点击行号聚焦；再次点击取消。代码只供阅读，不会执行。');dialog.classList.add('code-studio');let code='',language='text';
+ const wrap=action('自动换行',()=>{const value=lines.classList.toggle('wrapped');wrap.setAttribute('aria-pressed',String(value));});wrap.setAttribute('aria-pressed','false');
+ const jump=element('input','code-line-jump');jump.type='number';jump.min='1';jump.placeholder='行号';jump.setAttribute('aria-label','跳转行号');
+ function focus(number){const row=lines.children[number-1];if(!row)return;$$('.line-focused',lines).forEach(n=>n.classList.remove('line-focused'));row.classList.add('line-focused');row.scrollIntoView({block:'center'});status.textContent='第 '+number+' 行 / 共 '+lines.children.length+' 行';}
+ tools.append(wrap,action('复制全部',async()=>{try{await navigator.clipboard.writeText(code);toast('代码已复制');}catch{toast('复制失败，请选中代码复制');}}),action('下载源码',()=>{const ext={javascript:'js',js:'js',typescript:'ts',python:'py',cpp:'cpp',c:'c',java:'java',html:'html',css:'css',json:'json',bash:'sh',shell:'sh',sql:'sql'}[language.toLowerCase()]||'txt';download('cc-code.'+ext,code,'text/plain;charset=utf-8');}),jump,action('跳转',()=>focus(Number(jump.value))));dialog.append(tools,status,lines);
+ containers.forEach(container=>{const button=action('工作台 ↗',()=>{const source=$$('.code .line',container);code=source.length?source.map(n=>n.textContent).join('\n'):($('pre',container)?.textContent||'');language=$('[data-rel]',container)?.dataset.rel||container.dataset.rel||'text';lines.replaceChildren();code.split('\n').forEach((text,i)=>{const row=element('div'),number=action(String(i+1),()=>{const old=row.classList.contains('line-focused');$$('.line-focused',lines).forEach(n=>n.classList.remove('line-focused'));row.classList.toggle('line-focused',!old);});number.setAttribute('aria-label','聚焦第 '+(i+1)+' 行');row.append(number,element('code','',text||' '));lines.append(row);});jump.max=String(lines.children.length);status.textContent=language.toUpperCase()+' · '+lines.children.length+' 行 · 点击行号聚焦';open();},'code-workbench-open');button.dataset.readerExclude='';container.append(button);});
+}

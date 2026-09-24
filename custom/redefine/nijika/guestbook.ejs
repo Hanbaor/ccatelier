@@ -1,0 +1,4 @@
+<section class="after-page guestbook-page">
+  <header class="after-page-heading"><span class="after-eyebrow">CC ATELIER / THE ENCORE WALL</span><h1 tabindex="-1">留一点<span>回声。</span></h1><p>演出会散场，问候可以留在这里。</p><div class="guestbook-ornament" aria-hidden="true"><span>✦</span><i>ENCORE!</i></div></header>
+  <div class="guestbook-layout"><aside class="guestbook-side"><div class="guestbook-photo"><img src="<%= url_for(theme.nijika.aftershow || theme.nijika.cover) %>" alt="暖色灯光中的虹夏主题插画"><span>See you after the show.</span></div><p>关于博客、代码，或者今天的小事。<br>慢慢说，我会看到。</p><a href="<%= url_for('about/') %>">认识 CC ↗</a><span class="guestbook-rules">昵称与留言将公开显示。请别留下电话、住址等私人信息。</span></aside><%- partial('nijika/comments') %></div>
+</section>

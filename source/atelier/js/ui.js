@@ -1,8 +1,10 @@
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const sessionMemory = new Map();
 export const storage = {
-  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch {} }
+  persistent:true,
+  get(key) { if(sessionMemory.has(key))return sessionMemory.get(key);try { return localStorage.getItem(key); } catch { this.persistent=false;return null; } },
+  set(key, value) { try { localStorage.setItem(key, value);sessionMemory.delete(key);return true; } catch { sessionMemory.set(key,value);this.persistent=false;return false; } }
 };
 let toastTimer;
 export function toast(message) {
@@ -57,7 +59,7 @@ export function initSettings() {
   setTheme(storage.get('cc-theme') === 'light');
   $('#theme-toggle').addEventListener('click', () => setTheme(!document.body.classList.contains('light'), true));
   const section = document.body.dataset.section;
-  $$('.big-navigation a').forEach(link => {
+  $$('[data-section-navigation] a').forEach(link => {
     const pathname = new URL(link.href).pathname;
     const active = pathname === document.body.dataset.root + (section === 'gallery' ? 'life' : section) + '/';
     link.classList.toggle('active', active);

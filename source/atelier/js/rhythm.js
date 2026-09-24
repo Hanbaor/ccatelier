@@ -1,7 +1,15 @@
-import {$, $$, toast} from './ui.js';
+import {$, $$, toast,storage} from './ui.js';
 
 export function initRhythm() {
   let audioContext, master, noiseBuffer, sequenceTimer, playing = false, beat = 0;
+  const defaults={kick:[0,6,8],snare:[4,12],hat:[0,2,4,6,8,10,12,14]};
+  let pattern;try{pattern=JSON.parse(storage.get('cc-drum-pattern'));}catch{}
+  if(!pattern || !['kick','snare','hat'].every(t=>Array.isArray(pattern[t])&&pattern[t].every(n=>Number.isInteger(n)&&n>=0&&n<16)))pattern=structuredClone(defaults);
+  const steps=$$('[data-step]');
+  function renderPattern(){steps.forEach(b=>b.setAttribute('aria-pressed',String(pattern[b.dataset.track].includes(Number(b.dataset.step)))));}
+  renderPattern();steps.forEach(button=>button.addEventListener('click',()=>{const track=button.dataset.track,step=Number(button.dataset.step);pattern[track]=pattern[track].includes(step)?pattern[track].filter(n=>n!==step):[...pattern[track],step];storage.set('cc-drum-pattern',JSON.stringify(pattern));renderPattern();}));
+  $('[data-sequence-reset]').addEventListener('click',()=>{pattern=structuredClone(defaults);storage.set('cc-drum-pattern',JSON.stringify(pattern));renderPattern();});
+  let taps=[];$('[data-tap-tempo]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-6);if(taps.length>1){const bpm=Math.min(140,Math.max(60,Math.round(60000*(taps.length-1)/(now-taps[0]))));$('#tempo').value=bpm;$('#tempo-output').value=bpm;}else toast('再按几次，找到你的速度。');});
   async function readyAudio() {
     const AudioEngine = window.AudioContext || window.webkitAudioContext;
     if (!AudioEngine) { toast('当前浏览器暂不支持节奏音频'); return false; }
@@ -18,6 +26,7 @@ export function initRhythm() {
   }
   function drum(type) {
     if (!audioContext || audioContext.state !== 'running') return;
+    document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:type==='kick'?.8:type==='snare'?.6:.25,track:type}}));
     const time = audioContext.currentTime, gain = audioContext.createGain(); gain.connect(master);
     let source;
     if (type === 'kick') {
@@ -40,12 +49,14 @@ export function initRhythm() {
     playing = false; clearTimeout(sequenceTimer);
     $('#rhythm-play').textContent = '播放'; $('#rhythm-play').setAttribute('aria-pressed','false');
     $$('.beat-light').forEach(light=>light.classList.remove('lit'));
+    steps.forEach(b=>b.classList.remove('step-playing'));
   }
   function tick() {
     if (!playing || !$('#rhythm-dialog').open || document.hidden) { stopSequence(); return; }
-    drum(beat % 2 === 0 ? 'kick' : 'snare'); drum('hat');
-    $$('.beat-light').forEach((light,index)=>light.classList.toggle('lit',index===beat)); beat=(beat+1)%4;
-    sequenceTimer=setTimeout(tick,60000/Number($('#tempo').value));
+    for(const sound of ['kick','snare','hat'])if(pattern[sound].includes(beat))drum(sound);
+    $$('.beat-light').forEach((light,index)=>light.classList.toggle('lit',index===Math.floor(beat/4)));
+    steps.forEach(b=>b.classList.toggle('step-playing',Number(b.dataset.step)===beat));beat=(beat+1)%16;
+    sequenceTimer=setTimeout(tick,60000/Number($('#tempo').value)/4);
   }
   $('#rhythm-play').addEventListener('click',async()=>{
     if (playing) {stopSequence();return;}

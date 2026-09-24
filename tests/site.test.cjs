@@ -28,7 +28,7 @@ test('the entrance is separate from the real notes and article routes', () => {
 });
 
 test('all intended sections, taxonomy and a useful 404 are generated', () => {
-  for (const route of ['projects','research','life','about','archives','categories','tags']) {
+  for (const route of ['projects','research','life','about','archives','categories','tags','guestbook','lounge','admin']) {
     const html = read(`${route}/index.html`);
     assert.match(html, /class="[^"]*site-header/);
     assert.match(html, /<h1/);
@@ -38,17 +38,17 @@ test('all intended sections, taxonomy and a useful 404 are generated', () => {
   assert.match(read('tags/CC-Atelier/index.html'), /Hello CC Atelier/);
 });
 
-test('search is generated from published writing and images are existing official art', () => {
+test('search uses published writing and the entrance has its selected artwork', () => {
   const index = JSON.parse(read('search.json'));
   assert.ok(index.some(item => item.title === 'Hello CC Atelier'));
   assert.ok(!index.some(item => item.title === 'Hello World'));
   const cover = read('index.html');
-  assert.match(cover, /atelier\/images\/ep05-3.jpg/);
+  assert.match(cover, /atelier\/images\/nijika-live-archive.png/);
   assert.doesNotMatch(cover, /stage-v4\.png|cover-v4\.png|#article/);
 });
 
 test('generated local asset references resolve', () => {
-  const pages = ['index.html','notes/index.html','2026/09/22/Hello-CC-Atelier/index.html','about/index.html'];
+  const pages = ['index.html','atelier/index.html','notes/index.html','2026/09/22/Hello-CC-Atelier/index.html','about/index.html','guestbook/index.html','lounge/index.html','admin/index.html'];
   for (const route of pages) {
     const html = read(route);
     for (const match of html.matchAll(/<(?:script|img|link)\b[^>]*(?:src|href)="([^"#]+)"/g)) {

@@ -1,0 +1,57 @@
+import {$,$$,toast,motion} from './ui.js';
+import {preset,tracks,trackNames,validateProject,History} from './studio-core.mjs';
+import {AudioEngine,renderWav} from './audio-engine.js';
+import {element,action,download,readImport} from './archive-store.js';
+import {vault} from './vault.js';
+import {makeDialog} from './live-dialog.js';
+import {PlaybackController} from './playback.mjs';
+export function initStudio(){
+ const host=$('[data-studio]');if(!host)return;
+ let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0;
+ const status=$('[data-studio-status]'),grid=$('[data-sequencer]'),play=$('[data-studio-play]'),canvas=$('[data-audio-scope]'),ctx=canvas.getContext('2d');
+ const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));});
+ function saveHistory(){history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
+ const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
+ function stop(){playback.stop();}
+ function toggle(){return playback.toggle(project);}
+ function render(){
+  $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
+  grid.style.setProperty('--steps',project.steps);grid.style.minWidth=project.steps===32?'1100px':'';grid.replaceChildren();
+  project.tracks.forEach((track,t)=>{
+   const row=element('div','studio-track'),name=element('div','track-name'),pad=action(String(t+1).padStart(2,'0'),()=>audition(t));pad.setAttribute('aria-label','敲击'+trackNames[track.type]);const switches=element('div');
+   for(const [key,label] of [['mute','M'],['solo','S']]){const b=action(label,()=>{track[key]=!track[key];b.setAttribute('aria-pressed',String(track[key]));saveHistory();});b.title=key==='mute'?'静音':'独奏';b.setAttribute('aria-label',(key==='mute'?'静音':'独奏')+trackNames[track.type]);b.setAttribute('aria-pressed',String(track[key]));switches.append(b);}
+   name.append(pad,element('strong','',trackNames[track.type]),switches);
+   const steps=element('div','track-steps');steps.setAttribute('role','group');steps.setAttribute('aria-label',trackNames[track.type]+'音符');
+   track.steps.forEach((v,s)=>{const b=action('',()=>{track.steps[s]=track.steps[s]===0?1:track.steps[s]===1?.5:0;paintStep(b,track,s);saveHistory();});b.dataset.studioStep=s;b.dataset.studioTrack=t;paintStep(b,track,s);b.addEventListener('keydown',e=>{if(!['ArrowRight','ArrowLeft','ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const nt=Math.max(0,Math.min(5,t+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0))),ns=e.key==='Home'?0:e.key==='End'?project.steps-1:(s+(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0)+project.steps)%project.steps;$('[data-studio-track="'+nt+'"][data-studio-step="'+ns+'"]').focus();});steps.append(b);});
+   const controls=element('div','track-controls');for(const [key,label,min,max,scale] of [['volume','VOL',0,100,100],['pan','PAN',-100,100,100],['tone','TONE',0,100,100],['decay','TAIL',5,120,100]]){const l=element('label','',label),input=element('input');input.type='range';input.min=min;input.max=max;input.value=Math.round(track[key]*scale);input.setAttribute('aria-label',trackNames[track.type]+' '+label);input.title=String(track[key]);input.addEventListener('input',()=>{track[key]=Number(input.value)/scale;input.title=String(track[key]);engine.update(project);});input.addEventListener('change',saveHistory);l.append(input);controls.append(l);}
+   row.append(name,steps,controls);grid.append(row);
+  });$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;
+ }
+ function paintStep(b,track,s){const v=track.steps[s];b.classList.toggle('on',v===1);b.classList.toggle('soft',v>0&&v<1);b.setAttribute('aria-pressed',String(v>0));b.setAttribute('aria-label',trackNames[track.type]+' 第'+(s+1)+'步：'+(v===1?'强拍':v?'轻拍':'空拍'));b.title=(s+1)+' / '+(v===1?'强拍':v?'轻拍':'空拍');}
+ async function audition(index){try{await engine.audition(project.tracks[index]);auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}catch(error){status.textContent=error.message;}}
+ play.addEventListener('click',toggle);$('[data-studio-stop]').addEventListener('click',stop);
+ $('[data-bpm]').addEventListener('change',e=>{const value=Number(e.target.value);project.bpm=Number.isFinite(value)?Math.max(60,Math.min(180,Math.round(value))):112;e.target.value=project.bpm;saveHistory();});
+ $('[data-swing]').addEventListener('input',e=>{project.swing=Number(e.target.value)/100;$('[data-swing-output]').textContent=e.target.value+'%';engine.update(project);});$('[data-swing]').addEventListener('change',saveHistory);
+ $('[data-master]').addEventListener('input',e=>{project.master=Number(e.target.value)/100;engine.update(project);});$('[data-master]').addEventListener('change',saveHistory);
+ $('[data-project-name]').addEventListener('input',e=>{project.name=e.target.value.trim()||'未命名磁带';});
+ $('[data-project-name]').addEventListener('change',e=>{e.target.value=project.name;saveHistory();});
+ $('[data-step-count]').addEventListener('change',e=>{stop();const count=Number(e.target.value);project.tracks.forEach(t=>{t.steps=Array.from({length:count},(_,i)=>t.steps[i]??t.steps[i%16]??0);});project.steps=count;saveHistory();render();});
+ $('[data-studio-preset]').addEventListener('change',e=>{stop();project=preset(e.target.value);saveHistory();render();status.textContent='预设已载入；可通过撤销回到刚才的编排。';});
+ $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();});
+ let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
+ document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
+ $('[data-project-export]').addEventListener('click',()=>download('cc-rhythm-project.json',JSON.stringify(validateProject(project),null,2)));
+ $('[data-project-import]').addEventListener('change',async e=>{try{const imported=validateProject(await readImport(e.target.files[0]));stop();project=imported;saveHistory();render();status.textContent='项目已导入。';}catch(error){status.textContent=error.message;}e.target.value='';});
+ $('[data-studio-save]').addEventListener('click',async()=>{try{await vault.put('projects',{id:crypto.randomUUID(),name:project.name,updated:Date.now(),project:validateProject(project)});status.textContent='已保存到本机资料库。';}catch(error){status.textContent=error.message+'，可以导出 JSON 备份。';}});
+ const saved=makeDialog('studio-projects','你的录音带'),savedList=element('div');saved.dialog.append(savedList);$('[data-studio-load]').addEventListener('click',async()=>{savedList.replaceChildren();saved.open();try{const projects=(await vault.all('projects')).sort((a,b)=>b.updated-a.updated);if(!projects.length)savedList.append(element('p','live-status','还没有保存的录音带。'));for(const p of projects){const row=element('div','queue-row');row.append(element('span','','▣'),element('span','',p.name));const buttons=element('div');buttons.append(action('载入',()=>{try{const value=validateProject(p.project);stop();project=value;saveHistory();render();saved.dialog.close();}catch(error){toast(error.message);}}),action('删除',async()=>{try{await vault.remove('projects',p.id);row.remove();}catch(error){toast(error.message);}}));row.append(buttons);savedList.append(row);}}catch(error){savedList.append(element('p','live-status',error.message));}});
+ $('[data-wav-export]').addEventListener('click',async e=>{const button=e.currentTarget;button.disabled=true;status.textContent='正在离线渲染音频…';try{const buffer=await renderWav(structuredClone(project),Number($('[data-export-loops]').value));download('cc-rhythm.wav',buffer,'audio/wav');status.textContent='WAV 已导出：44.1 kHz / 16 bit / 立体声。';}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
+ function resize(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx?.setTransform(d,0,0,d,0,0);drawScope();}
+ function drawScope(){const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;if(!ctx)return;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#bbae7822';ctx.lineWidth=1;for(let x=0;x<w;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}for(let y=0;y<h;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  const analyser=engine.analyser;if(!analyser){ctx.strokeStyle='#8a7b5055';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();return;}
+  const wave=new Uint8Array(analyser.fftSize),freq=new Uint8Array(analyser.frequencyBinCount);analyser.getByteTimeDomainData(wave);analyser.getByteFrequencyData(freq);let rms=0;for(const x of wave)rms+=((x-128)/128)**2;rms=Math.sqrt(rms/wave.length);$('[data-master-level]').style.height=Math.min(100,rms*450)+'%';
+  ctx.fillStyle='#aa905a30';for(let i=0;i<64;i++){const value=freq[Math.floor(i*freq.length/128)]/255;ctx.fillRect(i*w/64,h*(1-value*.65),Math.max(1,w/64-2),h*value*.65);}
+  ctx.strokeStyle='#e5c279';ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<wave.length;i+=4){const x=i/wave.length*w,y=h*.45+(wave[i]-128)/128*h*.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();document.dispatchEvent(new CustomEvent('atelier:spectrum',{detail:{energy:Math.min(1,rms*5),bass:freq[3]/255}}));
+ }
+ let last=0;function scopeLoop(time=0){animation=0;if(document.hidden)return;if(time-last>33||!time){drawScope();last=time;if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+project.bpm+' BPM';}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
+ $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
+}

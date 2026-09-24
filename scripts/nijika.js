@@ -62,6 +62,9 @@ hexo.extend.helper.register('nijika_count', count => String(count).padStart(2, '
 hexo.extend.generator.register('nijika-stage', function () {
   return {path:'atelier/index.html', layout:['nijika/stage'], data:{nijika:'atelier', title:'创作室'}};
 });
+hexo.extend.generator.register('nijika-after-hours', function () {
+  return [['guestbook','散场留言板'],['lounge','后台小屋'],['admin','留言管理']].map(([route,title])=>({path:route+'/index.html',layout:['nijika/'+route],data:{nijika:route,title}}));
+});
 hexo.extend.generator.register('nijika-hot100', function (locals) {
   const posts = locals.posts.toArray().filter(post => post.series === 'hot100').sort((a,b) => a.series_order-b.series_order);
   if (!posts.length) return [];

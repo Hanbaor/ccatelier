@@ -33,4 +33,16 @@ assert.ok(index.every(item=>!item.url.includes('//')), 'custom permalinks must n
 assert.match(read('tags/排版/index.html'),/验证文章/);
 assert.match(read('verification-page/index.html'),/css\/build\/tailwind.css/);
 assert.match(read('hot100/001/index.html'), /href="\/lab\/series\/hot100\/">返回目录/);
+const discovery=JSON.parse(read('atelier/data/discovery.json'));
+assert.equal(discovery.length,published+9);
+assert.ok(discovery.every(p=>p.path.startsWith('/lab/')));
+const rich=JSON.parse(read('atelier/data/archive.json'));
+assert.equal(rich.posts.length,published+9);
+assert.ok(rich.posts.every(p=>p.path.startsWith('/lab/')&&typeof p.text==='string'&&Array.isArray(p.tags)));
+assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).every(p=>p.startsWith('/lab/')));
+assert.match(read('live-sw.js'),/ROOT="\/lab\/"/);
+assert.match(read('studio/index.html'),/data-studio/);
+assert.match(read('verification/reading/index.html'),/reader-workbench/);
+assert.match(require('hexo-util').unescapeHTML(read('atom.xml')),/https:\/\/ccatelier.top\/lab\/atom.xml/);
+assert.match(read('lounge/index.html'),/href="\/lab\/guestbook\/"/);
 console.log('PASS: fixture build, all published posts plus 9 fixtures, pagination, Unicode taxonomy, escaped titles, Redefine code/tabs, TOC and /lab/ URLs.');

@@ -70,8 +70,10 @@ inject:
 nijika:
   github: https://github.com/Hanbaor
   repository: https://github.com/Hanbaor/ccatelier
-  cover: /atelier/images/ep05-3.jpg
+  cover: /atelier/images/nijika-live-archive.png
   stage: /atelier/images/ep08-4.jpg
   portrait: /atelier/images/nijika.png
+  aftershow: /atelier/images/nijika-aftershow.png
+  lounge_art: /atelier/images/backstage-workbench.png
   motion: true
   cursor: true

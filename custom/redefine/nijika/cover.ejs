@@ -1,8 +1,9 @@
-<section class="cover" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
+<section class="cover live-cover" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
       <div class="cover-orbit" aria-hidden="true"></div><div class="cover-hairline" aria-hidden="true"></div>
-      <div class="cover-photograph" id="cover-photograph"><div class="photo-underlay" aria-hidden="true"></div><div class="photo-cut"><img id="cover-image" src="<%= url_for(theme.nijika.cover) %>" alt="官方动画剧照：夜晚街头，虹夏站在灯光旁微笑" fetchpriority="high"><div class="photo-light" aria-hidden="true"></div></div><div class="photo-index" aria-label="选择封面画面"><button class="active" data-scene="street" aria-label="夜归画面" aria-pressed="true"><span></span></button><button data-scene="stage" aria-label="演出画面" aria-pressed="false"><span></span></button></div></div>
-      <h1 class="cover-type" tabindex="-1" aria-label="CC Atelier"><span class="type-cc">CC<span class="type-period">.</span></span><span class="type-atelier">ATELIER</span></h1>
-      <span class="nijika-marker">伊地知虹夏<span aria-hidden="true">✦</span></span>
-      <a class="enter-button" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span class="enter-label">进入</span><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M15 49 49 15M16 15h33v33"/></svg></a>
+      <div class="cover-photograph" id="cover-photograph"><div class="photo-cut"><img id="cover-image" src="<%= url_for(theme.nijika.cover) %>" alt="舞台暖光中的虹夏，AI 创作的主题同人插画" fetchpriority="high"><div class="photo-light" aria-hidden="true"></div></div><div class="photo-index" aria-label="选择封面画面"><button class="active" data-scene="street" aria-label="暖光画面" aria-pressed="true"><span></span></button><button data-scene="stage" aria-label="演出画面" aria-pressed="false"><span></span></button></div></div>
+      <div class="cover-editorial"><span class="eyebrow">A PERSONAL LIVE HOUSE / EST. 2026</span><h1 class="cover-type" tabindex="-1" aria-label="CC Atelier"><span class="type-cc">CC<span class="type-period">.</span></span><span class="type-atelier">ATELIER</span></h1><p>把热爱，留给下一拍。</p><span class="cover-micro">WORDS. IDEAS. A LITTLE NOISE.</span></div>
+      <span class="nijika-marker">伊地知虹夏<span aria-hidden="true">✦</span><small>NIJIKA / DRUMS</small></span>
+      <a class="enter-button" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span class="enter-label">推门入场</span><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M15 49 49 15M16 15h33v33"/></svg></a>
+      <div class="cover-bottom-line"><span>ADMIT ONE / ALWAYS OPEN</span><span>01 — BEFORE THE FIRST BEAT</span></div>
       <span class="cover-corner" aria-hidden="true"></span>
     </section>

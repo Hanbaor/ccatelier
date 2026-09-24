@@ -1,0 +1,5 @@
+<div class="article-toolbox" data-article-tools data-title="<%= page.title %>">
+  <div class="article-toolbox-main"><button data-bookmark aria-pressed="false">☆ 收进歌单</button><button data-applause aria-pressed="false">✦ 掌声 <span data-applause-count>—</span></button><button data-copy-link>↗ 分享这一篇</button></div>
+  <div class="reading-switches"><button data-focus-reading aria-pressed="false">专注阅读</button><button data-reading-size aria-label="调整阅读字号">Aa</button><span><%= after_hours_minutes(page.content) %> 分钟 · <span data-stat="pageViews">—</span> 次来访</span></div>
+  <p data-article-tool-status role="status"></p><button class="reading-resume" data-reading-resume hidden>继续上次的阅读 ↓</button>
+</div>

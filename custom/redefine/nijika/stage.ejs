@@ -1,9 +1,27 @@
-<section class="stage-room" aria-label="创作室">
-  <div class="stage-mast"><span><i class="live-dot" aria-hidden="true"></i> CC ATELIER</span><span>NIJIKA / THE BACKSTAGE</span></div>
-  <div class="stage-scene">
-    <div class="stage-statement"><span class="eyebrow">写作 · 代码 · 日常</span><h1 tabindex="-1">留一点热爱<span>给下一拍<i>。</i></span></h1><span class="stage-signature">a little light, a little louder.</span></div>
-    <div class="stage-visual" aria-label="虹夏的舞台"><div class="stage-halo" aria-hidden="true"></div><div class="stage-frame"><img src="<%= url_for(theme.nijika.stage) %>" alt="虹夏坐在 STARRY 舞台的鼓组后" fetchpriority="high"></div><span class="stage-triangle" aria-hidden="true"></span><div class="stage-credit"><span>伊地知虹夏</span><span>DRUMS / 結束バンド</span></div><span class="stage-orbit-label" aria-hidden="true">KEEP THE RHYTHM</span></div>
-    <a class="stage-writing" href="<%= url_for('notes/') %>"><span class="chapter-no">01 / WRITING</span><span class="stage-writing-title">笔记<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40 40 8M8 8h32v32"/></svg></span><span class="chapter-detail"><%= nijika_count(nijika_writing().length) %> 篇记录<span>打开手记</span></span></a>
+<% const writing = nijika_writing(); const latest = writing[0]; %>
+<section class="backstage" aria-label="创作室">
+  <div class="backstage-topline"><span><i></i> CC ATELIER — PERSONAL BLOG</span><span>下北沢 · AFTER THE SHOW</span><span class="backstage-edition">NIJIKA EDITION / 01</span></div>
+  <div class="gig-scene live-stage" data-backstage-scene>
+    <div class="gig-grid" aria-hidden="true"></div>
+    <div class="gig-heading"><span class="gig-kicker">小小的创作室，大大的白日梦。</span><h1 tabindex="-1">BACK<span>STAGE<i>✳</i></span></h1></div>
+    <div class="gig-portrait" aria-label="伊地知虹夏，结束乐队鼓手">
+      <img src="<%= url_for(theme.nijika.cover) %>" alt="舞台暖光中的虹夏，AI 创作的主题同人插画" fetchpriority="high">
+      <div class="gig-character-label"><b>伊地知 虹夏</b><span>DRUMS / 結束バンド</span></div>
+      <span class="live-stage-frame" aria-hidden="true">REHEARSAL ROOM / 01</span>
+    </div>
+    <a class="admission-ticket" href="<%= url_for('notes/') %>" aria-label="打开笔记，<%= writing.length %> 篇记录">
+      <div class="ticket-main"><span class="ticket-eyebrow">ADMIT ONE / 随时入场</span><strong>翻开笔记 <span>↗</span></strong><span class="ticket-meta">WRITING ARCHIVE <b><%= nijika_count(writing.length) %> 篇记录</b></span></div><span class="ticket-stub"><span>KEEP THIS TICKET</span><i class="barcode" aria-hidden="true"></i><b>01</b></span>
+    </a>
+    <a class="live-stage-studio" href="<%= url_for('studio/') %>"><span class="live-stage-vinyl" aria-hidden="true"><i>✦</i></span><span><small>THE RHYTHM ROOM</small><strong>把舞台，交给你 ↗</strong><em>六轨编排 / 自己的节奏</em></span></a>
+    <span class="gig-side-label" aria-hidden="true">A LITTLE LIGHT. A LITTLE LOUDER.</span>
+    <div class="gig-marquee" aria-hidden="true"><span>KEEP THE RHYTHM <i>✦</i> 結束バンド <i>✦</i> KEEP THE RHYTHM <i>✦</i> 伊地知虹夏 <i>✦</i> KEEP THE RHYTHM <i>✦</i> 結束バンド</span></div>
   </div>
-  <nav class="stage-chapters" aria-label="栏目"><a href="<%= url_for('projects/') %>"><small>02 / WORKS</small><strong>项目</strong><span>↗</span></a><a href="<%= url_for('research/') %>"><small>03 / RESEARCH</small><strong>研究</strong><span>↗</span></a><a href="<%= url_for('life/') %>"><small>04 / MOMENTS</small><strong>生活</strong><span>↗</span></a><a href="<%= url_for('about/') %>"><small>05 / ABOUT</small><strong>关于</strong><span>↗</span></a></nav>
+  <nav class="object-shelf" aria-label="栏目">
+    <a class="shelf-object shelf-record" href="<%= url_for('projects/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-record"></span><span class="mini-sleeve">CC<span>ATELIER</span></span></div><span class="shelf-label"><small>02 / WORKS</small><strong>项目 <i>↗</i></strong></span></a>
+    <a class="shelf-object shelf-research" href="<%= url_for('research/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-blueprint"><i></i><b>f(x)</b></span></div><span class="shelf-label"><small>03 / RESEARCH</small><strong>研究 <i>↗</i></strong></span></a>
+    <a class="shelf-object shelf-life" href="<%= url_for('life/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-polaroid"><img src="<%= url_for(theme.nijika.cover) %>" alt="" width="1200" height="675"></span></div><span class="shelf-label"><small>04 / MOMENTS</small><strong>生活 <i>↗</i></strong></span></a>
+    <a class="shelf-object shelf-about" href="<%= url_for('about/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-pass"><i></i><b>cc.</b><small>ALL ACCESS</small></span></div><span class="shelf-label"><small>05 / ABOUT</small><strong>关于 <i>↗</i></strong></span></a>
+  </nav>
+  <% if (latest) { %><a class="backstage-latest" href="<%= url_for(latest.path) %>"><span><i></i> LATEST NOTE</span><strong><%= latest.title %></strong><span><%= date(latest.date, 'YYYY.MM.DD') %> ↗</span></a><% } %>
+  <%- partial('nijika/after-hours-ribbon') %>
 </section>

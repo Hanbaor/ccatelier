@@ -9,7 +9,7 @@
   <main id="main-content" tabindex="-1"><%- body %></main>
   <%- partial('nijika/footer') %>
   <noscript>
-    <style>.header-controls,.utility-controls,.photo-index{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}.no-script-nav{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;padding:18px;font-size:12px}</style>
+    <style>.header-controls,.utility-controls,.photo-index,.article-toolbox,.encore-form,.owner-login{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}.no-script-nav{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;padding:18px;font-size:12px}</style>
     <nav class="no-script-nav" aria-label="主导航"><% for (const [route, label] of [['notes','笔记'],['projects','项目'],['research','研究'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route + '/') %>"><%= label %></a><% } %></nav>
   </noscript>
   <%- partial('nijika/dialogs') %>

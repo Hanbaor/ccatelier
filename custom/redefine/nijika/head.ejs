@@ -4,6 +4,7 @@
   <title><%= page.nijika === 'cover' ? config.title : (page.title || nijika_list_title()) + ' · ' + config.title %></title>
   <meta name="description" content="<%= page.description || config.description %>">
   <link rel="canonical" href="<%= full_url_for(page.path || '') %>">
+  <link rel="alternate" type="application/atom+xml" title="CC Atelier" href="<%= url_for('atom.xml') %>">
   <%- open_graph({title:page.title || config.title, description:page.description || config.description, image:theme.nijika.cover, twitter_card:'summary_large_image'}) %>
   <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
   <% if (page.nijika === 'cover') { %><link rel="preload" as="image" href="<%= url_for(theme.nijika.cover) %>"><% } %>
@@ -18,5 +19,13 @@
   <link rel="stylesheet" href="<%= url_for('atelier/css/content.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/effects.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/stage.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/backstage.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/after-hours.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/archive.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/reader.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/studio.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/stage-engine.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/live-art.css') %>">
+  <% if (page.nijika === 'admin') { %><meta name="robots" content="noindex,nofollow"><% } %>
   <%- export_config() %>
 </head>

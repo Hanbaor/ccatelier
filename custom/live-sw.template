@@ -1,0 +1,38 @@
+import {cacheableURL} from './atelier/js/offline-core.mjs';
+const ROOT=__ROOT__,BASE=new URL(ROOT,self.location.origin).href,CACHE='cc-live-shelf-v1-'+encodeURIComponent(ROOT),META=new URL(ROOT+'atelier/offline-records.json',BASE).href;
+let serial=Promise.resolve();
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+async function readMeta(cache){const response=await cache.match(META);return response?response.json():[];}
+async function writeMeta(cache,rows){await cache.put(META,new Response(JSON.stringify(rows),{headers:{'Content-Type':'application/json'}}));}
+async function cleanSnapshots(rows){const used=new Set(rows.map(r=>r.snapshot));for(const name of await caches.keys())if(name.startsWith(CACHE+'-snapshot-')&&!used.has(name))await caches.delete(name);}
+async function get(url){const response=await fetch(url,{credentials:'omit',cache:'no-cache'});if(!response.ok||response.type==='opaque'||response.redirected)throw Error('资源未能完整下载：'+new URL(url).pathname);return response;}
+async function handle(data){const cache=await caches.open(CACHE),rows=await readMeta(cache);
+ if(data.type==='list'){await cleanSnapshots(rows);let bytes=0;const names=new Set(rows.map(r=>r.snapshot||CACHE));for(const name of names){const snapshot=await caches.open(name);for(const key of await snapshot.keys()){if(key.url===META)continue;const r=await snapshot.match(key);bytes+=(await r.arrayBuffer()).byteLength;}}return {rows,bytes};}
+ if(data.type==='clear'){await caches.delete(CACHE);await cleanSnapshots([]);return {rows:[]};}
+ if(data.type==='remove'){const next=rows.filter(r=>r.path!==data.path);await writeMeta(cache,next);await cleanSnapshots(next);if(!rows.find(r=>r.path===data.path)?.snapshot)await cache.delete(new URL(data.path,BASE).href);return {rows:next};}
+ if(data.type!=='save')throw Error('未知离线操作');
+ const indexURL=new URL(ROOT+'atelier/data/archive.json',BASE).href,indexResponse=await get(indexURL),index=await indexResponse.clone().json(),post=index.posts.find(p=>p.path===data.path);
+ if(!post)throw Error('只能保存档案中的公开文章');if(rows.length>=30&&!rows.some(p=>p.path===post.path))throw Error('离线书架已满（30 篇），请先移除一些文章');
+ const articleURL=new URL(post.path,BASE).href,page=await get(articleURL),html=await page.clone().text(),shell=await (await get(new URL(ROOT+'atelier/data/offline-shell.json',BASE).href)).json();
+ const urls=new Set(shell.filter(url=>cacheableURL(url,BASE)).map(url=>new URL(url,BASE).href));urls.add(indexURL);
+ for(const m of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)){if(cacheableURL(m[1],BASE))urls.add(new URL(m[1],BASE).href);}
+ const staged=new Map([[articleURL,page],[indexURL,indexResponse]]);let bytes=0;
+ for(const url of urls){if(!staged.has(url)){const response=await get(url);staged.set(url,response);if(/\.css$/.test(new URL(url).pathname)){const css=await response.clone().text();for(const m of css.matchAll(/url\(["']?([^\s'"()]+)["']?\)/g)){const asset=new URL(m[1],url).href;if(cacheableURL(asset,BASE))urls.add(asset);}}}if(staged.size>400)throw Error('资源数量超出限制');}
+ for(const response of staged.values()){bytes+=(await response.clone().arrayBuffer()).byteLength;if(bytes>35*1024*1024)throw Error('单篇资源超过 35 MB，未保存');}
+ // Each article owns an immutable snapshot. The metadata pointer is the commit.
+ // A quota failure cannot replace a previous working document or any shared script.
+ const snapshotName=CACHE+'-snapshot-'+crypto.randomUUID(),snapshot=await caches.open(snapshotName);
+ const next=[...rows.filter(p=>p.path!==post.path),{path:post.path,title:post.title,updated:Date.now(),bytes,snapshot:snapshotName}];
+ try{for(const [url,response] of staged)await snapshot.put(url,response);await writeMeta(cache,next);}catch(error){await caches.delete(snapshotName);throw error;}
+ await cleanSnapshots(next);return {rows:next};
+}
+self.addEventListener('message',event=>{const port=event.ports[0];if(!port)return;const operation=serial.then(()=>handle(event.data));serial=operation.catch(()=>{});event.waitUntil(operation.then(result=>port.postMessage({ok:true,...result})).catch(error=>port.postMessage({ok:false,error:error.message||'离线保存未完成'})));});
+self.addEventListener('fetch',event=>{const request=event.request,url=new URL(request.url);if(request.method!=='GET'||url.origin!==self.location.origin||url.search||!url.pathname.startsWith(ROOT)||/^\/?(?:api|admin)(?:\/|$)/.test(url.pathname.slice(ROOT.length)))return;
+ event.respondWith((async()=>{try{return await fetch(request);}catch(error){
+  const cache=await caches.open(CACHE),rows=await readMeta(cache);
+  if(request.mode==='navigate'){const row=rows.find(r=>r.path===url.pathname);if(row){const snapshot=await caches.open(row.snapshot||CACHE),saved=await snapshot.match(request);if(saved)return saved;}return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>尚未离线保存</title><body style="background:#151613;color:#e6dbba;font:16px/1.8 sans-serif;padding:10vw"><h1>这一页还没收进书架。</h1><p>恢复网络后，打开文章工作台，选择离线保存。</p><button onclick="history.back()">返回上一页</button>',{status:503,headers:{'Content-Type':'text/html;charset=utf-8'}});}
+  if(cacheableURL(url.href,BASE)){const client=await self.clients.get(event.clientId),path=client?new URL(client.url).pathname:'';const row=rows.find(r=>r.path===path);if(row){const snapshot=await caches.open(row.snapshot||CACHE),saved=await snapshot.match(request);if(saved)return saved;}}
+  throw error;
+ }})());
+});

@@ -1,0 +1,2 @@
+export function nextMatch(current,count,direction){if(count<1)return -1;if(current<0)return direction<0?count-1:0;return (current+direction+count)%count;}
+export function findMatches(text,query,limit=500){if(!query)return [];const regex=new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'giu'),matches=[];for(const match of text.matchAll(regex)){matches.push({start:match.index,end:match.index+match[0].length});if(matches.length>=limit)break;}return matches;}

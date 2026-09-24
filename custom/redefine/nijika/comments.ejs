@@ -1,0 +1,13 @@
+<section class="encore-comments" data-comments aria-labelledby="encore-title">
+  <header class="encore-heading"><div><span class="after-eyebrow">ENCORE / 留一点回声</span><h2 id="encore-title"><%= page.nijika === 'guestbook' ? '散场之后，聊两句。' : '这一篇的回声' %></h2></div><span class="comment-total" data-comment-total>—</span></header>
+  <form class="encore-form" method="post" action="/api/comments"><fieldset data-form-guard disabled>
+    <div class="comment-form-top"><label>你的昵称<input name="nickname" maxlength="48" required autocomplete="nickname" placeholder="怎么称呼你？"></label><fieldset class="comment-stamps"><legend>盖个小印章</legend><% for (const [value, label, icon] of [['star','星光','✦'],['drum','鼓点','◉'],['ticket','票根','▤'],['ribbon','蝴蝶结','⋈']]) { %><label><input type="radio" name="stamp" value="<%= value %>" <%= value === 'star' ? 'checked' : '' %>><span title="<%= label %>"><i aria-hidden="true"><%= icon %></i><small><%= label %></small></span></label><% } %></fieldset></div>
+    <label class="comment-message-label"><span>留言</span><textarea name="message" rows="4" maxlength="2400" required placeholder="一个想法、一句问候，或下一次演出的期待……"></textarea></label>
+    <label class="comment-honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <div class="comment-form-bottom"><span>审核后公开 · 无需邮箱<small data-comment-length>0 / 1200</small></span><button type="submit">投递留言 <span aria-hidden="true">↗</span></button></div>
+    <p class="comment-status" role="status" aria-live="polite"></p>
+  </fieldset></form>
+  <div class="encore-list" data-comment-list aria-live="polite"><p class="community-empty">正在打开留言簿……</p></div>
+  <button class="comment-more" data-comment-more hidden>再翻一页 ↓</button>
+  <noscript><p class="community-empty">留言功能需要 JavaScript。文章内容仍可正常阅读。</p></noscript>
+</section>

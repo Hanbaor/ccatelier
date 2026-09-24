@@ -5,7 +5,7 @@ export function initCover() {
   if (!cover) return;
   const photograph = $('#cover-photograph'), img = $('#cover-image'), entry = $('.enter-button');
   const scenes = {
-    street:{src:cover.dataset.street,alt:'官方动画剧照：夜晚街头，虹夏站在灯光旁微笑'},
+    street:{src:cover.dataset.street,alt:'舞台暖光中的虹夏，AI 创作的主题同人插画'},
     stage:{src:cover.dataset.stage,alt:'官方动画剧照：虹夏在 STARRY 的鼓组后'}
   };
   let sequence = 0;
