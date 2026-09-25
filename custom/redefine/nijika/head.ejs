@@ -1,6 +1,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101110"><meta name="color-scheme" content="dark light">
+  <script>try{const light=localStorage.getItem('cc-theme')==='light';document.documentElement.classList.toggle('dark',!light);document.documentElement.style.colorScheme=light?'light':'dark';document.querySelector('meta[name="theme-color"]').content=light?'#f5f0e6':'#101110'}catch{}</script>
   <title><%= page.nijika === 'cover' ? config.title : (page.title || nijika_list_title()) + ' · ' + config.title %></title>
   <meta name="description" content="<%= page.description || config.description %>">
   <link rel="canonical" href="<%= full_url_for(page.path || '') %>">
@@ -26,6 +27,7 @@
   <link rel="stylesheet" href="<%= url_for('atelier/css/studio.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/stage-engine.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/live-art.css') %>">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/daylight.css') %>">
   <% if (page.nijika === 'admin') { %><meta name="robots" content="noindex,nofollow"><% } %>
   <%- export_config() %>
 </head>

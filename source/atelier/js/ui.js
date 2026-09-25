@@ -1,3 +1,4 @@
+import {initTheme} from './theme.js';
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const sessionMemory = new Map();
@@ -46,18 +47,7 @@ export function initSettings() {
   });
   reduced.addEventListener('change', () => setMotion());
   setMotion();
-  function setTheme(light, save = false) {
-    document.body.classList.toggle('light', light);
-    document.body.classList.toggle('light-mode', light);
-    document.body.classList.toggle('dark-mode', !light);
-    document.documentElement.classList.toggle('dark', !light);
-    $('#theme-toggle').setAttribute('aria-pressed', String(light));
-    $('#theme-toggle').setAttribute('aria-label', light ? '切换夜间阅读模式' : '切换日间阅读模式');
-    $('#theme-toggle svg').innerHTML = light ? '<path d="M20 15.5A8.6 8.6 0 0 1 8.5 4a8.6 8.6 0 1 0 11.5 11.5Z"/>' : '<circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4.2 4.2l2 2m11.6 11.6 2 2M4.2 19.8l2-2M17.8 6.2l2-2"/>';
-    if (save) storage.set('cc-theme', light ? 'light' : 'dark');
-  }
-  setTheme(storage.get('cc-theme') === 'light');
-  $('#theme-toggle').addEventListener('click', () => setTheme(!document.body.classList.contains('light'), true));
+  initTheme({storage,notify:toast});
   const section = document.body.dataset.section;
   $$('[data-section-navigation] a').forEach(link => {
     const pathname = new URL(link.href).pathname;

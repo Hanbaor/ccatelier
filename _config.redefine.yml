@@ -71,6 +71,10 @@ nijika:
   github: https://github.com/Hanbaor
   repository: https://github.com/Hanbaor/ccatelier
   cover: /atelier/images/nijika-live-archive.png
+  cover_day: /atelier/images/nijika-daylight.png
+  reading_art: /atelier/images/nijika-watercolor.png
+  studio_art: /atelier/images/nijika-risograph.png
+  pixel_art: /atelier/images/nijika-pixel-room.png
   stage: /atelier/images/ep08-4.jpg
   portrait: /atelier/images/nijika.png
   aftershow: /atelier/images/nijika-aftershow.png

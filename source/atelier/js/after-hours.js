@@ -22,9 +22,6 @@ function readingTools() {
   function setFocus(value){document.body.classList.toggle('reading-focused',value);focus.setAttribute('aria-pressed',String(value));focus.textContent=value?'退出专注':'专注阅读';}
   focus.addEventListener('click',()=>setFocus(!document.body.classList.contains('reading-focused')));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setFocus(false);});
-  const size=$('[data-reading-size]'),sizes=['normal','large','larger'];let sizeIndex=Math.max(0,sizes.indexOf(storage.get('cc-reading-size')));
-  function applySize(){document.body.dataset.readingSize=sizes[sizeIndex];size.setAttribute('aria-label','调整阅读字号，当前'+['标准','大','特大'][sizeIndex]);size.textContent=['Aa','Aa +','Aa ++'][sizeIndex];}applySize();
-  size.addEventListener('click',()=>{sizeIndex=(sizeIndex+1)%3;storage.set('cc-reading-size',sizes[sizeIndex]);applySize();});
   const resume=$('[data-reading-resume]');
   if(old?.progress>.05 && old.progress<.97){resume.hidden=false;resume.textContent=`继续上次的阅读 · ${Math.round(old.progress*100)}% ↓`;resume.addEventListener('click',()=>{window.scrollTo({top:window.scrollY+body.getBoundingClientRect().top+old.progress*Math.max(0,body.scrollHeight-innerHeight*.6),behavior:motion.enabled?'smooth':'instant'});resume.hidden=true;});}
   let dirty=false;

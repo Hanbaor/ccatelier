@@ -10,7 +10,8 @@ test('published discovery uses real local article URLs and safe default forms',(
   assert.match(read('public/atom.xml'),/<feed xmlns="http:\/\/www.w3.org\/2005\/Atom">/);
 });
 test('local storage fallback handles both blocked access and write-only quota errors without stale successful values',()=>{
-  const code=read('source/atelier/js/ui.js').split('let toastTimer;')[0].replaceAll('export ','')+';globalThis.testStorage=storage;';
+  // Isolate the storage adapter; appearance imports are outside this test's boundary.
+  const code=read('source/atelier/js/ui.js').split('let toastTimer;')[0].replace(/^import[^\n]*\n/gm,'').replaceAll('export ','')+';globalThis.testStorage=storage;';
   for(const mode of ['denied','quota']){
     const localStorage={getItem(){if(mode==='denied')throw Error('denied');return null;},setItem(){throw Error('quota');}};
     const context={localStorage};vm.runInNewContext(code,context);const storage=context.testStorage;
