@@ -1,6 +1,8 @@
 import {$,$$} from './ui.js';
 import {LivehouseAudio} from './livehouse-audio.js';
 import {PRACTICE_DEMOS,validatePractice,flattenPractice} from './practice-core.mjs';
+import {initPracticeChallenge} from './practice-challenge.js';
+import {CHALLENGE_WINDOW,challengeInputTime} from './practice-challenge-core.mjs';
 import {download,readImport} from './archive-store.js';
 import {listRecordings,readRecording,removeRecording} from './livehouse-recording-store.mjs';
 const controllers=new WeakMap();
@@ -36,11 +38,13 @@ export function initPractice(){
  const sheet=$('[data-practice-sheet]',host),select=$('[data-practice-demo]',host),play=$('[data-practice-play]',host),status=$('[data-practice-status]',host),position=$('[data-practice-position]',host),from=$('[data-practice-start]',host),to=$('[data-practice-end]',host),bpm=$('[data-practice-bpm]',host),remove=$('[data-practice-remove-recording]',host),recordings=new Map(),audio=new LivehouseAudio();audio.setVolume(Number($('[data-practice-volume]',host).value)/100);
  let project=validatePractice(PRACTICE_DEMOS[0]),importedProject=null,startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
  const say=text=>{status.textContent=text;};
+ const challenge=initPracticeChallenge({host,listen,start:()=>start(true),stop,elapsed:event=>((challengeInputTime(event?.timeStamp,performance.now(),performance.timeOrigin)-origin)/1000)-4*60/tempo,sound:type=>audio.hit(type,.75)});
+ const configureChallenge=()=>challenge.configure(project,tempo,startBar,endBar);
  function clearVisuals(){visuals.forEach(clearTimeout);visuals.clear();$$('.practice-measure',sheet).forEach(b=>b.classList.remove('is-current'));$$('.practice-beats i',host).forEach(b=>b.classList.remove('active'));active=-1;}
- function stop(message='已停止；谱面和选区保留。'){generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
+ function stop(message='已停止；谱面和选区保留。'){generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';challenge.cancel();play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
  function paintRange(){
   from.value=String(startBar);to.value=String(endBar);
-  $$('[data-practice-bar]',sheet).forEach(b=>{const n=Number(b.dataset.practiceBar);b.classList.toggle('is-outside',n<startBar||n>endBar);b.setAttribute('aria-pressed',String(n===startBar));});
+  $$('[data-practice-bar]',sheet).forEach(b=>{const n=Number(b.dataset.practiceBar);b.classList.toggle('is-outside',n<startBar||n>endBar);b.setAttribute('aria-pressed',String(n===startBar));});configureChallenge();
  }
  function render(){
   remove.hidden=!select.value.startsWith('recording:');
@@ -55,33 +59,38 @@ export function initPractice(){
   const osc=ctx.createOscillator(),gain=ctx.createGain(),at=ctx.currentTime+Math.max(0,delay);osc.type='sine';osc.frequency.value=strong?1400:1000;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.15,at+.002);gain.gain.exponentialRampToValueAtTime(.0001,at+.035);osc.connect(gain);gain.connect(audio.master);osc.start(at);osc.stop(at+.04);osc.onended=()=>{osc.disconnect();gain.disconnect();};
  }
  function paintStep(ordinal,length){
+  challenge.paint(ordinal,length);
   if(ordinal<0){position.textContent='预备 '+(Math.floor((ordinal+16)/4)+1);$$('.practice-beats i',host).forEach((n,i)=>n.classList.toggle('active',i===Math.floor((ordinal+16)/4)));return;}
   const step=ordinal%length,bar=startBar+Math.floor(step/16),within=step%16;
   if(active!==bar){$$('.practice-measure',sheet).forEach(b=>b.classList.toggle('is-current',Number(b.dataset.practiceBar)===bar));active=bar;}
   const current=$('[data-practice-bar="'+bar+'"]',sheet);$('.practice-cursor',current).setAttribute('x',30+within*18);position.textContent=(bar+1)+' / '+project.bars.length+' · '+(Math.floor(within/4)+1);$$('.practice-beats i',host).forEach((n,i)=>n.classList.toggle('active',i===Math.floor(within/4)));
  }
- async function start(){
-  if(destroyed)return;
-  if(state!=='stopped'){stop();return;}
+ async function start(isChallenge=false){
+  if(destroyed||document.hidden||(isChallenge&&$('dialog[open]')))return;
+  if(state!=='stopped'){const switching=isChallenge&&!challenge.busy();stop();if(!switching)return;}
+  if(isChallenge&&!challenge.prepare())return;
+  document.dispatchEvent(new CustomEvent('atelier:practice-start'));
   state='starting';const token=++generation;play.textContent='准备中…';play.setAttribute('aria-pressed','true');
   try{
    const ready=await audio.enable();if(!ready||token!==generation||document.hidden){if(token===generation)stop('未能启动音频，请再次点击。');return;}
-   state='playing';play.textContent='暂停跟练';say('先数四拍，再一起开始。');origin=performance.now()+100;next=-16;
+   state='playing';play.textContent=isChallenge?'停止挑战':'暂停跟练';say('先数四拍，再一起开始。');origin=performance.now()+100;next=-16;if(isChallenge)challenge.begin();
    const length=(endBar-startBar+1)*16,events=flattenPractice(project,startBar,endBar),byStep=new Map();for(const e of events){const step=Math.round(e.beat*4);if(!byStep.has(step))byStep.set(step,[]);byStep.get(step).push(e);}
    function schedule(){
     if(token!==generation||state!=='playing'||document.hidden)return;
     const elapsed=(performance.now()-origin)/1000,stepSeconds=60/tempo/4;
-    if(!$('[data-practice-loop]',host).checked&&elapsed>=(length+16)*stepSeconds){stop('这一遍练完了。');return;}
+    if(isChallenge&&elapsed>=(length+16)*stepSeconds+CHALLENGE_WINDOW){challenge.finish();stop('这一遍挑战完成，成绩在挑战面板。');return;}
+    if(!isChallenge&&!$('[data-practice-loop]',host).checked&&elapsed>=(length+16)*stepSeconds){stop('这一遍练完了。');return;}
     const current=Math.floor(elapsed/stepSeconds)-16;if(current-next>32)next=Math.max(-16,current);
     let count=0;
     while((next+16)*stepSeconds<=elapsed+.1&&count++<32){
      const ordinal=next++,delay=(ordinal+16)*stepSeconds-elapsed;if(delay<-.15)continue;
+     if(isChallenge&&ordinal>=length)return;
      if(ordinal>=length&&!$('[data-practice-loop]',host).checked){const end=setTimeout(()=>{visuals.delete(end);if(token===generation)stop('这一遍练完了。');},Math.max(0,delay*1000));visuals.add(end);clearInterval(timer);timer=0;return;}
      if(ordinal<0){if(ordinal%4===0)clickBeat(ordinal===-16,delay);}else{
-      if($('[data-practice-drums]',host).checked)for(const e of byStep.get(ordinal%length)||[])audio.hit(e.type,e.velocity,48,delay);
+      if(!isChallenge&&$('[data-practice-drums]',host).checked)for(const e of byStep.get(ordinal%length)||[])audio.hit(e.type,e.velocity,48,delay);
       if(ordinal%4===0&&$('[data-practice-metronome]',host).checked)clickBeat(ordinal%16===0,delay);
      }
-     const event=setTimeout(()=>{visuals.delete(event);if(token!==generation)return;paintStep(ordinal,length);if(ordinal===0)say('正在跟练；切后台会自动停止。');},Math.max(0,delay*1000));visuals.add(event);
+     const event=setTimeout(()=>{visuals.delete(event);if(token!==generation)return;paintStep(ordinal,length);if(ordinal===0)say(isChallenge?'正在跟拍；切后台会自动停止。':'正在跟练；切后台会自动停止。');},Math.max(0,delay*1000));visuals.add(event);
     }
    }
    timer=setInterval(schedule,25);schedule();
@@ -107,12 +116,12 @@ export function initPractice(){
   try{removeRecording(window.localStorage,value.id);recordings.delete(select.value);select.selectedOptions[0].remove();select.value=PRACTICE_DEMOS[0].id;choose(PRACTICE_DEMOS[0],'本机录音已移除，其他练习保留。');}
   catch{say('未能移除录音；原谱面保留。');}
  });
- listen(play,'click',start);listen($('[data-practice-stop]',host),'click',()=>stop());
- listen(bpm,'input',e=>{stop('速度已调整，点击开始重新数拍。');tempo=Math.max(40,Math.min(220,Number(e.target.value)||project.bpm));$('[data-practice-bpm-label]',host).textContent=String(tempo);});
+ listen(play,'click',()=>start());listen($('[data-practice-stop]',host),'click',()=>stop());
+ listen(bpm,'input',e=>{stop('速度已调整，点击开始重新数拍。');tempo=Math.max(40,Math.min(220,Number(e.target.value)||project.bpm));$('[data-practice-bpm-label]',host).textContent=String(tempo);configureChallenge();});
  listen($('[data-practice-volume]',host),'input',e=>audio.setVolume(Number(e.target.value)/100));
  listen(from,'change',()=>{stop();startBar=Number(from.value);endBar=Math.max(startBar,endBar);paintRange();});listen(to,'change',()=>{stop();endBar=Number(to.value);startBar=Math.min(startBar,endBar);paintRange();});
  listen($('[data-practice-loop]',host),'change',()=>stop('循环设置已更新。'));
- listen($('[data-practice-reset]',host),'click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);});
+ listen($('[data-practice-reset]',host),'click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);configureChallenge();});
  listen($('[data-practice-export]',host),'click',()=>download('cc-original-drum-practice.json',JSON.stringify({...project,bpm:tempo},null,2)));
  listen($('[data-practice-import]',host),'change',async e=>{
   const input=e.currentTarget,file=input.files[0];input.value='';if(!file)return;
@@ -129,7 +138,7 @@ export function initPractice(){
  listen(document,'atelier:dialog-open',()=>stop('已暂停；可随时回到谱面继续。'));
  listen(document,'atelier:recording-ready',event=>{if(receiveRecording(event.detail?.id))event.preventDefault();});
  listen(document,'click',event=>{if(state!=='stopped'&&event.target.closest('[data-practice-import]'))stop('已暂停；可随时回到谱面继续。');});
- listen(document,'visibilitychange',()=>{if(document.hidden)stop('已暂停，点击开始继续练习。');});listen(window,'pagehide',()=>stop(''));listen(document,'atelier:livehouse-open',()=>stop(''));
+ listen(document,'visibilitychange',()=>{if(document.hidden)stop('已暂停，点击开始继续练习。');});listen(window,'pagehide',()=>stop(''));listen(document,'atelier:livehouse-open',()=>stop(''));listen(document,'atelier:studio-start',()=>stop(''));
  const controller={destroy(){if(destroyed)return;destroyed=true;stop('');listeners.splice(0).forEach(remove=>remove());barListeners.splice(0).forEach(remove=>remove());controllers.delete(host);}};
  controllers.set(host,controller);render();const requested=new URL(window.location.href).searchParams.get('recording');if(requested)receiveRecording(requested);$('.practice-app',host).hidden=false;return controller;
 }

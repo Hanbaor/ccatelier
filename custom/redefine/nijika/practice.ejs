@@ -10,6 +10,21 @@
    <div class="practice-beats" aria-hidden="true"><i></i><i></i><i></i><i></i></div><output data-practice-position aria-live="off">准备</output>
   </div>
   <div class="practice-options"><label><input type="checkbox" data-practice-loop checked>循环练习</label><label>从<select data-practice-start aria-label="起始小节"></select></label><label>到<select data-practice-end aria-label="结束小节"></select></label><label><input type="checkbox" data-practice-metronome checked>节拍器</label><label><input type="checkbox" data-practice-drums checked>示范鼓声</label><button type="button" data-practice-reset>恢复速度</button></div>
+  <details class="practice-challenge" data-challenge>
+   <summary><span>跟拍挑战</span><small>把这一段，交给你的双手</small></summary>
+   <div class="challenge-top"><div><span class="challenge-eyebrow">YOUR TURN</span><h2>接住下一拍</h2></div><button type="button" data-challenge-start aria-pressed="false">开始挑战</button></div>
+   <div class="challenge-score-heading"><span data-challenge-bar>第 1 小节</span><span>黄线 = 当前拍位 · 每格十六分音符</span></div>
+   <div class="challenge-grid" data-challenge-grid aria-hidden="true"></div>
+   <div class="challenge-pads" role="group" aria-label="跟拍鼓垫，同时出现的音符需要一起敲击">
+    <button type="button" data-challenge-pad="kick" aria-label="敲击底鼓，快捷键 A" disabled><kbd>A</kbd><span>底鼓</span></button>
+    <button type="button" data-challenge-pad="snare" aria-label="敲击军鼓，快捷键 S" disabled><kbd>S</kbd><span>军鼓</span></button>
+    <button type="button" data-challenge-pad="hat" aria-label="敲击踩镲，快捷键 D" disabled><kbd>D</kbd><span>踩镲</span></button>
+    <button type="button" data-challenge-pad="tom" aria-label="敲击通鼓，快捷键 F" disabled><kbd>F</kbd><span>通鼓</span></button>
+   </div>
+   <p class="challenge-feedback" data-challenge-feedback role="status" aria-live="polite">先数四拍，再接住每一拍。</p>
+   <p class="challenge-result" data-challenge-result role="status" hidden></p>
+   <div class="challenge-bottom"><span data-challenge-best>成绩仅存本机</span><details><summary>玩法与计分</summary><p>按上方选区与速度挑战一遍。点击鼓垫或按 A / S / D / F；同列鼓点一起敲，空格留白。开始后发声，示范鼓声暂时关闭，可用上方音量静音。提前或延后 120ms 内算接住，45ms 内算合拍。跟拍率 = 接住 ÷（目标 + 额外敲击）。设备可能有延迟，成绩仅供练习参考。</p></details></div>
+  </details>
   <div class="practice-sheet-heading"><h2 data-practice-title></h2><span>4 / 4</span><p>点击小节选起点</p></div>
   <div class="practice-sheet" data-practice-sheet role="group" aria-label="鼓谱小节"></div>
   <div class="practice-lower"><p class="practice-legend"><span>× 踩镲</span><span>● 军鼓 / 通鼓 / 底鼓</span><span>每格 = 十六分音符</span></p><p data-practice-status role="status">点击开始后发声，先数四拍。</p></div>

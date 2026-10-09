@@ -14,7 +14,7 @@ export function initStudio(){
  function saveHistory(){history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
  const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
- function toggle(){return playback.toggle(project);}
+ function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
  function render(){
   const restoreStepFocus=grid.contains(document.activeElement)&&document.activeElement.hasAttribute('data-studio-step');stepFocus.step=Math.min(stepFocus.step,project.steps-1);
   $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
@@ -30,7 +30,7 @@ export function initStudio(){
   });$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;if(restoreStepFocus)$('[data-studio-track="'+stepFocus.track+'"][data-studio-step="'+stepFocus.step+'"]',grid)?.focus({preventScroll:true});
  }
  function paintStep(b,track,s){const v=track.steps[s];b.classList.toggle('on',v===1);b.classList.toggle('soft',v>0&&v<1);b.setAttribute('aria-pressed',String(v>0));b.setAttribute('aria-label',trackNames[track.type]+' 第'+(s+1)+'步：'+(v===1?'强拍':v?'轻拍':'空拍'));b.title=(s+1)+' / '+(v===1?'强拍':v?'轻拍':'空拍');}
- async function audition(index){try{await engine.audition(project.tracks[index]);auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}catch(error){status.textContent=error.message;}}
+ async function audition(index){document.dispatchEvent(new CustomEvent('atelier:studio-start'));try{await engine.audition(project.tracks[index]);auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}catch(error){status.textContent=error.message;}}
  play.addEventListener('click',toggle);$('[data-studio-stop]').addEventListener('click',stop);
  $('[data-bpm]').addEventListener('change',e=>{const value=Number(e.target.value);project.bpm=Number.isFinite(value)?Math.max(60,Math.min(180,Math.round(value))):112;e.target.value=project.bpm;saveHistory();});
  $('[data-swing]').addEventListener('input',e=>{project.swing=Number(e.target.value)/100;$('[data-swing-output]').textContent=e.target.value+'%';engine.update(project);});$('[data-swing]').addEventListener('change',saveHistory);
@@ -55,5 +55,5 @@ export function initStudio(){
   ctx.strokeStyle='#e5c279';ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<wave.length;i+=4){const x=i/wave.length*w,y=h*.45+(wave[i]-128)/128*h*.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();document.dispatchEvent(new CustomEvent('atelier:spectrum',{detail:{energy:Math.min(1,rms*5),bass:freq[3]/255}}));
  }
  let last=0;function scopeLoop(time=0){animation=0;if(document.hidden)return;if(time-last>33||!time){drawScope();last=time;if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+project.bpm+' BPM';}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
- $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);
+ $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);document.addEventListener('atelier:practice-start',stop);
 }

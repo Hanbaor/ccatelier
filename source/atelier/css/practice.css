@@ -104,3 +104,55 @@
 .practice-score-sources>p {font-size:11px;color:var(--muted);line-height:1.8;margin:13px 0}
 .practice-score-sources>a {display:flex;flex-direction:column;gap:8px;padding:13px 0;line-height:1.7;overflow-wrap:anywhere}
 .practice-score-sources small {font-size:10px;color:var(--yellow)}
+
+/* A quiet, optional practice mode. Fixed grid, no falling notes or flashing. */
+.practice-challenge {margin-top:22px;border:1px solid var(--line);border-radius:5px;background:var(--surface);padding:0 22px}
+.practice-challenge>summary {cursor:pointer;min-height:56px;display:flex;align-items:center;gap:18px;font:13px var(--chinese)}
+.practice-challenge>summary:after {content:'＋';margin-left:auto;color:var(--yellow);font:18px var(--sans)}
+.practice-challenge[open]>summary:after {content:'−'}
+.practice-challenge>summary small {font-size:10px;color:var(--muted)}
+.practice-challenge[open]>summary {border-bottom:1px solid var(--line)}
+.challenge-top {display:flex;align-items:center;justify-content:space-between;gap:18px;padding:23px 0 20px}
+.challenge-eyebrow {font:9px var(--sans);letter-spacing:.2em;color:var(--yellow)}
+.challenge-top h2 {font:500 23px var(--chinese);margin:6px 0 0;letter-spacing:-.035em}
+.challenge-top>button {font:12px var(--chinese);background:var(--ink);color:var(--bg);border-radius:4px;min-height:44px;padding:10px 18px;white-space:nowrap}
+.challenge-top>button[aria-pressed=true] {background:var(--yellow)}
+.challenge-score-heading {display:flex;justify-content:space-between;gap:12px;font:10px var(--chinese);color:var(--muted);margin-bottom:14px}
+.challenge-grid {display:grid;grid-template-columns:38px repeat(16,minmax(0,1fr));row-gap:5px;column-gap:3px}
+.challenge-lane-name {font:10px var(--chinese);align-self:center;color:var(--muted)}
+.challenge-cell {display:grid;place-items:center;min-width:0;height:27px;border-bottom:1px solid var(--line);font:13px var(--sans);color:var(--ink);background:color-mix(in srgb,var(--ink) 3%,transparent);border-radius:2px}
+.challenge-cell.beat-edge {border-left:1px solid var(--line)}
+.challenge-cell.is-now {box-shadow:inset 0 -2px var(--yellow)}
+.challenge-cell.is-caught {color:var(--yellow);background:color-mix(in srgb,var(--yellow) 10%,transparent)}
+.challenge-pads {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:22px}
+.challenge-pads button {display:flex;justify-content:center;align-items:center;gap:14px;border:1px solid var(--line);border-radius:4px;min-height:68px;touch-action:manipulation;user-select:none;color:var(--ink);font:12px var(--chinese)}
+.challenge-pads kbd {font:16px var(--sans);color:var(--yellow)}
+.challenge-pads button:disabled {opacity:.45;cursor:default}
+.challenge-top>button:disabled {opacity:.45;cursor:default}
+.challenge-feedback {min-height:20px;font:12px/1.7 var(--chinese);margin:17px 0 12px;color:var(--ink)}
+.challenge-result {border-left:2px solid var(--yellow);padding:8px 12px;font:12px/1.9 var(--chinese);color:var(--ink);margin:12px 0}
+.challenge-bottom {display:flex;align-items:baseline;gap:18px;justify-content:space-between;padding:5px 0 20px;font:10px/1.8 var(--chinese);color:var(--muted)}
+.challenge-bottom>span {flex-shrink:0}
+.challenge-bottom details {max-width:540px;text-align:right}
+.challenge-bottom summary {cursor:pointer;min-height:24px}
+.challenge-bottom p {text-align:left;margin:6px 0}
+@media(max-width:600px) {
+ .practice-challenge {padding-inline:13px;margin-top:18px}
+ .practice-challenge>summary {gap:12px}
+ .practice-challenge>summary small {font-size:9px}
+ .challenge-top {padding:18px 0}
+ .challenge-top h2 {font-size:21px}
+ .challenge-top>button {font-size:11px;padding-inline:13px}
+ .challenge-score-heading {font-size:9px;gap:8px}
+ .challenge-grid {grid-template-columns:30px repeat(16,minmax(0,1fr));column-gap:2px}
+ .challenge-lane-name {font-size:9px}
+ .challenge-cell {font-size:10px;height:25px}
+ .challenge-pads {gap:7px;margin-top:18px}
+ .challenge-pads button {flex-direction:column;gap:7px;min-height:72px;font-size:11px}
+ .challenge-bottom {display:block;font-size:9px}
+ .challenge-bottom details {margin-top:8px;text-align:left;max-width:none}
+ .challenge-feedback {font-size:11px}
+ .challenge-result {font-size:11px;padding-left:10px}
+}
+.challenge-count {font:9px var(--sans);text-align:center;color:var(--muted);padding-bottom:4px}
+@media(max-width:600px) {.challenge-count {font-size:8px}}
