@@ -1,6 +1,6 @@
 /* Volume 03: image, type, space. Decoration never competes with the work. */
 body.nijika {--page-gutter:clamp(22px,5vw,80px)}
-body.nijika.light,body.nijika.light[data-section="atelier"] {--bg:#f3f3ed;--surface:#fffefa;--ink:#1c2523;--text:#525d57;--muted:#7c847d;--line:#d7ddd4;--yellow:#9b6c26}
+body.nijika.light,body.nijika.light[data-section="atelier"] {--bg:#f3f3ed;--surface:#fffefa;--ink:#1c2523;--text:#525d57;--muted:#626e66;--line:#d7ddd4;--yellow:#9b6c26}
 body.nijika:not(.light),body.nijika[data-section="atelier"]:not(.light) {--bg:#101819;--surface:#172123;--ink:#f3f2e8;--text:#c4cec8;--muted:#91a49a;--line:#354345;--yellow:#edc983}
 body.nijika {background-image:none}
 .surface-noise {opacity:.014}
@@ -280,3 +280,5 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .immersive-motion [data-reveal] {opacity:1;transform:none;clip-path:none;transition:none}
   .hub-card>img,.hub-card-caption>svg {transition:none}
 }
+
+.reading-nav .queue-open .editorial-arrow,.archive-queue-link .editorial-arrow {width:14px;height:14px;margin-left:5px;vertical-align:middle}

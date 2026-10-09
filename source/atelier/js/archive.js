@@ -37,7 +37,7 @@ export async function initArchive(){
    const top=element('div','record-top');top.append(element('b','',String(i+1).padStart(2,'0')),element('span','',p.group==='hot100'?'SIDE B / STUDY':'SIDE A / NOTES'));
    const h=element('h2'),a=element('a','',p.title);a.href=p.path;h.append(a);
    const bottom=element('div','record-bottom');bottom.append(element('span','',p.minutes+' MIN · '+p.date.slice(2).replaceAll('-','.')));
-   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});toast(exists?'已移出队列':'已加入阅读队列');});add.dataset.queuePath=p.path;add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add,element('i','','↗'));
+   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});toast(exists?'已移出队列':'已加入阅读队列');});add.dataset.queuePath=p.path;add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add);
    card.append(top,h,element('p','',p.excerpt),bottom);results.append(card);
   });
  }
