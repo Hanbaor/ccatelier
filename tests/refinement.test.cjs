@@ -10,7 +10,7 @@ test('editorial styles load after refinements and quick navigation identifies th
   for (const route of ['index.html', 'atelier/index.html', 'notes/index.html', 'lounge/index.html', 'studio/index.html', 'about/index.html']) {
     const dom = new JSDOM(read(route));
     try {
-      const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')];
+      const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].filter(style => !style.href.endsWith('/livehouse.css'));
       assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/immersive\.css$/);
       assert.match(styles.at(-2).getAttribute('href'), /atelier\/css\/rooms-v2\.css$/);
       assert.ok(styles.some(style=>style.href.endsWith('/refinement.css')));

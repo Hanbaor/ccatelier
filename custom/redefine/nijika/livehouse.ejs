@@ -1,0 +1,17 @@
+<dialog class="livehouse" id="livehouse-dialog" aria-labelledby="livehouse-title" aria-describedby="livehouse-help">
+ <div class="livehouse-room">
+  <picture class="livehouse-art" aria-hidden="true"><source media="(max-width:600px)" data-srcset="<%= url_for('atelier/images/v3/about-960.webp') %>"><img data-src="<%= url_for('atelier/images/v3/hero.webp') %>" alt="" width="1916" height="821"></picture>
+  <canvas class="livehouse-light" data-live-canvas aria-hidden="true"></canvas>
+  <div class="livehouse-shade" aria-hidden="true"></div>
+  <header class="livehouse-header"><span>CC <i>/</i> LIVE HOUSE</span><button type="button" data-live-close aria-label="退出现场"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></header>
+  <div class="livehouse-title"><p data-live-scene>舞台交给你</p><h2 id="livehouse-title">MAKE<br>IT <em>LIVE.</em></h2></div>
+  <div class="livehouse-kit" role="group" aria-label="互动鼓组"><% for (const [key,type,label] of [['A','kick','底鼓'],['S','snare','军鼓'],['D','hat','踩镲'],['F','tom','通鼓']]) { %><button type="button" class="live-pad live-pad-<%= type %>" data-live-pad="<%= type %>" aria-label="敲击<%= label %>，快捷键 <%= key %>"><span class="live-pad-skin" aria-hidden="true"></span><span class="live-pad-label"><kbd><%= key %></kbd><span><%= label %></span></span></button><% } %></div>
+  <div class="livehouse-floor" aria-hidden="true"></div>
+  <div class="livehouse-deck">
+   <div class="livehouse-transport"><button type="button" class="live-show" data-live-show aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7Z"/></svg><span>开始演出</span></button><button type="button" data-live-sound aria-pressed="false" class="live-sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4ZM16 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg><span>开启声音</span></button><label class="live-volume">音量<input data-live-volume type="range" min="0" max="60" value="30" aria-label="现场音量"></label><button type="button" data-live-motion aria-pressed="true" class="live-motion">动态灯光</button></div>
+   <div class="livehouse-timeline" role="progressbar" aria-label="演出进度" aria-valuemin="0" aria-valuemax="64" aria-valuenow="0"><i data-live-progress></i><span></span><span></span><span></span><span></span></div>
+   <div class="livehouse-foot"><p id="livehouse-help">触摸鼓面，或按 A S D F。声音由你开启。</p><p data-live-status role="status" aria-live="polite">静音待场</p><a href="<%= url_for('studio/') %>">自己编曲 <%- partial('nijika/editorial-arrow') %></a></div>
+  </div>
+  <div class="livehouse-curtain livehouse-curtain-left" aria-hidden="true"></div><div class="livehouse-curtain livehouse-curtain-right" aria-hidden="true"></div>
+ </div>
+</dialog>

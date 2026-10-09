@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="<%= url_for('atelier/css/editorial.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/rooms-v2.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/immersive.css') %>">
+  <% if (['cover','studio'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/livehouse.css') %>"><% } %>
   <% if (page.nijika === 'admin') { %><meta name="robots" content="noindex,nofollow"><% } %>
   <%- export_config() %>
 </head>

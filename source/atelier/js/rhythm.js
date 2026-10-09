@@ -67,4 +67,5 @@ export function initRhythm() {
   $('#rhythm-dialog').addEventListener('close',stopSequence);
   document.addEventListener('visibilitychange',()=>{if(document.hidden) stopSequence();});
   window.addEventListener('pagehide',()=>{stopSequence();if(audioContext) audioContext.close();});
+  document.addEventListener('atelier:livehouse-open',()=>{stopSequence();if(audioContext){audioContext.close().catch(()=>{});audioContext=null;}});
 }

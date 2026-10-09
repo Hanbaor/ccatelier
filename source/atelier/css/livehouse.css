@@ -1,0 +1,115 @@
+/* An opt-in concert room. Nothing here animates or sounds behind a closed door. */
+.cinema-intro {display:flex;align-items:center;gap:26px}
+.cinema-intro>p {font-size:14px;letter-spacing:.07em;color:var(--text);margin:0}
+.livehouse-open {display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:9px 16px;border:1px solid var(--line);border-radius:30px;font:12px var(--chinese);color:var(--ink);transition:background .2s,border-color .2s}
+.livehouse-open[hidden] {display:none}
+.livehouse-open>span {color:var(--yellow)}
+.livehouse-open:hover {border-color:var(--yellow);background:var(--surface)}
+.studio-mast .livehouse-open {margin-top:20px;background:#111e24a8;color:#fff4d9;border-color:#ddc18166}
+body.livehouse-opened {overflow:hidden}
+body.livehouse-opened .stage-field {visibility:hidden}
+#livehouse-dialog {--live-gold:#f2cc82;--live-text:#fff5de;--live-blue:#78b8d0;box-sizing:border-box;position:fixed;inset:12px;margin:auto;width:calc(100% - 24px);max-width:none;height:calc(100svh - 24px);max-height:none;border:1px solid #b5c7d444;padding:0;border-radius:8px;background:#07121d;color:var(--live-text);overflow:auto;overscroll-behavior:contain;box-shadow:0 30px 120px #0008;font-family:var(--chinese)}
+#livehouse-dialog::backdrop {background:#03070ee8;backdrop-filter:blur(12px)}
+.livehouse-room {position:relative;isolation:isolate;min-height:620px;height:100%;overflow:hidden;background:#07121d}
+.livehouse-art {position:absolute;inset:0 0 14%;z-index:-5;display:block}
+.livehouse-art img {display:block;width:100%;height:100%;object-fit:cover;object-position:67% 37%;opacity:.88;max-width:none}
+.livehouse-shade {position:absolute;inset:0;z-index:-3;background:linear-gradient(0deg,#07121d 0%,#07121df0 13%,#07121d18 64%),linear-gradient(90deg,#07121d8a,transparent 58%);pointer-events:none}
+.livehouse-light {position:absolute;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;mix-blend-mode:screen;opacity:.85}
+.livehouse-header {position:absolute;inset:0 0 auto;z-index:6;display:flex;justify-content:space-between;align-items:center;padding:20px 30px;gap:20px}
+.livehouse-header>span {font:600 13px var(--sans);letter-spacing:.2em;color:#ebefdc}
+.livehouse-header i {font-style:normal;color:var(--live-gold);margin-inline:7px}
+.livehouse-header button {display:grid;place-items:center;width:44px;height:44px;border:1px solid #f5e8c63d;border-radius:50%;background:#06131c99;color:#fff5de}
+.livehouse-header svg {width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5}
+.livehouse-title {position:absolute;top:clamp(98px,17vh,170px);left:6%;pointer-events:none;z-index:-1}
+.livehouse-title p {font:12px var(--chinese);letter-spacing:.22em;color:#efd4a3;margin:0 0 15px;min-height:20px}
+.livehouse-title h2 {font:600 clamp(66px,9vw,145px)/.83 var(--condensed);letter-spacing:-.035em;color:#fff3d7;margin:0}
+.livehouse-title h2 em {font-style:normal;color:transparent;-webkit-text-stroke:1px #f2cc82}
+.livehouse-kit {position:absolute;left:50%;bottom:158px;translate:-50% 0;width:min(710px,75%);height:250px;z-index:2;perspective:750px}
+.live-pad {--pad-color:242,204,130;position:absolute;display:grid;place-items:center;width:180px;height:138px;border:0;border-radius:50%;background:transparent;color:#faefd9;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;min-height:0;padding:0;isolation:isolate;transform:rotateX(20deg);transition:transform .2s}
+.live-pad:hover {transform:rotateX(15deg) translateY(-4px)}
+.live-pad:focus-visible {outline:2px solid #ffdf87;outline-offset:8px}
+.live-pad-skin {position:absolute;inset:0;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#203340 5%,#142632 55%,#0d1923 68%);border:3px solid #94a5a570;box-shadow:inset 0 0 0 5px #07131c,inset 0 0 0 6px #b8c7c34a,0 8px 0 #1b303c,0 11px 0 #080f17,0 25px 36px #000b,0 0 35px rgba(var(--pad-color),.06)}
+.live-pad-skin:after {content:'';position:absolute;inset:10%;border:1px solid rgba(var(--pad-color),.14);border-radius:50%;background:radial-gradient(ellipse,rgba(var(--pad-color),.025),transparent 65%)}
+.live-pad-label {position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+.live-pad-label kbd {font:500 26px var(--condensed);color:rgb(var(--pad-color));background:none;padding:0;border:0;box-shadow:none}
+.live-pad-label>span {font:10px var(--chinese);letter-spacing:.16em;color:#c7d2cd}
+.live-pad-kick {width:222px;height:177px;left:31%;top:80px;z-index:3}
+.live-pad-snare {left:3%;top:47px;--pad-color:130,194,224}
+.live-pad-hat {right:0;top:38px;width:191px;height:122px;--pad-color:245,199,105;transform:rotateX(25deg) rotate(-8deg)}
+.live-pad-hat .live-pad-skin {border-color:#bfa26b;background:repeating-radial-gradient(ellipse,#ac884026 0 2px,#1b252c 3px 6px);box-shadow:inset 0 0 0 3px #655339,0 5px 0 #373229,0 20px 30px #0009}
+.live-pad-tom {left:37%;top:-28px;width:150px;height:115px;--pad-color:189,173,237}
+.live-pad.is-hit .live-pad-skin {animation:live-drum-hit .42s ease-out}
+@keyframes live-drum-hit {0%{box-shadow:inset 0 0 0 5px #152834,0 8px 0 #20394a,0 0 40px rgba(var(--pad-color),.32);border-color:rgb(var(--pad-color));transform:scale(.98)}100%{transform:none}}
+.livehouse-floor {position:absolute;inset:auto -15% 120px;height:200px;border-top:1px solid #f1cf8a26;border-radius:50%;background:radial-gradient(ellipse at 50% 30%,#4c879b13,transparent 60%);z-index:0;pointer-events:none;box-shadow:0 -30px 80px #33647910}
+.livehouse-deck {position:absolute;inset:auto 0 0;padding:22px 30px 18px;background:linear-gradient(0deg,#08131df5,#08131dd9 80%,transparent);z-index:4}
+.livehouse-transport {display:flex;align-items:center;gap:15px}
+.livehouse-transport button {display:flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px 16px;border:1px solid #b9d1d435;border-radius:4px;color:#e7ecdf;font:12px var(--chinese);background:#10232c80}
+.livehouse-transport button:hover {border-color:#f1cf89}
+.livehouse-transport button[aria-pressed=true] {color:var(--live-gold);border-color:#f1cf8990}
+.livehouse-transport .live-show {background:#eecb85;color:#16222a;border-color:#eecb85;min-width:142px}
+.livehouse-transport .live-show[aria-pressed=true] {background:#1d303c;color:#ffe1a0}
+.livehouse-transport svg {width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5}
+.live-show svg {fill:currentColor;stroke:none}
+.live-volume {display:flex;gap:12px;align-items:center;color:#bdc7c5;font:11px var(--chinese);margin-left:auto}
+.live-volume input {width:85px;accent-color:#ebc784;min-height:28px}
+.livehouse-transport .live-motion {padding-inline:12px;font-size:11px}
+.livehouse-timeline {height:2px;margin:20px 0 13px;position:relative;background:#a6b9bd29;display:flex;justify-content:space-between}
+.livehouse-timeline>i {position:absolute;left:0;top:0;width:var(--show-progress,0%);height:100%;background:#edce8f;box-shadow:0 0 12px #edce8f66;transition:width .2s linear}
+.livehouse-timeline>span {height:5px;width:1px;top:-1px;position:relative;background:#758b90}
+.livehouse-foot {display:flex;align-items:center;gap:18px;font:10px var(--chinese);color:#b8c6c7}
+.livehouse-foot p {margin:0;line-height:1.7}
+.livehouse-foot [data-live-status] {margin-left:auto;color:#edcc8f}
+.livehouse-foot>a {display:flex;align-items:center;gap:8px;color:#e6eee5;min-height:24px;white-space:nowrap}
+.livehouse-foot svg {width:14px;height:14px}
+.livehouse-curtain {position:absolute;inset:0 50% 0 0;background:linear-gradient(90deg,#10202a,#071017);z-index:5;pointer-events:none;transform:translateX(-102%)}
+.livehouse-curtain-right {inset:0 0 0 50%;transform:translateX(102%);background:linear-gradient(90deg,#071017,#10202a)}
+#livehouse-dialog[open]:not(.livehouse-still) .livehouse-curtain-left {animation:live-curtain-left 1s cubic-bezier(.16,1,.3,1) both}
+#livehouse-dialog[open]:not(.livehouse-still) .livehouse-curtain-right {animation:live-curtain-right 1s cubic-bezier(.16,1,.3,1) both}
+@keyframes live-curtain-left {from{transform:translateX(0)}to{transform:translateX(-102%)}}
+@keyframes live-curtain-right {from{transform:translateX(0)}to{transform:translateX(102%)}}
+.livehouse-still .live-pad,.livehouse-still .live-pad-skin,.livehouse-still .livehouse-timeline>i {animation:none!important;transition:none!important;transform:none!important}
+#livehouse-dialog :focus-visible {outline:2px solid #ffe1a0;outline-offset:4px}
+@media(max-width:760px) {
+ .cinema-intro {gap:10px;flex-direction:column;align-items:flex-start}
+ .cinema-intro>p {font-size:12px}
+ .livehouse-open {min-height:30px;padding:4px 10px;font-size:10px}
+ #livehouse-dialog {inset:0;width:100%;height:100svh;border:0;border-radius:0}
+ .livehouse-room {min-height:660px}
+ .livehouse-header {padding:16px 20px}
+ .livehouse-header>span {font-size:10px;letter-spacing:.15em}
+ .livehouse-title {top:110px;left:7%}
+ .livehouse-title h2 {font-size:72px}
+ .livehouse-title p {font-size:10px;max-width:140px;line-height:1.6}
+ .livehouse-art {inset:0 0 26%;opacity:.85}
+ .livehouse-art img {object-position:63% 23%}
+ .livehouse-shade {background:linear-gradient(0deg,#07121d 18%,transparent 70%),linear-gradient(90deg,#07121d70,transparent 60%)}
+ .livehouse-kit {bottom:206px;width:94%;height:210px}
+ .live-pad-kick {width:37%;height:132px;left:31%;top:80px}
+ .live-pad-snare {width:31%;height:102px;left:1%;top:62px}
+ .live-pad-hat {width:30%;height:89px;right:0;top:59px}
+ .live-pad-tom {width:29%;height:93px;left:36%;top:0}
+ .live-pad-label kbd {font-size:21px}
+ .live-pad-label>span {font-size:9px}
+ .livehouse-floor {bottom:188px}
+ .livehouse-deck {padding:18px 20px 17px}
+ .livehouse-transport {flex-wrap:wrap;gap:10px}
+ .livehouse-transport .live-show {min-width:145px}
+ .livehouse-transport .live-sound {flex:1}
+ .live-volume {margin-left:0;flex:1}
+ .live-volume input {width:90px}
+ .livehouse-transport .live-motion {min-height:32px;padding-block:5px}
+ .livehouse-foot {flex-wrap:wrap;gap:6px 14px;font-size:9px}
+ .livehouse-foot>p:first-child {width:100%}
+ .livehouse-foot [data-live-status] {margin-left:0;margin-right:auto}
+ .livehouse-timeline {margin-top:14px;margin-bottom:12px}
+}
+@media(max-width:600px) {
+ .livehouse-art img {object-position:67% 15%}
+ .livehouse-art {inset:0 0 26%;}
+ .livehouse-title {top:118px;left:7%}
+ .livehouse-title h2 {font-size:58px;line-height:.9}
+}
+@media(prefers-reduced-motion:reduce) {
+ .livehouse-curtain,.live-pad-skin {animation:none!important}
+ .live-pad,.livehouse-timeline>i {transition:none!important;transform:none!important}
+}

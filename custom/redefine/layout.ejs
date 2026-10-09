@@ -13,6 +13,7 @@
     <nav class="no-script-nav" aria-label="主导航"><% for (const [route, label] of [['notes','笔记'],['projects','项目'],['research','研究'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route + '/') %>"><%= label %></a><% } %></nav>
   </noscript>
   <%- partial('nijika/dialogs') %>
+  <% if (['cover','studio'].includes(page.nijika)) { %><%- partial('nijika/livehouse') %><% } %>
   <div class="cursor-ring" aria-hidden="true"></div><div class="click-effects" aria-hidden="true"></div>
   <div class="toast" role="status" id="toast"></div><div class="reading-progress" aria-hidden="true"><span></span></div>
   <script type="module" src="<%= url_for('atelier/js/main.js') %>"></script>

@@ -55,5 +55,5 @@ export function initStudio(){
   ctx.strokeStyle='#e5c279';ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<wave.length;i+=4){const x=i/wave.length*w,y=h*.45+(wave[i]-128)/128*h*.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();document.dispatchEvent(new CustomEvent('atelier:spectrum',{detail:{energy:Math.min(1,rms*5),bass:freq[3]/255}}));
  }
  let last=0;function scopeLoop(time=0){animation=0;if(document.hidden)return;if(time-last>33||!time){drawScope();last=time;if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+project.bpm+' BPM';}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
- $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
+ $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);
 }
