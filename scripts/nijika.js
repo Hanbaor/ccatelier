@@ -94,11 +94,11 @@ hexo.extend.helper.register('nijika_list_title', function () {
   if (this.is_archive()) return this.page.year ? String(this.page.year) + (this.page.month ? ` / ${this.page.month}` : '') : '归档';
   return '笔记';
 });
-// Responsive renditions exist only for the curated v2 art set. Custom artwork
-// keeps its original src when a matching smaller rendition was not supplied.
+// Responsive assets are curated; custom images keep their original source.
 hexo.extend.helper.register('nijika_art_srcset', function (source) {
-  const match=String(source || '').match(/\/atelier\/images\/v2\/(hero|stage|notes|research|life|lounge)\.webp$/);
-  if (!match) return '';
-  const width=['hero','stage'].includes(match[1]) ? 1672 : 1536;
+  const widths={v2:{hero:1672,stage:1672,notes:1536,research:1536,life:1536,lounge:1536},v3:{hero:1916,projects:1672,about:1024,guestbook:1916}};
+  const match=String(source || '').match(/\/atelier\/images\/(v[23])\/([a-z]+)\.webp$/);
+  const width=match && widths[match[1]][match[2]];
+  if (!width) return '';
   return this.url_for(source.replace(/\.webp$/, '-960.webp')) + ' 960w, ' + this.url_for(source) + ' ' + width + 'w';
 });

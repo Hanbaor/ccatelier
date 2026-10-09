@@ -1,22 +1,4 @@
-<% const writing=nijika_writing(); const latest=writing[0]; %>
-<section class="cover entry-v2" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
-  <div class="entry-running-head"><span>A PERSONAL ATELIER / EST. 2026</span><span>WORDS, IDEAS & A LITTLE MUSIC <i aria-hidden="true">✦</i></span></div>
-  <div class="entry-hero">
-    <div class="entry-copy">
-      <span class="entry-volume">NIJIKA EDITION <span>VOL. 01</span></span>
-      <h1 class="entry-title" tabindex="-1" aria-label="CC Atelier"><span>CC</span><em>Atelier<span>.</span></em></h1>
-      <p class="entry-manifesto">把热爱，<br>留给下一拍<span>。</span></p>
-      <p class="entry-description">记录代码、研究与生活。<br>也给热爱，留一点位置。</p>
-      <div class="entry-actions"><a class="enter-button entry-enter" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span>进入创作室</span><span aria-hidden="true">↗</span></a><a class="entry-read" href="<%= url_for('notes/') %>">翻阅笔记 <span aria-hidden="true">→</span></a></div>
-      <div class="entry-signature"><span>A LITTLE LIGHT.<br>A LITTLE LOUDER.</span><i aria-hidden="true">✳</i><span>ALWAYS OPEN<br>欢迎随时入场</span></div>
-    </div>
-    <figure class="entry-art" id="cover-photograph">
-      <div class="entry-art-window"><img id="cover-image" src="<%= url_for(theme.nijika.cover) %>" srcset="<%= nijika_art_srcset(theme.nijika.cover) %>" sizes="(max-width: 600px) 90vw, 56vw" decoding="async" alt="日光排练室里的伊地知虹夏，精绘主题同人插画" fetchpriority="high" width="1672" height="941"><div class="entry-image-grain" aria-hidden="true"></div></div>
-      <span class="entry-art-corner" aria-hidden="true">THE LIGHT<br>IN THE ROOM.</span>
-      <figcaption><span><i aria-hidden="true">✦</i> 伊地知 虹夏 <small>NIJIKA IJICHI</small></span><span>DRUMS / 結束バンド</span></figcaption>
-      <div class="entry-art-seal" aria-hidden="true"><span>GOOD DAYS</span><b>✳</b><span>GOOD RHYTHMS</span></div>
-    </figure>
-  </div>
-  <nav class="entry-index" aria-label="从这里开始"><% for(const [n,route,en,zh] of [['01','notes','FIELD NOTES','笔记'],['02','projects','MADE WITH CARE','项目'],['03','research','OPEN QUESTIONS','研究'],['04','life','LITTLE MOMENTS','生活'],['05','about','BEHIND THE SCENES','关于']]){ %><a href="<%= url_for(route+'/') %>"><span><small><%= n %></small><b><%= en %></b></span><strong><%= zh %> <i aria-hidden="true">↗</i></strong></a><% } %></nav>
-  <% if(latest){ %><a class="entry-latest" href="<%= url_for(latest.path) %>"><span class="entry-latest-tag"><i aria-hidden="true"></i> LATEST NOTE</span><strong><%= latest.title %></strong><time datetime="<%= date_xml(latest.date) %>"><%= date(latest.date,'YYYY.MM.DD') %></time><span aria-hidden="true">↗</span></a><% } %>
+<section class="cover cinema-v3" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
+  <figure class="cinema-art" id="cover-photograph" aria-label="虹夏的舞台"><picture><source media="(max-width: 600px)" srcset="<%= url_for('atelier/images/v3/about-960.webp') %> 960w, <%= url_for('atelier/images/v3/about.webp') %> 1024w" sizes="100vw"><img id="cover-image" src="<%= url_for('atelier/images/v3/hero.webp') %>" srcset="<%= url_for('atelier/images/v3/hero-960.webp') %> 960w, <%= url_for('atelier/images/v3/hero.webp') %> 1916w" sizes="100vw" width="1916" height="821" alt="深蓝与琥珀追光中演奏鼓组的伊地知虹夏，精绘主题同人插画" fetchpriority="high"></picture></figure>
+  <div class="cinema-copy"><h1 class="cinema-title" tabindex="-1" aria-label="CC Atelier"><span>CC<span>.</span></span><em>ATELIER</em></h1><div class="cinema-bottom"><p>代码、研究与生活。</p><a class="enter-button cinema-enter" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span>探索创作室</span><%- partial('nijika/editorial-arrow') %></a></div></div>
 </section>

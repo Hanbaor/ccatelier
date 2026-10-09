@@ -74,7 +74,7 @@ body:not(.on-cover) .site-header {background:color-mix(in srgb,var(--bg) 94%,tra
 .entry-description {font-size:14px;line-height:1.95;color:var(--muted);letter-spacing:.04em;margin-bottom:30px}
 .entry-actions {display:flex;align-items:center;gap:25px;flex-wrap:wrap}
 .entry-v2 .entry-enter {
-  position:static;inset:auto;transform:none;display:flex;align-items:center;justify-content:space-between;gap:36px;
+  position:static;inset:auto;transform:none;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:36px;
   width:auto;height:auto;min-height:52px;min-width:184px;padding:14px 20px;border:1px solid var(--ink);border-radius:3px;
   background:var(--ink);color:var(--bg);font:13px var(--chinese);letter-spacing:.04em;box-shadow:3px 4px 0 var(--accent-soft);
 }
@@ -210,7 +210,7 @@ body:not(.on-cover) .site-header {background:color-mix(in srgb,var(--bg) 94%,tra
 .archive-editorial-counts>span {font-size:11px;color:var(--muted);display:flex;align-items:baseline;gap:10px}
 .archive-editorial-counts b {font:600 33px var(--condensed);color:var(--ink)}
 .archive-editorial-hero>figure {position:relative;margin:0;padding:9px;background:var(--surface);border:1px solid var(--line);transform:rotate(1deg);box-shadow:0 10px 30px var(--paper-shadow)}
-.archive-editorial-hero>figure>img {width:100%;aspect-ratio:3/2;object-fit:cover;object-position:42% center}
+.archive-editorial-hero>figure>img {width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;object-position:42% center}
 .archive-editorial-hero figcaption {display:flex;align-items:center;justify-content:space-between;font:9px var(--sans);letter-spacing:.1em;padding:13px 5px 4px;color:var(--muted)}
 .archive-editorial-hero figcaption>span {font:20px var(--sans);color:var(--sage)}
 .archive-editor-picks {padding:44px 0}
@@ -710,3 +710,8 @@ body:not(.on-cover) .site-header {background:color-mix(in srgb,var(--bg) 94%,tra
   .atelier-admit-bottom {display:none}
   .atelier-admit:after {left:auto;right:-9px;top:-9px;bottom:auto}
 }
+
+/* SVG marks stay crisp without depending on emoji/symbol font coverage. */
+.editorial-arrow {display:inline-block;flex:none;width:20px;height:20px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.5}
+.entry-index .editorial-arrow {width:18px;height:18px;color:var(--muted)}
+.editorial-spark {display:inline-block;vertical-align:middle;width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8}

@@ -70,10 +70,10 @@ inject:
 nijika:
   github: https://github.com/Hanbaor
   repository: https://github.com/Hanbaor/ccatelier
-  cover: /atelier/images/v2/hero.webp
+  cover: /atelier/images/v3/hero.webp
   cover_day: /atelier/images/v2/hero.webp
   reading_art: /atelier/images/v2/notes.webp
-  studio_art: /atelier/images/v2/stage.webp
+  studio_art: /atelier/images/v3/hero.webp
   pixel_art: /atelier/images/v2/stage.webp
   stage: /atelier/images/v2/stage.webp
   portrait: /atelier/images/nijika.png

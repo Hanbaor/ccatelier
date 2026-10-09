@@ -9,14 +9,16 @@ const page = route => new JSDOM(fs.readFileSync(path.join(root,'public',route),'
 test('the entry, studio index and notes have distinct editorial compositions and illustrations',()=>{
  const cover=page('index.html'),stage=page('atelier/index.html'),notes=page('notes/index.html');
  try {
-  assert.equal(cover.window.document.querySelectorAll('.entry-index>a').length,5);
-  assert.ok(cover.window.document.querySelector('.entry-enter[data-enter][href="/atelier/"]'));
-  assert.ok(cover.window.document.querySelector('.entry-read[href="/notes/"]'));
-  assert.equal(stage.window.document.querySelectorAll('.atelier-tiles-v2>a').length,5);
+  assert.ok(cover.window.document.querySelector('.cinema-v3'));
+  assert.equal(cover.window.document.querySelectorAll('.entry-index,.entry-running-head,.entry-art-seal').length,0);
+  assert.ok(cover.window.document.querySelector('.cinema-enter[data-enter][href="/atelier/"]'));
+  assert.ok(cover.window.document.querySelector('.header-navigation a[href="/notes/"]'));
+  assert.equal(stage.window.document.querySelectorAll('.hub-grid>a').length,5);
   assert.equal(stage.window.document.querySelectorAll('.atelier-room').length,0,'tile names must not inherit secondary-room page styles');
-  assert.equal(notes.window.document.querySelectorAll('.archive-editor-pick').length,3);
-  assert.notEqual(cover.window.document.querySelector('#cover-image').getAttribute('src'),stage.window.document.querySelector('.atelier-performance img').getAttribute('src'));
-  assert.match(notes.window.document.querySelector('.archive-editorial-hero img').src,/v2\/notes\.webp$/);
+  assert.ok(notes.window.document.querySelector('.catalog-heading-v3'));
+  assert.equal(notes.window.document.querySelectorAll('.archive-editor-pick').length,0);
+  assert.notEqual(cover.window.document.querySelector('#cover-image').getAttribute('src'),stage.window.document.querySelector('.hub-writing img').getAttribute('src'));
+  assert.match(notes.window.document.querySelector('.catalog-heading-v3 img').src,/v2\/notes\.webp$/);
  }finally{cover.window.close();stage.window.close();notes.window.close();}
 });
 
@@ -26,7 +28,7 @@ test('all curated art uses local optimized files and resolvable responsive rendi
  }
  for(const route of ['index.html','atelier/index.html','notes/index.html','studio/index.html','research/index.html','life/index.html','projects/index.html','about/index.html','lounge/index.html','guestbook/index.html']) {
   const dom=page(route);
-  try {for(const img of dom.window.document.querySelectorAll('main img[src*="/images/v2/"]')) {
+  try {for(const img of dom.window.document.querySelectorAll('main img[src*="/images/v2/"],main img[src*="/images/v3/"]')) {
    assert.ok(img.alt.trim(),route+' art needs alt text');
    assert.ok(img.getAttribute('width')&&img.getAttribute('height'),route+' art needs stable intrinsic dimensions');
    for(const src of [img.getAttribute('src'),...(img.getAttribute('srcset')||'').split(',').map(item=>item.trim().split(/\s+/)[0]).filter(Boolean)]) {
@@ -38,7 +40,7 @@ test('all curated art uses local optimized files and resolvable responsive rendi
 
 test('editorial stylesheets parse and are included in the offline shell',()=>{
  const dom=new JSDOM('<html><head></head><body></body></html>');
- try {for(const name of ['editorial.css','rooms-v2.css']) {
+ try {for(const name of ['editorial.css','rooms-v2.css','immersive.css']) {
   const style=dom.window.document.createElement('style');style.textContent=fs.readFileSync(path.join(root,'source/atelier/css',name),'utf8');dom.window.document.head.append(style);
   assert.ok(style.sheet.cssRules.length>40);
   assert.ok(JSON.parse(fs.readFileSync(path.join(root,'public/atelier/data/offline-shell.json'),'utf8')).includes('/atelier/css/'+name));

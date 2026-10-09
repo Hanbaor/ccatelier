@@ -10,7 +10,7 @@ function page(route) {
   return new JSDOM(read(`public/${route}/index.html`), {url:`https://ccatelier.test/${route}/`});
 }
 
-test('each secondary room has a distinct illustrated editorial opening and real links', () => {
+test('each secondary room has a distinct art-forward opening without decorative copy stacks', () => {
   for (const route of ['research','life','projects','about','lounge','guestbook']) {
     const dom = page(route);
     try {
@@ -18,14 +18,14 @@ test('each secondary room has a distinct illustrated editorial opening and real 
       const room = doc.querySelector(`main .room-${route}`);
       assert.ok(room, `${route} has its own room composition`);
       assert.equal(room.querySelectorAll('h1').length, 1);
-      assert.ok(room.querySelector('img[src*="/atelier/images/v2/"]'));
-      assert.equal(room.querySelector('.room-topline>a').getAttribute('href'), '/atelier/');
+      assert.ok(room.querySelector('img[src*="/atelier/images/v"]'));
+      assert.ok(!room.querySelector('.room-topline,.room-kicker,.room-colophon,.room-zone-heading,.room-handwriting'), 'decorative copy is removed from the DOM');
       for (const img of room.querySelectorAll('img')) assert.ok(img.alt.trim(), `${route} artwork has alt text`);
       assert.ok(!room.querySelector('.quiet-composition'), 'old placeholder composition has been replaced');
     } finally {dom.window.close();}
   }
-  assert.match(read('public/research/index.html'), /Database[\s\S]*Text-to-SQL[\s\S]*研究内容整理中/);
-  assert.match(read('public/life/index.html'), /相册尚未发布。/);
+  assert.match(read('public/research/index.html'), /Database[\s\S]*Text-to-SQL[\s\S]*整理中/);
+  assert.match(read('public/life/index.html'), /相册尚未发布/);
   assert.match(read('public/life/index.html'), /主题插画/);
   assert.match(read('public/projects/index.html'), /Hexo[\s\S]*Redefine/);
 });
@@ -53,7 +53,7 @@ test('redesigned lounge preserves all interaction hooks and in-page destinations
       'data-stage-light','data-charm','data-charm-note','data-stat','data-stats-context','data-help-open']) {
       assert.ok(doc.querySelector(`[${attr}]`), attr);
     }
-    assert.equal(doc.querySelectorAll('.room-zone-heading').length, 4);
+    assert.equal(doc.querySelectorAll('.room-zone-heading').length, 0);
     assert.equal(doc.querySelectorAll('[data-random-post]').length, 2);
     assert.equal(doc.querySelectorAll('[data-pass-stamp]').length, 5);
     for (const id of ['reading-shelf','ticket-desk','sound-desk']) assert.ok(doc.getElementById(id));
@@ -62,7 +62,7 @@ test('redesigned lounge preserves all interaction hooks and in-page destinations
   } finally {dom.window.close();}
 });
 
-test('lounge shelf, timer and atmosphere still operate after editorial restructuring', async () => {
+test('lounge shelf, timer and atmosphere still operate after art-forward restructuring', async () => {
   const dom = page('lounge');
   const {window} = dom;
   Object.assign(globalThis, {window,document:window.document,location:window.location,localStorage:window.localStorage,
@@ -104,7 +104,7 @@ test('rooms stylesheet parses with mobile, daylight and reduced-motion treatment
   const css = read('source/atelier/css/rooms-v2.css');
   const dom = new JSDOM('<!doctype html><style>'+css+'</style>');
   try {
-    assert.ok(dom.window.document.styleSheets[0].cssRules.length > 150);
+    assert.ok(dom.window.document.styleSheets[0].cssRules.length > 120);
     assert.match(css, /body\.light \.atelier-room/);
     assert.match(css, /@media\(max-width:760px\)/);
     assert.match(css, /@media\(max-width:380px\)/);

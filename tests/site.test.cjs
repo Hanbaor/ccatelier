@@ -43,7 +43,7 @@ test('search uses published writing and the entrance has its selected artwork', 
   assert.ok(index.some(item => item.title === 'Hello CC Atelier'));
   assert.ok(!index.some(item => item.title === 'Hello World'));
   const cover = read('index.html');
-  assert.match(cover, /atelier\/images\/v2\/hero\.webp/);
+  assert.match(cover, /atelier\/images\/v3\/hero\.webp/);
   assert.doesNotMatch(cover, /stage-v4\.png|cover-v4\.png|#article/);
 });
 

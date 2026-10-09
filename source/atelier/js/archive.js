@@ -48,7 +48,7 @@ export async function initArchive(){
  $$('[data-view]',host).forEach(b=>b.addEventListener('click',()=>change({view:b.dataset.view})));
  tagSelect.addEventListener('change',()=>change({tag:tagSelect.value}));$('[data-duration]').addEventListener('change',e=>change({duration:e.target.value}));$('#archive-sort').addEventListener('change',e=>change({sort:e.target.value}));
  more.addEventListener('click',()=>{limit+=18;render();});
- const invite=$('[data-graph-invite]');invite.hidden=false;invite.addEventListener('click',()=>{change({view:'graph'});$('.archive-toolbar').scrollIntoView({block:'start'});});
+ const invite=$('[data-graph-invite]');if(invite){invite.hidden=false;invite.addEventListener('click',()=>{change({view:'graph'});$('.archive-toolbar').scrollIntoView({block:'start'});});}
  document.addEventListener('atelier:queue',syncQueue);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)syncQueue();});
  window.addEventListener('popstate',()=>{query=readQuery(location.search);limit=18;sync();search();});
  document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.target.closest('input,textarea,select,[contenteditable]')&&!$('dialog[open]')){e.preventDefault();input.focus();}});

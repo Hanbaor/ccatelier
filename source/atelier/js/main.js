@@ -15,6 +15,7 @@ import {initCodeStudio} from './code-studio.js';
 import {initOffline} from './offline.js';
 import {initStudio} from './studio.js';
 import {initStageEngine} from './stage-engine.js';
+import {initImmersive} from './immersive.js';
 
 initSettings();
 initDialogs();
@@ -35,3 +36,4 @@ initCodeStudio();
 initOffline();
 initStudio();
 initStageEngine();
+initImmersive();
