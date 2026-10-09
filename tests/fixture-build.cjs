@@ -47,7 +47,14 @@ assert.match(read('notes/index.html'),/href="\/lab\/atelier\/css\/content-catalo
 assert.match(read('hot100/031/index.html'),/class="exercise-readiness"/);
 assert.doesNotMatch(read('hot100/031/index.html'),/在这里填写你的代码|在这里补充：/);
 assert.match(read('series/hot100/index.html'),/30 题已有代码/);
-assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).every(p=>p.startsWith('/lab/')));
+const offlineShell=JSON.parse(read('atelier/data/offline-shell.json'));
+assert.ok(offlineShell.every(p=>p.startsWith('/lab/')));
+for(const file of ['route-features.js','archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','practice.js','livehouse.js']){
+ assert.ok(offlineShell.includes('/lab/atelier/js/'+file),file+' must be available to offline snapshots');
+ assert.ok(fs.existsSync(path.join(sandbox,'public/atelier/js',file)));
+}
+assert.match(read('atelier/js/route-features.js'),/import\('\.\/archive\.js'\)/);
+assert.match(read('atelier/js/main.js'),/from '\.\/route-features\.js'/);
 assert.match(read('live-sw.js'),/ROOT="\/lab\/"/);
 assert.match(read('studio/index.html'),/data-studio/);
 assert.match(read('studio/practice/index.html'),/data-practice/);

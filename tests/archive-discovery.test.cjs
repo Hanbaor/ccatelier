@@ -8,6 +8,7 @@ test('writing-first archive keeps scope, topics, stale worker replies, history, 
  const data=JSON.parse(fs.readFileSync(path.join(__dirname,'../public/atelier/data/archive.json'),'utf8'));
  globalThis.fetch=async()=>({ok:true,json:async()=>data});
  let worker;globalThis.Worker=class{constructor(){worker=this;this.requests=[];}postMessage(request){this.requests.push(request);}terminate(){this.terminated=true;}};
+ const constellation=await import('../source/atelier/js/constellation.js');
  const {initArchive}=await import('../source/atelier/js/archive.js'),{queryArchive,readQuery,writeQuery}=await import('../source/atelier/js/archive-core.mjs');
  const $=selector=>document.querySelector(selector),$$=selector=>[...document.querySelectorAll(selector)],select=(selector,value)=>{const node=$(selector);node.value=value;node.dispatchEvent(new window.Event('change',{bubbles:true}));};
  const reply=request=>worker.onmessage({data:{id:request.id,paths:queryArchive(request.posts,request.query).map(p=>p.path)}});
@@ -17,7 +18,7 @@ test('writing-first archive keeps scope, topics, stale worker replies, history, 
   globalThis.fetch=async()=>{throw Error('offline');};await initArchive();
   assert.equal($('.archive-app').hidden,true);assert.equal($('.archive-fallback').hidden,false);assert.ok($('.archive-fallback .live-status'));
   globalThis.fetch=async()=>({ok:true,json:async()=>data});
-  await initArchive();assert.equal(latest().query.group,'writing');reply(latest());
+  await initArchive({loadConstellation:async()=>constellation});assert.equal(latest().query.group,'writing');reply(latest());
   assert.equal($('.archive-fallback').hidden,true);assert.equal($$('[data-archive-results] .archive-record').length,9);
   assert.match($('[data-archive-count]').textContent,/9 \/ 9 篇笔记/);
   assert.ok($$('[data-tag] option').some(o=>o.value==='C++ STL'));assert.ok(!$$('[data-tag] option').some(o=>o.value==='LeetCode'));
@@ -41,6 +42,7 @@ test('writing-first archive keeps scope, topics, stale worker replies, history, 
   worker.onerror();assert.equal(worker.terminated,true);assert.equal($$('[data-archive-results] .archive-record').length,1,'worker failure falls back to the same pure query');
   $('.archive-search').dispatchEvent(new window.Event('reset',{bubbles:true,cancelable:true}));assert.equal(location.search,'');assert.equal($$('[data-archive-results] .archive-record').length,9);
   $('[data-view="graph"]').click();assert.equal($('.constellation').hidden,false);assert.equal($('[data-archive-results]').hidden,true);
+  await new Promise(resolve=>setImmediate(resolve));
   assert.ok($$('[data-graph-select] option').some(o=>o.value==='tag:C++ STL'));
   $('[data-view="list"]').click();assert.equal($$('[data-archive-results] .archive-record').length,9);
   history.pushState({},'','?group=all&q=两数之和');window.dispatchEvent(new window.PopStateEvent('popstate'));assert.equal($('[data-group="all"]').getAttribute('aria-pressed'),'true');assert.ok($$('[data-archive-results] .archive-record').some(n=>n.textContent.includes('两数之和')));

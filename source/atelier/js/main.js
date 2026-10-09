@@ -7,16 +7,12 @@ import {initReading} from './reading.js';
 import {initBackstage} from './backstage.js';
 import {initCommunity, initModeration} from './community.js';
 import {initAfterHours} from './after-hours.js';
-import {initArchive} from './archive.js';
 import {initQueue} from './queue.js';
-import {initReader} from './reader.js';
-import {initNotebook} from './notebook.js';
-import {initCodeStudio} from './code-studio.js';
 import {initOffline} from './offline.js';
-import {initStudio} from './studio.js';
 import {initStageEngine} from './stage-engine.js';
 import {initImmersive} from './immersive.js';
 import {initNavigationScenes} from './navigation-scenes.js';
+import {initRouteFeatures} from './route-features.js';
 
 initSettings();
 initDialogs();
@@ -31,14 +27,12 @@ initCommunity();
 initModeration();
 initAfterHours();
 initQueue();
-initArchive();
-initReader();
-initNotebook();
-initCodeStudio();
 initOffline();
-initStudio();
 initStageEngine();
 initImmersive();
+
+// Global navigation, dialogs and audio coordination are ready before route enhancements.
+initRouteFeatures();
 
 // The concert bundle is fetched only when someone actually enters the stage.
 if (document.querySelector('[data-live-open]')) {

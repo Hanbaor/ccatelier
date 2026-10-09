@@ -1,12 +1,30 @@
 import {$,$$,toast} from './ui.js';
 import {readQuery,writeQuery,queryArchive} from './archive-core.mjs';
 import {loadArchive,getQueue,queueAction,element,action} from './archive-store.js';
-import {createConstellation} from './constellation.js';
 
-export async function initArchive(){
+export async function initArchive({loadConstellation=()=>import('./constellation.js')}={}){
  const host=$('[data-archive]');if(!host)return;
  const status=$('[data-archive-count]',host),results=$('[data-archive-results]',host),more=$('[data-archive-more]',host);
- let posts,query=readQuery(location.search),matches=[],limit=18,worker,requestId=0,pendingTimer,graph;
+ let posts,query=readQuery(location.search),matches=[],limit=18,worker,requestId=0,pendingTimer,graph,graphPromise,pageActive=true;
+ const graphHost=$('.constellation',host),graphControls=$$('button,select',graphHost);
+ let graphNotice;
+ function graphStatus(message,retry=false){
+  graphNotice ||= element('p','live-status');graphNotice.setAttribute('role','status');graphNotice.dataset.readerExclude='';
+  graphNotice.replaceChildren(document.createTextNode(message));if(retry)graphNotice.append(action('重新加载',showGraph));
+  if(!graphNotice.isConnected)graphHost.prepend(graphNotice);
+ }
+ function graphBusy(busy){graphHost.setAttribute('aria-busy',String(busy));graphControls.forEach(control=>{control.disabled=busy;});}
+ function showGraph(){
+  if(graph){if(pageActive&&query.view==='graph')graph.setPosts(matches);return;}
+  if(graphPromise)return;
+  graphBusy(true);graphStatus('主题星图正在加载…');
+  graphPromise=Promise.resolve().then(loadConstellation).then(module=>{
+   // A late import may be cached, but must not start a hidden or abandoned graph.
+   if(!pageActive||query.view!=='graph')return;
+   graph=module.createConstellation(graphHost,tag=>change({tag,view:'grid'}));
+   graphNotice?.remove();graphBusy(false);graph.setPosts(matches);
+  }).catch(()=>{graphBusy(true);graphHost.setAttribute('aria-busy','false');graphStatus('主题星图暂未载入，可以继续使用卡片或列表。 ',true);}).finally(()=>{graphPromise=null;});
+ }
  try{posts=await loadArchive();}catch(error){const p=element('p','live-status',error.message+'，仍可使用下方目录。');p.append(action('重新加载',()=>location.reload()));$('.archive-fallback',host).prepend(p);return;}
  const byPath=new Map(posts.map(p=>[p.path,p]));
  try{worker=new Worker(new URL('./archive-worker.js',import.meta.url),{type:'module'});worker.onmessage=({data})=>{if(data.id!==requestId)return;clearTimeout(pendingTimer);if(data.error){fallback();return;}matches=data.paths.map(path=>byPath.get(path)).filter(Boolean);render();};worker.onerror=()=>{worker.terminate();worker=null;fallback();};}catch{}
@@ -43,7 +61,7 @@ export async function initArchive(){
  function render(){
   const total=posts.filter(p=>query.group==='all'||p.group===query.group).length;
   status.textContent=matches.length+' / '+total+(query.group==='hot100'?' 道题':query.group==='writing'?' 篇笔记':' 条内容');results.hidden=query.view==='graph';$('.constellation',host).hidden=query.view!=='graph';more.hidden=query.view==='graph'||matches.length<=limit;
-  if(query.view==='graph'){graph ||= createConstellation($('.constellation',host),tag=>change({tag,view:'grid'}));graph.setPosts(matches);return;}
+  if(query.view==='graph'){showGraph();return;}
   graph?.pause();results.dataset.mode=query.view;results.replaceChildren();const queue=new Set(getQueue().map(p=>p.path));
   if(!matches.length){const empty=element('div','archive-empty','没有符合条件的内容。换个关键词，或清空筛选。');empty.append(action('清空筛选',()=>change(readQuery())));results.append(empty);return;}
   matches.slice(0,limit).forEach((p,i)=>{
@@ -70,7 +88,7 @@ export async function initArchive(){
  document.addEventListener('atelier:queue',syncQueue);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)syncQueue();});
  window.addEventListener('popstate',()=>{query=readQuery(location.search);limit=18;sync();search();});
  document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.target.closest('input,textarea,select,[contenteditable]')&&!$('dialog[open]')){e.preventDefault();input.focus();}});
- window.addEventListener('pagehide',()=>{worker?.terminate();worker=null;clearTimeout(debounce);clearTimeout(pendingTimer);graph?.pause();});
- window.addEventListener('pageshow',e=>{if(e.persisted){query=readQuery(location.search);sync();search();}});
+ window.addEventListener('pagehide',()=>{pageActive=false;worker?.terminate();worker=null;clearTimeout(debounce);clearTimeout(pendingTimer);graph?.pause();});
+ window.addEventListener('pageshow',e=>{pageActive=true;if(e.persisted){query=readQuery(location.search);sync();search();}});
  $('.archive-app').hidden=false;$('.archive-fallback').hidden=true;sync();search();
 }
