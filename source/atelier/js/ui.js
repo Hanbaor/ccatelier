@@ -15,7 +15,12 @@ export function toast(message) {
   toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 2200);
 }
 export function closeDialogs() { $$('dialog[open]').forEach(dialog => dialog.close()); }
-export function openDialog(id) { closeDialogs(); document.getElementById(id)?.showModal(); }
+export function openDialog(id) {
+  const dialog=document.getElementById(id);if(!dialog)return;
+  closeDialogs();
+  document.dispatchEvent(new CustomEvent('atelier:dialog-open',{detail:{id}}));
+  dialog.showModal();
+}
 export function initDialogs() {
   document.addEventListener('click', event => {
     const close = event.target.closest('[data-close]');
@@ -48,7 +53,7 @@ export function initSettings() {
   reduced.addEventListener('change', () => setMotion());
   setMotion();
   initTheme({storage,notify:toast});
-  const section = document.body.dataset.section;
+  const section = document.body.dataset.section === 'practice' ? 'studio' : document.body.dataset.section;
   $$('[data-section-navigation] a').forEach(link => {
     const pathname = new URL(link.href).pathname;
     const active = pathname === document.body.dataset.root + (section === 'gallery' ? 'life' : section) + '/';

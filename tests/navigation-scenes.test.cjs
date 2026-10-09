@@ -120,6 +120,24 @@ test('returning to the displayed scene cancels pending art without another load'
   assert.equal(f.frame.querySelectorAll('img').length, 1);
 });
 
+test('frame follows the current decoded scene proportions and ignores stale image ratios', async t => {
+  const f = await fixture(t);
+  const ratio = () => Number(f.frame.style.getPropertyValue('--menu-scene-ratio'));
+  assert.equal(ratio(), 2 / 3, 'the initial portrait preserves its native proportions');
+  f.open();
+  f.hover('notes');
+  f.hover('guestbook');
+  // Natural dimensions win over markup hints once the selected image is decoded.
+  Object.defineProperties(f.pending[1].image, {naturalWidth:{value:1916}, naturalHeight:{value:821}});
+  await f.resolve(1);
+  assert.equal(ratio(), 1916 / 821);
+  await f.resolve(0);
+  assert.equal(ratio(), 1916 / 821, 'an older decode cannot resize the selected scene');
+  f.hover('about');
+  await f.resolve(2);
+  assert.equal(ratio(), 2 / 3);
+});
+
 test('image errors preserve the last usable illustration and allow a retry', async t => {
   const f = await fixture(t);
   f.open();
@@ -225,6 +243,10 @@ test('close, page hide, and destroy discard late work and release timers', async
 test('preview styling contains art rather than cropping and honors both motion preferences', () => {
   const css = fs.readFileSync(path.join(__dirname, '../source/atelier/css/navigation-scenes.css'), 'utf8');
   assert.match(css, /object-fit:contain/);
+  assert.match(css, /\.nijika #menu-dialog \{min-height:0\}/);
+  assert.match(css, /align-self:center/);
+  assert.match(css, /aspect-ratio:var\(--menu-scene-ratio, 2 \/ 3\)/);
+  assert.match(css, /height:auto/);
   assert.match(css, /\.motion-off \.menu-scene-image/);
   assert.match(css, /prefers-reduced-motion:reduce/);
 });

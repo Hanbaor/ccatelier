@@ -1,11 +1,19 @@
-/* A quiet photographic mat keeps every scene intact, including hands and the
-   landscape around the character. Only the image changes, never the links. */
+/* The navigation determines the dialog's height. The companion frame follows
+   the scene's own proportions without cropping hands or scenic context. */
+.nijika #menu-dialog {min-height:0}
 .menu-v3-layout > .menu-scene {
+  --menu-scene-max-height:510px;
   position:relative;
   isolation:isolate;
   margin:0;
   min-width:0;
-  height:510px;
+  min-height:0;
+  align-self:center;
+  justify-self:center;
+  width:min(100%, calc(var(--menu-scene-max-height) * var(--menu-scene-ratio, .6666666667)));
+  height:auto;
+  max-height:var(--menu-scene-max-height);
+  aspect-ratio:var(--menu-scene-ratio, 2 / 3);
   overflow:hidden;
   border-radius:3px;
   background:#0c131b;
@@ -37,4 +45,4 @@
 @keyframes menu-scene-depart {from {opacity:1} to {opacity:0}}
 .motion-off .menu-scene-image {animation:none!important}
 @media (prefers-reduced-motion:reduce) {.menu-scene-image {animation:none!important}}
-@media (max-width:600px) {.menu-v3-layout > .menu-scene {height:392px}}
+@media (max-width:600px) {.menu-v3-layout > .menu-scene {--menu-scene-max-height:392px}}

@@ -20,7 +20,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true} = {}) 
   const {window} = dom, {document} = window;
   const globals = new Map(), intervals = new Map(), timers = new Map();
   const contexts = [], errors = [], downloads = [], blobs = new Map(), revoked = [], network = [];
-  let now = 1000, nextId = 0, hidden = false;
+  let now = 1000, nextId = 0, hidden = false, searchAvailable = false;
   const patch = (name, value) => {
     globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
     Object.defineProperty(globalThis, name, {configurable: true, writable: true, value});
@@ -38,7 +38,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true} = {}) 
     clearInterval: id => intervals.delete(id),
     setTimeout: (callback, delay = 0) => { const id = ++nextId; timers.set(id, {callback, at: now + Number(delay)}); return id; },
     clearTimeout: id => timers.delete(id),
-    fetch: (...args) => { network.push(args); throw Error('Practice fixtures must remain local'); },
+    fetch: (...args) => { if (searchAvailable && args[0] === document.body.dataset.search) return Promise.resolve({ok:true, json:async () => []}); network.push(args); throw Error('Practice fixtures must remain local'); },
   })) patch(name, value);
   t.after(() => {
     try {
@@ -97,13 +97,19 @@ async function practice(t, {deferredAudio = false, audioAvailable = true} = {}) 
     }
   }
   if (audioAvailable) window.AudioContext = FakeAudioContext;
+  window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  window.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new window.Event('close')); };
+  const {initDialogs, openDialog} = await import('../source/atelier/js/ui.js');
+  initDialogs();
   const {initPractice} = await import('../source/atelier/js/practice.js');
-  initPractice();
+  const controller = initPractice();
+  t.after(() => controller.destroy());
   const host = document.querySelector('[data-practice]');
   assert.ok(host, 'the generated practice page contains the application');
   const find = selector => host.querySelector(selector);
   const api = {
-    window, document, host, contexts, errors, intervals, timers, downloads, blobs, revoked, find,
+    window, document, host, contexts, errors, intervals, timers, downloads, blobs, revoked, find, controller, initPractice, openDialog,
+    async enableSearch() { searchAvailable = true; const {initSearch} = await import('../source/atelier/js/search.js'); initSearch(); },
     play: find('[data-practice-play]'), status: find('[data-practice-status]'), position: find('[data-practice-position]'),
     demo: find('[data-practice-demo]'), from: find('[data-practice-start]'), to: find('[data-practice-end]'), bpm: find('[data-practice-bpm]'),
     bars: () => [...host.querySelectorAll('[data-practice-bar]')],
@@ -130,6 +136,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true} = {}) 
     importFile(file) {
       const input = find('[data-practice-import]');
       Object.defineProperty(input, 'files', {configurable: true, value: file ? [file] : []});
+      Object.defineProperty(input, 'value', {configurable: true, writable: true, value: file ? 'C:\\fakepath\\original.json' : ''});
       input.dispatchEvent(new window.Event('change', {bubbles: true}));
     },
     async importScore(score) { api.importFile({size: 1000, text: async () => JSON.stringify(score)}); await settle(); },
@@ -171,6 +178,10 @@ test('practice loads three original exercises and generated accessible SVG measu
       assert.equal(bar.querySelector('svg').namespaceURI, 'http://www.w3.org/2000/svg');
       assert.equal(bar.querySelector('svg').getAttribute('role'), 'img');
       assert.ok(bar.querySelector('svg').getAttribute('aria-label'));
+      const description = f.document.getElementById(bar.getAttribute('aria-describedby'));
+      assert.ok(description, 'the labeled button also exposes its notation description');
+      assert.equal(description.textContent, bar.querySelector('svg').getAttribute('aria-label'));
+      assert.equal(f.document.querySelectorAll('#' + description.id).length, 1);
       assert.equal(bar.querySelectorAll('.practice-count').length, 16);
       assert.ok(bar.querySelectorAll('.practice-note').length > 0);
       assert.equal(bar.querySelector('img, image, use, script'), null);
@@ -395,12 +406,15 @@ test('backgrounding active playback cancels audio and visuals and visibility res
 
 test('opening navigation, another rhythm control, or the file picker pauses practice', async t => {
   const f = await practice(t);
+  await f.enableSearch();
   for (const selector of ['.menu-open', '.search-open', '.rhythm-open', '[data-practice-import]']) {
     const control = f.document.querySelector(selector);
     assert.ok(control, `${selector} exists in the generated page`);
     await f.start();
     f.advance(100);
     control.click();
+    await settle();
+    f.advance(0); // Flush jsdom's focus-selection notification.
     f.assertStopped();
   }
 });
@@ -509,6 +523,7 @@ for (const [label, action] of [
     const f = await practice(t);
     let resolveRead;
     f.importFile({size: 20, text: () => new Promise(resolve => { resolveRead = resolve; })});
+    assert.equal(f.find('[data-practice-import]').value, '', 'the same file can be selected again even while this read is pending');
     await action(f);
     const title = f.find('[data-practice-title]').textContent;
     const contextCount = f.contexts.length, status = f.status.textContent;
@@ -596,4 +611,101 @@ test('a stalled looping scheduler skips obsolete notes and resumes with bounded 
   f.advance(500);
   assert.ok(f.find('.practice-measure.is-current'), 'the score cursor catches up without replaying every missed step');
   assert.ok(f.timers.size <= 2);
+});
+
+
+test('an imported exercise remains selectable after every built-in demo and exports the imported model', async t => {
+  const f = await practice(t);
+  const score = originalScore({title:'保留的原创练习', bpm:135});
+  await f.importScore(score);
+  for (const option of [...f.demo.options].filter(option => option.value !== 'local-import')) {
+    f.change(f.demo, option.value);
+    assert.notEqual(f.find('[data-practice-title]').textContent, score.title);
+    f.change(f.demo, 'local-import');
+    assert.equal(f.find('[data-practice-title]').textContent, score.title);
+    assert.equal(f.find('[data-practice-description]').textContent, score.description);
+    assert.equal(f.bpm.value, '135');
+    assert.equal(f.bars().length, 2);
+    assert.equal(f.from.value, '0');
+    assert.equal(f.to.value, '1');
+    f.find('[data-practice-export]').click();
+    assert.deepEqual(JSON.parse(await f.blobs.get(f.downloads.at(-1).href).text()), score);
+    f.advance(30000);
+  }
+  assert.equal(f.demo.options.length, 4);
+  assert.equal(f.contexts.length, 0);
+});
+
+for (const modifier of ['ctrlKey', 'metaKey']) {
+  test(`${modifier}+K stops practice through the shared dialog lifecycle and stays silent on close`, async t => {
+    const f = await practice(t);
+    await f.enableSearch();
+    await f.start();
+    f.advance(3500);
+    assert.ok(f.find('.practice-measure.is-current'));
+    f.document.dispatchEvent(new f.window.KeyboardEvent('keydown', {key:'k', [modifier]:true, bubbles:true, cancelable:true}));
+    await settle();
+    assert.equal(f.document.querySelector('#search-dialog').open, true);
+    f.advance(0); // Flush jsdom's focus-selection notification.
+    f.assertStopped();
+    f.document.querySelector('#search-dialog').close();
+    f.advance(3000);
+    assert.equal(f.contexts.length, 1, 'closing search does not restart audio');
+    await f.start();
+    assert.equal(f.contexts.length, 2);
+  });
+}
+
+test('opening a shared dialog invalidates a pending enable without late audio', async t => {
+  const f = await practice(t, {deferredAudio:true});
+  f.play.click();
+  f.openDialog('search-dialog');
+  f.contexts[0].resolveResume();
+  await settle();
+  f.assertStopped();
+  assert.equal(f.contexts[0].started.length, 0);
+});
+
+test('a cancelled import can select the exact same file again while its earlier read settles late', async t => {
+  const f = await practice(t);
+  const reads = [];
+  const file = {size:20, text:() => new Promise(resolve => reads.push(resolve))};
+  f.importFile(file);
+  assert.equal(f.find('[data-practice-import]').value, '');
+  f.openDialog('search-dialog');
+  f.document.querySelector('#search-dialog').close();
+  f.importFile(file);
+  reads[1](JSON.stringify(originalScore({title:'重新选择的原创练习'})));
+  await settle();
+  const title = f.find('[data-practice-title]').textContent;
+  assert.equal(title, '重新选择的原创练习');
+  reads[0](JSON.stringify(originalScore({title:'已取消的旧读取'})));
+  await settle();
+  assert.equal(f.find('[data-practice-title]').textContent, title);
+  assert.equal(f.find('[data-practice-import]').value, '');
+});
+
+test('practice initialization is idempotent and teardown removes shared listeners before reinitializing', async t => {
+  const f = await practice(t);
+  assert.equal(f.initPractice(), f.controller);
+  await f.start();
+  f.controller.destroy();
+  f.assertStopped();
+  const message = f.status.textContent;
+  f.openDialog('search-dialog');
+  f.visibility(true);
+  f.play.click();
+  f.bars()[1].click();
+  await settle();
+  assert.equal(f.status.textContent, message, 'destroyed listeners cannot update the view');
+  assert.equal(f.contexts.length, 1, 'destroyed controls cannot restart audio');
+  f.visibility(false);
+  const current = f.initPractice();
+  assert.notEqual(current, f.controller);
+  assert.equal(f.demo.options.length, 3, 'reinitializing does not duplicate options');
+  await f.start();
+  assert.equal(f.contexts.length, 2);
+  f.openDialog('menu-dialog');
+  f.assertStopped();
+  current.destroy();
 });

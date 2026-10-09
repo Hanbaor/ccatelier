@@ -2,6 +2,8 @@ import {$,$$} from './ui.js';
 import {LivehouseAudio} from './livehouse-audio.js';
 import {PRACTICE_DEMOS,validatePractice,flattenPractice} from './practice-core.mjs';
 import {download,readImport} from './archive-store.js';
+const controllers=new WeakMap();
+let descriptionId=0;
 const NS='http://www.w3.org/2000/svg',names={kick:'底鼓',snare:'军鼓',hat:'踩镲',tom:'通鼓'};
 const node=(tag,attributes={},text)=>{const n=document.createElementNS(NS,tag);for(const [key,value] of Object.entries(attributes))n.setAttribute(key,value);if(text!==undefined)n.textContent=text;return n;};
 
@@ -10,6 +12,7 @@ export function renderPracticeBar(bar,index){
  const button=document.createElement('button');button.type='button';button.className='practice-measure';button.dataset.practiceBar=index;button.setAttribute('aria-label','第 '+(index+1)+' 小节，设为起点');button.setAttribute('aria-pressed','false');
  const label=document.createElement('span');label.textContent=String(index+1).padStart(2,'0');button.append(label);
  const svg=node('svg',{viewBox:'0 0 340 130',role:'img','aria-label':bar.hits.filter(h=>h.velocity>0).map(h=>names[h.type]+' 第'+(h.step+1)+'格').join('，')||'休止小节'});
+ const description=node('desc',{id:'practice-description-'+(++descriptionId)},svg.getAttribute('aria-label'));svg.append(description);button.setAttribute('aria-describedby',description.id);
  const cursor=node('rect',{x:30,y:15,width:18,height:94,class:'practice-cursor',rx:2});svg.append(cursor);
  for(let line=0;line<5;line++)svg.append(node('line',{x1:24,y1:40+line*12,x2:329,y2:40+line*12,class:'practice-staff'}));
  for(let beat=0;beat<=4;beat++)svg.append(node('line',{x1:30+beat*72,y1:20,x2:30+beat*72,y2:99,class:'practice-staff','stroke-dasharray':beat===0||beat===4?'':'2 4'}));
@@ -26,9 +29,11 @@ export function renderPracticeBar(bar,index){
 }
 
 export function initPractice(){
- const host=$('[data-practice]');if(!host)return;
+ const host=$('[data-practice]');if(!host)return;if(controllers.has(host))return controllers.get(host);
+ const listeners=[],barListeners=[];let destroyed=false;
+ const listen=(target,event,handler)=>{target.addEventListener(event,handler);listeners.push(()=>target.removeEventListener(event,handler));};
  const sheet=$('[data-practice-sheet]',host),select=$('[data-practice-demo]',host),play=$('[data-practice-play]',host),status=$('[data-practice-status]',host),position=$('[data-practice-position]',host),from=$('[data-practice-start]',host),to=$('[data-practice-end]',host),bpm=$('[data-practice-bpm]',host),audio=new LivehouseAudio();audio.setVolume(.25);
- let project=validatePractice(PRACTICE_DEMOS[0]),startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
+ let project=validatePractice(PRACTICE_DEMOS[0]),importedProject=null,startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
  const say=text=>{status.textContent=text;};
  function clearVisuals(){visuals.forEach(clearTimeout);visuals.clear();$$('.practice-measure',sheet).forEach(b=>b.classList.remove('is-current'));$$('.practice-beats i',host).forEach(b=>b.classList.remove('active'));active=-1;}
  function stop(message='已停止；谱面和选区保留。'){generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
@@ -38,9 +43,9 @@ export function initPractice(){
  }
  function render(){
   $('[data-practice-title]',host).textContent=project.title;$('[data-practice-description]',host).textContent=project.description;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);
-  sheet.replaceChildren();from.replaceChildren();to.replaceChildren();project.bars.forEach((bar,index)=>{
+  barListeners.splice(0).forEach(remove=>remove());sheet.replaceChildren();from.replaceChildren();to.replaceChildren();project.bars.forEach((bar,index)=>{
    for(const s of [from,to]){const o=document.createElement('option');o.value=String(index);o.textContent=(index+1)+' 小节';s.append(o);}
-   const button=renderPracticeBar(bar,index);button.addEventListener('click',()=>{stop('从第 '+(index+1)+' 小节开始。');startBar=index;endBar=Math.max(index,endBar);paintRange();});sheet.append(button);
+   const button=renderPracticeBar(bar,index),choose=()=>{stop('从第 '+(index+1)+' 小节开始。');startBar=index;endBar=Math.max(index,endBar);paintRange();};button.addEventListener('click',choose);barListeners.push(()=>button.removeEventListener('click',choose));sheet.append(button);
   });paintRange();
  }
  function clickBeat(strong,delay){
@@ -54,6 +59,7 @@ export function initPractice(){
   const current=$('[data-practice-bar="'+bar+'"]',sheet);$('.practice-cursor',current).setAttribute('x',30+within*18);position.textContent=(bar+1)+' / '+project.bars.length+' · '+(Math.floor(within/4)+1);$$('.practice-beats i',host).forEach((n,i)=>n.classList.toggle('active',i===Math.floor(within/4)));
  }
  async function start(){
+  if(destroyed)return;
   if(state!=='stopped'){stop();return;}
   state='starting';const token=++generation;play.textContent='准备中…';play.setAttribute('aria-pressed','true');
   try{
@@ -79,17 +85,31 @@ export function initPractice(){
    timer=setInterval(schedule,25);schedule();
   }catch(error){if(token===generation)stop(error.message||'音频未能启动，请重试。');}
  }
+ select.replaceChildren();
  for(const demo of PRACTICE_DEMOS){const o=document.createElement('option');o.value=demo.id;o.textContent=demo.title;select.append(o);}
- select.addEventListener('change',()=>{stop('原创练习已切换。');const demo=PRACTICE_DEMOS.find(d=>d.id===select.value);if(!demo)return;project=validatePractice(demo);startBar=0;endBar=project.bars.length-1;tempo=project.bpm;render();});
- play.addEventListener('click',start);$('[data-practice-stop]',host).addEventListener('click',()=>stop());
- bpm.addEventListener('input',e=>{stop('速度已调整，点击开始重新数拍。');tempo=Math.max(40,Math.min(220,Number(e.target.value)||project.bpm));$('[data-practice-bpm-label]',host).textContent=String(tempo);});
- $('[data-practice-volume]',host).addEventListener('input',e=>audio.setVolume(Number(e.target.value)/100));
- from.addEventListener('change',()=>{stop();startBar=Number(from.value);endBar=Math.max(startBar,endBar);paintRange();});to.addEventListener('change',()=>{stop();endBar=Number(to.value);startBar=Math.min(startBar,endBar);paintRange();});
- $('[data-practice-loop]',host).addEventListener('change',()=>stop('循环设置已更新。'));
- $('[data-practice-reset]',host).addEventListener('click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);});
- $('[data-practice-export]',host).addEventListener('click',()=>download('cc-original-drum-practice.json',JSON.stringify({...project,bpm:tempo},null,2)));
- $('[data-practice-import]',host).addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;stop();const ticket=generation;try{const value=validatePractice(await readImport(file,1));if(ticket!==generation)return;project=value;tempo=value.bpm;startBar=0;endBar=value.bars.length-1;let imported=$('option[value="local-import"]',select);if(!imported){imported=document.createElement('option');imported.value='local-import';select.append(imported);}imported.textContent='本机导入 · '+value.title;select.value='local-import';render();say('鼓谱已在本机载入，没有上传。');}catch(error){if(ticket===generation)say(error.message||'导入失败；原谱面未改变。');}e.target.value='';});
- document.addEventListener('click',event=>{if(state!=='stopped'&&event.target.closest('.rhythm-open,.menu-open,.lighting-open,.search-open,[data-practice-import]'))stop('已暂停；可随时回到谱面继续。');});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop('已暂停，点击开始继续练习。');});window.addEventListener('pagehide',()=>stop(''));document.addEventListener('atelier:livehouse-open',()=>stop(''));
- render();$('.practice-app',host).hidden=false;
+ listen(select,'change',()=>{const demo=select.value==='local-import'?importedProject:PRACTICE_DEMOS.find(d=>d.id===select.value);if(!demo)return;stop('练习已切换。');project=validatePractice(demo);startBar=0;endBar=project.bars.length-1;tempo=project.bpm;render();});
+ listen(play,'click',start);listen($('[data-practice-stop]',host),'click',()=>stop());
+ listen(bpm,'input',e=>{stop('速度已调整，点击开始重新数拍。');tempo=Math.max(40,Math.min(220,Number(e.target.value)||project.bpm));$('[data-practice-bpm-label]',host).textContent=String(tempo);});
+ listen($('[data-practice-volume]',host),'input',e=>audio.setVolume(Number(e.target.value)/100));
+ listen(from,'change',()=>{stop();startBar=Number(from.value);endBar=Math.max(startBar,endBar);paintRange();});listen(to,'change',()=>{stop();endBar=Number(to.value);startBar=Math.min(startBar,endBar);paintRange();});
+ listen($('[data-practice-loop]',host),'change',()=>stop('循环设置已更新。'));
+ listen($('[data-practice-reset]',host),'click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);});
+ listen($('[data-practice-export]',host),'click',()=>download('cc-original-drum-practice.json',JSON.stringify({...project,bpm:tempo},null,2)));
+ listen($('[data-practice-import]',host),'change',async e=>{
+  const input=e.currentTarget,file=input.files[0];input.value='';if(!file)return;
+  stop();const ticket=generation;
+  try{
+   const value=validatePractice(await readImport(file,1));if(ticket!==generation)return;
+   importedProject=value;project=validatePractice(value);tempo=value.bpm;startBar=0;endBar=value.bars.length-1;
+   let imported=$('option[value="local-import"]',select);if(!imported){imported=document.createElement('option');imported.value='local-import';select.append(imported);}
+   imported.textContent='本机导入 · '+value.title;select.value='local-import';render();say('鼓谱已在本机载入，没有上传。');
+  }catch(error){if(ticket===generation)say(error.message||'导入失败；原谱面未改变。');}
+ });
+ // Every dialog entry point (including keyboard shortcuts) shares this event.
+ // It also invalidates an in-flight import or audio enable before it can finish.
+ listen(document,'atelier:dialog-open',()=>stop('已暂停；可随时回到谱面继续。'));
+ listen(document,'click',event=>{if(state!=='stopped'&&event.target.closest('[data-practice-import]'))stop('已暂停；可随时回到谱面继续。');});
+ listen(document,'visibilitychange',()=>{if(document.hidden)stop('已暂停，点击开始继续练习。');});listen(window,'pagehide',()=>stop(''));listen(document,'atelier:livehouse-open',()=>stop(''));
+ const controller={destroy(){if(destroyed)return;destroyed=true;stop('');listeners.splice(0).forEach(remove=>remove());barListeners.splice(0).forEach(remove=>remove());controllers.delete(host);}};
+ controllers.set(host,controller);render();$('.practice-app',host).hidden=false;return controller;
 }

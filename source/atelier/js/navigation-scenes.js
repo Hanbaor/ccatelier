@@ -26,6 +26,13 @@ export function initNavigationScenes(root = document) {
   let destroyed = false;
 
   const canAnimate = () => motion.enabled && !reduced.matches && !doc.body.classList.contains('motion-off');
+  function fitFrame(image) {
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    frame.style.setProperty('--menu-scene-ratio', String(width > 0 && height > 0 ? width / height : 2 / 3));
+  }
+  fitFrame(current);
+
   function finishTransition() {
     if (cleanupTimer !== null) view.clearTimeout(cleanupTimer);
     cleanupTimer = null;
@@ -80,6 +87,7 @@ export function initNavigationScenes(root = document) {
     current = image;
     active = key;
     frame.dataset.scene = key;
+    fitFrame(image);
     if (canAnimate()) {
       // Only the current scene is exposed to assistive technology. The fading
       // layer is purely visual and is removed after one bounded transition.
