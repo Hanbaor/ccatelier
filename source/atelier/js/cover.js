@@ -5,8 +5,8 @@ export function initCover() {
   if (!cover) return;
   const photograph = $('#cover-photograph'), img = $('#cover-image'), entry = $('.enter-button');
   const scenes = {
-    street:{src:cover.dataset.street,alt:'舞台暖光中的虹夏，AI 创作的主题同人插画'},
-    stage:{src:cover.dataset.stage,alt:'官方动画剧照：虹夏在 STARRY 的鼓组后'}
+    street:{src:cover.dataset.street,alt:'日光排练室里的虹夏，AI 创作的主题同人插画'},
+    stage:{src:cover.dataset.stage,alt:'舞台上专注演奏鼓组的虹夏，AI 创作的主题同人插画'}
   };
   let sequence = 0;
   $$('.photo-index [data-scene]').forEach(button => button.addEventListener('click', async () => {

@@ -6,12 +6,14 @@ const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const read = route => fs.readFileSync(path.join(root, 'public', route), 'utf8');
 
-test('the shared refinement layer is last and quick navigation identifies the active section', () => {
+test('editorial styles load after refinements and quick navigation identifies the active section', () => {
   for (const route of ['index.html', 'atelier/index.html', 'notes/index.html', 'lounge/index.html', 'studio/index.html', 'about/index.html']) {
     const dom = new JSDOM(read(route));
     try {
       const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')];
-      assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/refinement\.css$/);
+      assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/rooms-v2\.css$/);
+      assert.match(styles.at(-2).getAttribute('href'), /atelier\/css\/editorial\.css$/);
+      assert.ok(styles.some(style=>style.href.endsWith('/refinement.css')));
       assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/refinement.css'));
       const nav = dom.window.document.querySelector('nav.header-navigation');
       assert.equal(nav.getAttribute('aria-label'), '快捷导航');

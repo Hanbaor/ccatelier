@@ -1,9 +1,22 @@
-<section class="cover live-cover" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
-      <div class="cover-orbit" aria-hidden="true"></div><div class="cover-hairline" aria-hidden="true"></div>
-      <div class="cover-photograph" id="cover-photograph"><div class="photo-cut"><img id="cover-image" src="<%= url_for(theme.nijika.cover) %>" alt="舞台暖光中的虹夏，AI 创作的主题同人插画" fetchpriority="high"><img class="cover-daylight-art" src="<%= url_for(theme.nijika.cover_day) %>" alt="" aria-hidden="true" width="1672" height="941"><div class="photo-light" aria-hidden="true"></div></div><div class="photo-index" aria-label="选择封面画面"><button class="active" data-scene="street" aria-label="暖光画面" aria-pressed="true"><span></span></button><button data-scene="stage" aria-label="演出画面" aria-pressed="false"><span></span></button></div></div>
-      <div class="cover-editorial"><span class="eyebrow">A PERSONAL LIVE HOUSE / EST. 2026</span><h1 class="cover-type" tabindex="-1" aria-label="CC Atelier"><span class="type-cc">CC<span class="type-period">.</span></span><span class="type-atelier">ATELIER</span></h1><p>把热爱，留给下一拍。</p><span class="cover-micro">WORDS. IDEAS. A LITTLE NOISE.</span></div>
-      <span class="nijika-marker">伊地知虹夏<span aria-hidden="true">✦</span><small>NIJIKA / DRUMS</small></span>
-      <a class="enter-button" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span class="enter-label">推门入场</span><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M15 49 49 15M16 15h33v33"/></svg></a>
-      <div class="cover-bottom-line"><span>ADMIT ONE / ALWAYS OPEN</span><span data-theme-edition>AFTER HOURS / 夜场</span></div>
-      <span class="cover-corner" aria-hidden="true"></span>
-    </section>
+<% const writing=nijika_writing(); const latest=writing[0]; %>
+<section class="cover entry-v2" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
+  <div class="entry-running-head"><span>A PERSONAL ATELIER / EST. 2026</span><span>WORDS, IDEAS & A LITTLE MUSIC <i aria-hidden="true">✦</i></span></div>
+  <div class="entry-hero">
+    <div class="entry-copy">
+      <span class="entry-volume">NIJIKA EDITION <span>VOL. 01</span></span>
+      <h1 class="entry-title" tabindex="-1" aria-label="CC Atelier"><span>CC</span><em>Atelier<span>.</span></em></h1>
+      <p class="entry-manifesto">把热爱，<br>留给下一拍<span>。</span></p>
+      <p class="entry-description">记录代码、研究与生活。<br>也给热爱，留一点位置。</p>
+      <div class="entry-actions"><a class="enter-button entry-enter" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span>进入创作室</span><span aria-hidden="true">↗</span></a><a class="entry-read" href="<%= url_for('notes/') %>">翻阅笔记 <span aria-hidden="true">→</span></a></div>
+      <div class="entry-signature"><span>A LITTLE LIGHT.<br>A LITTLE LOUDER.</span><i aria-hidden="true">✳</i><span>ALWAYS OPEN<br>欢迎随时入场</span></div>
+    </div>
+    <figure class="entry-art" id="cover-photograph">
+      <div class="entry-art-window"><img id="cover-image" src="<%= url_for(theme.nijika.cover) %>" srcset="<%= nijika_art_srcset(theme.nijika.cover) %>" sizes="(max-width: 600px) 90vw, 56vw" decoding="async" alt="日光排练室里的伊地知虹夏，精绘主题同人插画" fetchpriority="high" width="1672" height="941"><div class="entry-image-grain" aria-hidden="true"></div></div>
+      <span class="entry-art-corner" aria-hidden="true">THE LIGHT<br>IN THE ROOM.</span>
+      <figcaption><span><i aria-hidden="true">✦</i> 伊地知 虹夏 <small>NIJIKA IJICHI</small></span><span>DRUMS / 結束バンド</span></figcaption>
+      <div class="entry-art-seal" aria-hidden="true"><span>GOOD DAYS</span><b>✳</b><span>GOOD RHYTHMS</span></div>
+    </figure>
+  </div>
+  <nav class="entry-index" aria-label="从这里开始"><% for(const [n,route,en,zh] of [['01','notes','FIELD NOTES','笔记'],['02','projects','MADE WITH CARE','项目'],['03','research','OPEN QUESTIONS','研究'],['04','life','LITTLE MOMENTS','生活'],['05','about','BEHIND THE SCENES','关于']]){ %><a href="<%= url_for(route+'/') %>"><span><small><%= n %></small><b><%= en %></b></span><strong><%= zh %> <i aria-hidden="true">↗</i></strong></a><% } %></nav>
+  <% if(latest){ %><a class="entry-latest" href="<%= url_for(latest.path) %>"><span class="entry-latest-tag"><i aria-hidden="true"></i> LATEST NOTE</span><strong><%= latest.title %></strong><time datetime="<%= date_xml(latest.date) %>"><%= date(latest.date,'YYYY.MM.DD') %></time><span aria-hidden="true">↗</span></a><% } %>
+</section>

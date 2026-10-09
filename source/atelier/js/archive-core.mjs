@@ -2,7 +2,7 @@
 const normalize=value=>String(value||'').normalize('NFKC').toLocaleLowerCase();
 export function readQuery(search='') {
   const p=new URLSearchParams(search),pick=(key,values,fallback)=>values.includes(p.get(key))?p.get(key):fallback;
-  return {q:(p.get('q')||'').slice(0,200),group:pick('group',['writing','hot100'],'all'),tag:(p.get('tag')||'').slice(0,80),duration:pick('duration',['short','medium','long'],'all'),sort:pick('sort',['oldest','minutes','title'],'newest'),view:pick('view',['list','graph'],'grid')};
+  return {q:(p.get('q')||'').slice(0,200),group:pick('group',['writing','hot100'],'all'),tag:(p.get('tag')||'').slice(0,80),duration:pick('duration',['short','medium','long'],'all'),sort:pick('sort',['oldest','minutes','title'],'newest'),view:pick('view',['grid','graph'],'list')};
 }
 export function writeQuery(query) {
   const p=new URLSearchParams();const defaults=readQuery();

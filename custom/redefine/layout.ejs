@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
 <%- partial('nijika/head') %>
-<body class="nijika dark-mode<%= page.nijika === 'cover' ? ' on-cover' : '' %>" data-root="<%= url_for('/') %>" data-search="<%= url_for(config.search.path) %>" data-section="<%= nijika_section() %>" data-cursor="<%= theme.nijika.cursor %>" data-motion="<%= theme.nijika.motion %>">
-  <script>try{if(localStorage.getItem('cc-theme')==='light'){document.body.classList.add('light','light-mode');document.body.classList.remove('dark-mode')}if(localStorage.getItem('cc-motion')==='off'||matchMedia('(prefers-reduced-motion: reduce)').matches)document.body.classList.add('motion-off')}catch{}</script>
+<body class="nijika light light-mode<%= page.nijika === 'cover' ? ' on-cover' : '' %>" data-root="<%= url_for('/') %>" data-search="<%= url_for(config.search.path) %>" data-section="<%= nijika_section() %>" data-cursor="<%= theme.nijika.cursor %>" data-motion="<%= theme.nijika.motion %>">
+  <script>try{if(localStorage.getItem('cc-theme')==='dark'){document.body.classList.remove('light','light-mode');document.body.classList.add('dark-mode')}if(localStorage.getItem('cc-motion')==='off'||matchMedia('(prefers-reduced-motion: reduce)').matches)document.body.classList.add('motion-off')}catch{}</script>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
   <div class="curtain" aria-hidden="true"></div><div class="surface-noise" aria-hidden="true"></div>
   <%- partial('nijika/header') %>

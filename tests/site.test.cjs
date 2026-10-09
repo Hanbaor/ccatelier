@@ -22,7 +22,7 @@ test('the entrance is separate from the real notes and article routes', () => {
   const article = read('2026/09/22/Hello-CC-Atelier/index.html');
   assert.match(article, /这是我的第一篇博客文章/);
   assert.match(article, /class="[^"]*markdown-body/);
-  assert.match(article, /<body class="[^"]*dark-mode/, 'Redefine code highlighting must match the default dark page, even before JS');
+  assert.match(article, /<body class="[^"]*light-mode/, 'Redefine code highlighting must match the default daylight page, even before JS');
   assert.match(article, /rel="canonical"/);
   assert.match(article, /<noscript>[\s\S]*aria-label="主导航"/);
 });
@@ -43,7 +43,7 @@ test('search uses published writing and the entrance has its selected artwork', 
   assert.ok(index.some(item => item.title === 'Hello CC Atelier'));
   assert.ok(!index.some(item => item.title === 'Hello World'));
   const cover = read('index.html');
-  assert.match(cover, /atelier\/images\/nijika-live-archive.png/);
+  assert.match(cover, /atelier\/images\/v2\/hero\.webp/);
   assert.doesNotMatch(cover, /stage-v4\.png|cover-v4\.png|#article/);
 });
 

@@ -1,29 +1,19 @@
-<% const writing = nijika_writing(); const latest = writing[0]; %>
-<section class="backstage" aria-label="创作室">
-  <div class="backstage-topline"><span><i></i> CC ATELIER — PERSONAL BLOG</span><span>下北沢 · AFTER THE SHOW</span><span class="backstage-edition">NIJIKA EDITION / 01</span></div>
-  <div class="gig-scene live-stage" data-backstage-scene>
-    <div class="gig-grid" aria-hidden="true"></div>
-    <div class="gig-heading"><span class="gig-kicker">小小的创作室，大大的白日梦。</span><h1 tabindex="-1">BACK<span>STAGE<i>✳</i></span></h1></div>
-    <div class="gig-portrait" aria-label="伊地知虹夏，结束乐队鼓手">
-      <img src="<%= url_for(theme.nijika.cover) %>" alt="舞台暖光中的虹夏，AI 创作的主题同人插画" fetchpriority="high">
-      <div class="gig-character-label"><b>伊地知 虹夏</b><span>DRUMS / 結束バンド</span></div>
-      <img class="stage-daylight-art" src="<%= url_for(theme.nijika.cover_day) %>" alt="" aria-hidden="true" width="1672" height="941">
-      <span class="live-stage-frame" aria-hidden="true">REHEARSAL ROOM / 01</span>
-    </div>
-    <a class="admission-ticket" href="<%= url_for('notes/') %>" aria-label="打开笔记，<%= writing.length %> 篇记录">
-      <div class="ticket-main"><span class="ticket-eyebrow">ADMIT ONE / 随时入场</span><strong>翻开笔记 <span>↗</span></strong><span class="ticket-meta">WRITING ARCHIVE <b><%= nijika_count(writing.length) %> 篇记录</b></span></div><span class="ticket-stub"><span>KEEP THIS TICKET</span><i class="barcode" aria-hidden="true"></i><b>01</b></span>
-    </a>
-    <a class="live-stage-studio" href="<%= url_for('studio/') %>"><span class="live-stage-vinyl" aria-hidden="true"><i>✦</i></span><span><small>THE RHYTHM ROOM</small><strong>把舞台，交给你 ↗</strong><em>六轨编排 / 自己的节奏</em></span></a>
-    <span class="gig-side-label" aria-hidden="true">A LITTLE LIGHT. A LITTLE LOUDER.</span>
-    <div class="gig-marquee" aria-hidden="true"><span>KEEP THE RHYTHM <i>✦</i> 結束バンド <i>✦</i> KEEP THE RHYTHM <i>✦</i> 伊地知虹夏 <i>✦</i> KEEP THE RHYTHM <i>✦</i> 結束バンド</span></div>
+<% const writing=nijika_writing(); const latest=writing[0]; const counts=after_hours_counts(); %>
+<section class="atelier-v2" aria-label="创作室">
+  <header class="atelier-mast-v2"><div><span class="eyebrow">CC ATELIER / THE BACKSTAGE</span><h1 tabindex="-1">小小创作室<span>，</span><br>大大的白日梦<span>。</span></h1></div><p>代码、研究、生活，以及喜欢的声音。<br>推开门，随便坐坐。</p><span class="atelier-mast-star" aria-hidden="true">✳</span></header>
+  <div class="atelier-stage-v2" data-backstage-scene>
+    <figure class="atelier-performance"><img src="<%= url_for(theme.nijika.stage) %>" srcset="<%= nijika_art_srcset(theme.nijika.stage) %>" sizes="(max-width: 600px) 88vw, 65vw" decoding="async" alt="舞台上专注演奏鼓组的虹夏，精绘主题同人插画" width="1672" height="941" fetchpriority="high"><figcaption><span>LIVE AT THE ATELIER</span><strong>Keep the rhythm<span>✦</span></strong><small>NIJIKA / DRUMS / 結束バンド</small></figcaption></figure>
+    <a class="atelier-admit" href="<%= url_for('notes/') %>"><span class="atelier-admit-top">ADMIT ONE <i>01</i></span><span class="atelier-admit-heading">每一篇，<br>都有回声。</span><span class="atelier-admit-count"><b><%= nijika_count(writing.length) %></b><span>篇手记<br>FIELD NOTES</span></span><span class="atelier-admit-action">翻开笔记 <i aria-hidden="true">↗</i></span><span class="atelier-admit-bottom"><i class="barcode" aria-hidden="true"></i><small>KEEP THIS TICKET<br>ALWAYS OPEN</small></span></a>
   </div>
-  <div class="shelf-heading"><span class="eyebrow">FIND YOUR NEXT TRACK</span><p>接下来，想去哪里？</p></div>
-  <nav class="object-shelf" aria-label="栏目">
-    <a class="shelf-object shelf-record" href="<%= url_for('projects/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-record"></span><span class="mini-sleeve">CC<span>ATELIER</span></span></div><span class="shelf-label"><small>02 / WORKS</small><strong>项目 <i>↗</i></strong></span></a>
-    <a class="shelf-object shelf-research" href="<%= url_for('research/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-blueprint"><i></i><b>f(x)</b></span></div><span class="shelf-label"><small>03 / RESEARCH</small><strong>研究 <i>↗</i></strong></span></a>
-    <a class="shelf-object shelf-life" href="<%= url_for('life/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-polaroid"><img src="<%= url_for(theme.nijika.cover) %>" alt="" width="1200" height="675"></span></div><span class="shelf-label"><small>04 / MOMENTS</small><strong>生活 <i>↗</i></strong></span></a>
-    <a class="shelf-object shelf-about" href="<%= url_for('about/') %>"><div class="shelf-art" aria-hidden="true"><span class="mini-pass"><i></i><b>cc.</b><small>ALL ACCESS</small></span></div><span class="shelf-label"><small>05 / ABOUT</small><strong>关于 <i>↗</i></strong></span></a>
+  <div class="editorial-section-heading"><span class="eyebrow">A FEW CORNERS OF MY WORLD</span><h2>接下来，想去哪里？</h2><span>慢慢逛，不用赶时间。</span></div>
+  <nav class="atelier-tiles-v2" aria-label="栏目">
+    <a class="atelier-tile atelier-tile-writing" href="<%= url_for('notes/') %>"><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width: 600px) 88vw, 65vw" decoding="async" alt="窗边写满笔记的桌面与虹夏" width="1536" height="1024" loading="lazy"><div><span class="room-number">01 / WRITING</span><h3>写下来的，<br>都会留下回声。</h3><p><%= writing.length %> 篇手记 · 代码与学习的片段</p><i aria-hidden="true">↗</i></div></a>
+    <a class="atelier-tile atelier-tile-project" href="<%= url_for('projects/') %>"><span class="room-number">02 / PROJECTS</span><div class="project-mark-v2" aria-hidden="true">cc<span>.</span><i>↗</i></div><div><h3>从想法，到作品。</h3><p>CC Atelier / Hexo · Redefine</p></div><span class="room-footline">MADE WITH CARE <i aria-hidden="true">↗</i></span></a>
+    <a class="atelier-tile atelier-tile-research" href="<%= url_for('research/') %>"><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= nijika_art_srcset('/atelier/images/v2/research.webp') %>" sizes="(max-width: 600px) 88vw, 34vw" decoding="async" alt="虹夏与桌上的研究手稿，精绘主题同人插画" width="1536" height="1024" loading="lazy"><div><span class="room-number">03 / RESEARCH</span><h3>顺着问题，<br>再往前一点。</h3><p>Database / Text-to-SQL</p><i aria-hidden="true">↗</i></div></a>
+    <a class="atelier-tile atelier-tile-life" href="<%= url_for('life/') %>"><img src="<%= url_for('atelier/images/v2/life.webp') %>" srcset="<%= nijika_art_srcset('/atelier/images/v2/life.webp') %>" sizes="(max-width: 600px) 88vw, 34vw" decoding="async" alt="雨后的下北泽街道与虹夏，精绘主题同人插画" width="1536" height="1024" loading="lazy"><div><span class="room-number">04 / MOMENTS</span><h3>生活里的小小间奏。</h3><p>代码之外，也留一点空白。</p><i aria-hidden="true">↗</i></div></a>
+    <a class="atelier-tile-about" href="<%= url_for('about/') %>"><span>05 / BEHIND THE SCENES</span><strong>嗨，我是 CC<span>。</span></strong><p>记录代码、研究与生活。</p><b>认识一下 <i aria-hidden="true">↗</i></b></a>
   </nav>
-  <% if (latest) { %><a class="backstage-latest" href="<%= url_for(latest.path) %>"><span><i></i> LATEST NOTE</span><strong><%= latest.title %></strong><span><%= date(latest.date, 'YYYY.MM.DD') %> ↗</span></a><% } %>
+  <section class="atelier-recent-v2" aria-labelledby="atelier-recent-title"><div class="editorial-section-heading"><span class="eyebrow">RECENTLY WRITTEN</span><h2 id="atelier-recent-title">最近写下的</h2><a href="<%= url_for('notes/') %>">全部手记 ↗</a></div><div><% writing.slice(0,3).forEach((post,index)=>{ %><a class="atelier-recent-row" href="<%= url_for(post.path) %>"><span>0<%= index+1 %></span><time datetime="<%= date_xml(post.date) %>"><%= date(post.date,'YYYY.MM.DD') %></time><h3><%= post.title %></h3><i aria-hidden="true">↗</i></a><% }) %></div></section>
+  <div class="atelier-after-v2"><div><span class="eyebrow">THERE'S STILL TIME FOR AN ENCORE</span><h2>再坐一会儿？</h2><p>听一个节拍，留一句问候。</p></div><a href="<%= url_for('lounge/') %>">去后台小屋 <span aria-hidden="true">↗</span></a><a href="<%= url_for('studio/') %>">节奏实验室 <span aria-hidden="true">↗</span></a></div>
   <%- partial('nijika/after-hours-ribbon') %>
 </section>

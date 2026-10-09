@@ -18,7 +18,7 @@ test('shareable query ignores invalid enums, preserves Unicode and clamps search
  const q=readQuery('?q=二叉树&group=writing&tag=树&duration=short&sort=minutes&view=graph');
  assert.deepEqual(readQuery(writeQuery(q)),q);
  const bad=readQuery('?view=<script>&sort=__proto__&group=admin');
- assert.equal(bad.view,'grid');assert.equal(bad.group,'all');assert.equal(bad.sort,'newest');
+ assert.equal(bad.view,'list');assert.equal(bad.group,'all');assert.equal(bad.sort,'newest');
  assert.equal(readQuery('?q='+ 'x'.repeat(501)).q.length,200);
 });
 test('constellation has actual tag membership and related posts exclude unrelated results',async()=>{

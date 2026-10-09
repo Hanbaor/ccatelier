@@ -70,14 +70,14 @@ inject:
 nijika:
   github: https://github.com/Hanbaor
   repository: https://github.com/Hanbaor/ccatelier
-  cover: /atelier/images/nijika-live-archive.png
-  cover_day: /atelier/images/nijika-daylight.png
-  reading_art: /atelier/images/nijika-watercolor.png
-  studio_art: /atelier/images/nijika-risograph.png
-  pixel_art: /atelier/images/nijika-pixel-room.png
-  stage: /atelier/images/ep08-4.jpg
+  cover: /atelier/images/v2/hero.webp
+  cover_day: /atelier/images/v2/hero.webp
+  reading_art: /atelier/images/v2/notes.webp
+  studio_art: /atelier/images/v2/stage.webp
+  pixel_art: /atelier/images/v2/stage.webp
+  stage: /atelier/images/v2/stage.webp
   portrait: /atelier/images/nijika.png
-  aftershow: /atelier/images/nijika-aftershow.png
-  lounge_art: /atelier/images/backstage-workbench.png
+  aftershow: /atelier/images/v2/lounge.webp
+  lounge_art: /atelier/images/v2/lounge.webp
   motion: true
   cursor: true

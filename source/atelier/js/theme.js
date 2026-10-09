@@ -19,9 +19,9 @@ export function initTheme({storage, notify=()=>{}}) {
     if(save&&!storage.set('cc-theme',light?'light':'dark'))notify('模式已切换；浏览器未允许保存偏好。');
     document.dispatchEvent(new CustomEvent('atelier:theme',{detail:{light}}));
   }
-  apply(storage.get('cc-theme')==='light');
+  apply(storage.get('cc-theme')!=='dark');
   controls.forEach(control=>control.addEventListener('click',()=>apply(!document.body.classList.contains('light'),true)));
   window.addEventListener('storage',event=>{
-    if(event.key==='cc-theme'||event.key===null)apply(storage.get('cc-theme')==='light');
+    if(event.key==='cc-theme'||event.key===null)apply(storage.get('cc-theme')!=='dark');
   });
 }
