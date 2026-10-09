@@ -25,6 +25,8 @@ test('projects explains the real site in static HTML with one opening and three 
     assert.equal(room.querySelectorAll('.project-layers > li').length, 3);
     assert.equal(room.querySelectorAll('.project-decision-list > li').length, 3);
     assert.equal(room.querySelectorAll('img').length, 1);
+    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 9, 'link arrows use the existing font-independent SVG');
+    assert.doesNotMatch(room.textContent, /↗/);
     assert.ok(room.querySelector('img[src$="/atelier/images/v3/projects.webp"]'));
     assert.match(room.querySelector('img').alt, /主题插画/);
     assert.equal(room.querySelectorAll('script, iframe, canvas, button, [hidden], [data-reveal]').length, 0);
