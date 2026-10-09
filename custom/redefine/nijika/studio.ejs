@@ -1,5 +1,6 @@
 <section class="music-studio content-view" data-studio aria-label="节奏实验室">
  <header class="studio-mast studio-illustrated"><img class="studio-soundcheck" src="<%= url_for(theme.nijika.studio_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.studio_art) %>" sizes="(max-width: 600px) 100vw, 75vw" decoding="async" alt="虹夏在暖金舞台上演奏鼓组的精绘主题同人插画" width="1916" height="821"><div><h1 tabindex="-1">节奏实验室</h1><button type="button" class="livehouse-open" data-live-open hidden>进入现场 <span aria-hidden="true">↗</span></button></div><a href="<%= url_for('atelier/') %>">返回后台 ↗</a></header>
+ <a class="studio-practice-link" href="<%= url_for('studio/practice/') %>"><span>鼓谱排练室</span><span>跟谱 · 慢练 · 小节循环</span><%- partial('nijika/editorial-arrow') %></a>
  <noscript><p>节奏实验室需要 JavaScript。你仍可前往<a href="<%= url_for('notes/') %>">笔记档案</a>阅读。</p></noscript>
  <div class="studio-console" hidden>
   <div class="studio-top"><label class="studio-project-name">TAPE / <input data-project-name maxlength="60" aria-label="项目名称" value="放学后的排练"></label><span class="studio-live-indicator"><i></i><b data-studio-mode>STANDBY</b></span><button class="lighting-open">调光台 ↗</button></div>

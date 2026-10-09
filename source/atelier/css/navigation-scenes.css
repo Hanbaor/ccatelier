@@ -1,0 +1,40 @@
+/* A quiet photographic mat keeps every scene intact, including hands and the
+   landscape around the character. Only the image changes, never the links. */
+.menu-v3-layout > .menu-scene {
+  position:relative;
+  isolation:isolate;
+  margin:0;
+  min-width:0;
+  height:510px;
+  overflow:hidden;
+  border-radius:3px;
+  background:#0c131b;
+  box-shadow:inset 0 0 0 1px #ffffff09;
+}
+.menu-scene > .menu-scene-image {
+  position:absolute;
+  inset:0;
+  display:block;
+  width:100%;
+  height:100%;
+  max-height:none;
+  object-fit:contain;
+  object-position:50% 50%;
+  border:0;
+  border-radius:0;
+}
+.menu-scene-image.is-entering {animation:menu-scene-arrive 360ms cubic-bezier(.22,.61,.36,1) both}
+.menu-scene-image.is-leaving {animation:menu-scene-depart 360ms ease both}
+.menu-v3-layout > nav > a:focus-visible {
+  color:var(--yellow);
+  outline:2px solid var(--yellow);
+  outline-offset:4px;
+}
+@keyframes menu-scene-arrive {
+  from {opacity:0;clip-path:inset(0 0 0 3%)}
+  to {opacity:1;clip-path:inset(0)}
+}
+@keyframes menu-scene-depart {from {opacity:1} to {opacity:0}}
+.motion-off .menu-scene-image {animation:none!important}
+@media (prefers-reduced-motion:reduce) {.menu-scene-image {animation:none!important}}
+@media (max-width:600px) {.menu-v3-layout > .menu-scene {height:392px}}

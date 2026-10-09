@@ -58,6 +58,10 @@ hexo.extend.generator.register('nijika-cover', function () {
   return {path:'index.html', layout:['nijika/cover'], data:{nijika:'cover', title:'CC Atelier'}};
 });
 
+hexo.extend.generator.register('nijika-practice', function () {
+  return {path:'studio/practice/index.html',layout:['nijika/practice'],data:{nijika:'practice',title:'鼓谱排练室'}};
+});
+
 hexo.extend.helper.register('nijika_count', count => String(count).padStart(2, '0'));
 hexo.extend.generator.register('nijika-stage', function () {
   return {path:'atelier/index.html', layout:['nijika/stage'], data:{nijika:'atelier', title:'创作室'}};

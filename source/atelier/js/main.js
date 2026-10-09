@@ -16,9 +16,11 @@ import {initOffline} from './offline.js';
 import {initStudio} from './studio.js';
 import {initStageEngine} from './stage-engine.js';
 import {initImmersive} from './immersive.js';
+import {initNavigationScenes} from './navigation-scenes.js';
 
 initSettings();
 initDialogs();
+initNavigationScenes();
 initCover();
 initSearch();
 initEffects();
@@ -51,3 +53,5 @@ if (document.querySelector('[data-live-open]')) {
   });
  });
 }
+
+if (document.querySelector('[data-practice]')) import('./practice.js').then(module => module.initPractice()).catch(() => { document.querySelector('[data-practice]').insertAdjacentText('beforeend','排练室暂未载入，请刷新重试。'); });

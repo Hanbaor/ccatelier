@@ -42,6 +42,8 @@ assert.ok(rich.posts.every(p=>p.path.startsWith('/lab/')&&typeof p.text==='strin
 assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).every(p=>p.startsWith('/lab/')));
 assert.match(read('live-sw.js'),/ROOT="\/lab\/"/);
 assert.match(read('studio/index.html'),/data-studio/);
+assert.match(read('studio/practice/index.html'),/data-practice/);
+assert.match(read('studio/practice/index.html'),/href="\/lab\/studio\/"/);
 assert.match(read('verification/reading/index.html'),/reader-workbench/);
 assert.match(require('hexo-util').unescapeHTML(read('atom.xml')),/https:\/\/ccatelier.top\/lab\/atom.xml/);
 assert.match(read('lounge/index.html'),/href="\/lab\/guestbook\/"/);

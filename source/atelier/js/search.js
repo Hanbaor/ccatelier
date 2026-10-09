@@ -5,7 +5,7 @@ export function initSearch() {
   const input = $('#search-input'), box = $('#search-results');
   let entries = null, pending = null, failed = false;
   const root = document.body.dataset.root;
-  const sections = [['笔记','notes/'],['项目','projects/'],['研究','research/'],['生活','life/'],['关于 CC','about/']].map(([title,url]) => ({title,content:'',url:root+url,section:true}));
+  const sections = [['笔记','notes/'],['项目','projects/'],['研究','research/'],['生活','life/'],['关于 CC','about/'],['节奏实验室','studio/'],['原创鼓谱排练室','studio/practice/']].map(([title,url]) => ({title,content:'',url:root+url,section:true}));
   function render() {
     box.replaceChildren(); box.setAttribute('aria-busy', String(Boolean(pending)));
     if (pending) { const p=document.createElement('p');p.className='search-empty';p.textContent='正在载入文章…';box.append(p);return; }
