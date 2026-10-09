@@ -1,9 +1,11 @@
 <section class="reading-page reading-studio content-view"><div class="reading-nav"><a href="<%= url_for('notes/') %>" aria-label="返回笔记目录">← 留声档案</a><span>READING STUDIO</span><button class="queue-open">阅读队列 <span data-queue-count>0</span> ↗</button></div>
   <div class="reading-layout reader-columns">
-  <aside class="reading-toc chapter-rail" aria-label="文章目录"><details open><summary>这一篇 <span>TRACKLIST</span></summary><div class="chapter-meter" aria-hidden="true"><i></i></div><%- toc(live_article_content(page),{class:'nav',list_number:true,max_depth:3}) %></details><a class="chapter-library" href="<%= url_for('notes/') %>?view=graph">✧ 回到主题星图</a></aside>
-  <article class="reader-paper">
-  <header class="reading-opener"><span class="eyebrow"><%= page.series === 'hot100' ? 'SIDE B / HOT100 — ' + String(page.series_order).padStart(3,'0') : 'SIDE A / FIELD NOTES' %></span><h1 tabindex="-1"><%= page.title %></h1><div class="reading-meta"><span><%= page.author || config.author %></span><% if (page.date) { %><time datetime="<%= date_xml(page.date) %>"><%= date(page.date,'YYYY.MM.DD') %></time><% } %><span><%= after_hours_minutes(page.content) %> MIN READ</span><span class="reader-spark" aria-hidden="true">✳</span></div></header>
+  <div class="reader-frontmatter">
+  <header class="reading-opener"><span class="eyebrow"><%= page.series === 'hot100' ? 'SIDE B / HOT100 — ' + String(page.series_order).padStart(3,'0') : 'SIDE A / FIELD NOTES' %></span><h1 id="article-title" tabindex="-1"><%= page.title %></h1><div class="reading-meta"><span><%= page.author || config.author %></span><% if (page.date) { %><time datetime="<%= date_xml(page.date) %>"><%= date(page.date,'YYYY.MM.DD') %></time><% } %><span><%= after_hours_minutes(page.content) %> MIN READ</span><span class="reader-spark" aria-hidden="true">✳</span></div></header>
   <%- partial('nijika/article-tools') %>
+  </div>
+  <aside class="reading-toc chapter-rail" aria-label="文章目录"><details open><summary>这一篇 <span>TRACKLIST</span></summary><div class="chapter-meter" aria-hidden="true"><i></i></div><%- toc(live_article_content(page),{class:'nav',list_number:true,max_depth:3}) %></details><a class="chapter-library" href="<%= url_for('notes/') %>?view=graph">✧ 回到主题星图</a></aside>
+  <article class="reader-paper" aria-labelledby="article-title">
   <div class="article-body markdown-body"><%- live_article_content(page) %></div>
   <% if (page.tags && page.tags.length) { %><nav class="article-tags" aria-label="文章标签"><% page.tags.each(tag => { %><a href="<%= url_for(tag.path) %>"># <%= tag.name %></a><% }) %></nav><% } %>
   <% if(page.source_url){ %><p class="article-source">原载于 <a href="<%= page.source_url %>" target="_blank" rel="noopener noreferrer">CSDN ↗</a><% if(page.series === 'hot100'){ %> · <a href="<%= url_for('series/hot100/') %>">Hot100 专题</a><% } %></p><% } %>

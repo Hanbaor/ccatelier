@@ -26,6 +26,7 @@ export async function initArchive(){
   $$('[data-view]',host).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===query.view)));
   $$('[data-filter-tag]',host).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filterTag===query.tag)));
  }
+ function syncQueue(){const queued=new Set(getQueue().map(p=>p.path));$$('[data-queue-path]',results).forEach(button=>{const added=queued.has(button.dataset.queuePath);button.textContent=added?'✓':'+';button.setAttribute('aria-pressed',String(added));});}
  function render(){
   status.textContent=matches.length+' / '+posts.length+' 篇记录';results.hidden=query.view==='graph';$('.constellation',host).hidden=query.view!=='graph';more.hidden=query.view==='graph'||matches.length<=limit;
   if(query.view==='graph'){graph ||= createConstellation($('.constellation',host),tag=>change({tag,view:'grid'}));graph.setPosts(matches);return;}
@@ -36,7 +37,7 @@ export async function initArchive(){
    const top=element('div','record-top');top.append(element('b','',String(i+1).padStart(2,'0')),element('span','',p.group==='hot100'?'SIDE B / STUDY':'SIDE A / NOTES'));
    const h=element('h2'),a=element('a','',p.title);a.href=p.path;h.append(a);
    const bottom=element('div','record-bottom');bottom.append(element('span','',p.minutes+' MIN · '+p.date.slice(2).replaceAll('-','.')));
-   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});add.textContent=exists?'+':'✓';add.setAttribute('aria-pressed',String(!exists));toast(exists?'已移出队列':'已加入阅读队列');});add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add,element('i','','↗'));
+   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});toast(exists?'已移出队列':'已加入阅读队列');});add.dataset.queuePath=p.path;add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add,element('i','','↗'));
    card.append(top,h,element('p','',p.excerpt),bottom);results.append(card);
   });
  }
@@ -48,6 +49,7 @@ export async function initArchive(){
  tagSelect.addEventListener('change',()=>change({tag:tagSelect.value}));$('[data-duration]').addEventListener('change',e=>change({duration:e.target.value}));$('#archive-sort').addEventListener('change',e=>change({sort:e.target.value}));
  more.addEventListener('click',()=>{limit+=18;render();});
  const invite=$('[data-graph-invite]');invite.hidden=false;invite.addEventListener('click',()=>{change({view:'graph'});$('.archive-toolbar').scrollIntoView({block:'start'});});
+ document.addEventListener('atelier:queue',syncQueue);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)syncQueue();});
  window.addEventListener('popstate',()=>{query=readQuery(location.search);limit=18;sync();search();});
  document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.target.closest('input,textarea,select,[contenteditable]')&&!$('dialog[open]')){e.preventDefault();input.focus();}});
  window.addEventListener('pagehide',()=>{worker?.terminate();worker=null;clearTimeout(debounce);clearTimeout(pendingTimer);graph?.pause();});

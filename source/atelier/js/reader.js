@@ -16,7 +16,7 @@ export function initReader(){
  sizeShortcut?.addEventListener('click',()=>{prefs.size=prefs.size>=21?17:prefs.size+2;apply(true);});
  $$('.article-body h2,.article-body h3').forEach(h=>{if(!h.id)return;const button=document.createElement('button');button.className='chapter-copy';button.dataset.readerExclude='';button.textContent='↗';button.setAttribute('aria-label','复制章节链接：'+h.textContent);button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'#'+encodeURIComponent(h.id));toast('已复制章节链接');}catch{toast('复制失败，可从左侧目录打开章节并复制地址');}});h.append(button);});
  const meter=$('.chapter-meter i');let frame=0;function progress(){frame=0;const value=Math.max(0,Math.min(1,-article.getBoundingClientRect().top/Math.max(1,article.scrollHeight-innerHeight*.6)));if(meter)meter.style.transform='scaleX('+value+')';}window.addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(progress);},{passive:true});progress();
- const details=$('.reader-workbench details');if(matchMedia('(max-width:680px)').matches)details.open=false;
+ const details=$('.reader-workbench details');if(matchMedia('(max-width:760px)').matches){details.open=false;const chapters=$('.chapter-rail details');if(chapters)chapters.open=false;}
  speech(article,details);
 }
 function speech(article,details){
