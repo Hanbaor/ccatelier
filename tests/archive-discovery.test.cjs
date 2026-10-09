@@ -1,0 +1,50 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {JSDOM}=require('jsdom');
+
+test('writing-first archive keeps scope, topics, stale worker replies, history, and fallback coherent',async()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(__dirname,'../public/notes/index.html'),'utf8'),{url:'https://ccatelier.test/notes/'}),{window}=dom;
+ Object.assign(globalThis,{window,document:window.document,location:window.location,history:window.history,CustomEvent:window.CustomEvent,localStorage:window.localStorage,innerWidth:1440,innerHeight:900,devicePixelRatio:1,matchMedia:()=>({matches:false,addEventListener(){}}),requestAnimationFrame:()=>0,cancelAnimationFrame(){},ResizeObserver:class{observe(){}}});
+ window.HTMLCanvasElement.prototype.getContext=()=>null;
+ const data=JSON.parse(fs.readFileSync(path.join(__dirname,'../public/atelier/data/archive.json'),'utf8'));
+ globalThis.fetch=async()=>({ok:true,json:async()=>data});
+ let worker;globalThis.Worker=class{constructor(){worker=this;this.requests=[];}postMessage(request){this.requests.push(request);}terminate(){this.terminated=true;}};
+ const {initArchive}=await import('../source/atelier/js/archive.js'),{queryArchive,readQuery,writeQuery}=await import('../source/atelier/js/archive-core.mjs');
+ const $=selector=>document.querySelector(selector),$$=selector=>[...document.querySelectorAll(selector)],select=(selector,value)=>{const node=$(selector);node.value=value;node.dispatchEvent(new window.Event('change',{bubbles:true}));};
+ const reply=request=>worker.onmessage({data:{id:request.id,paths:queryArchive(request.posts,request.query).map(p=>p.path)}});
+ const latest=()=>worker.requests.at(-1);
+ const pop=()=>new Promise(resolve=>window.addEventListener('popstate',resolve,{once:true}));
+ try{
+  globalThis.fetch=async()=>{throw Error('offline');};await initArchive();
+  assert.equal($('.archive-app').hidden,true);assert.equal($('.archive-fallback').hidden,false);assert.ok($('.archive-fallback .live-status'));
+  globalThis.fetch=async()=>({ok:true,json:async()=>data});
+  await initArchive();assert.equal(latest().query.group,'writing');reply(latest());
+  assert.equal($('.archive-fallback').hidden,true);assert.equal($$('[data-archive-results] .archive-record').length,9);
+  assert.match($('[data-archive-count]').textContent,/9 \/ 9 篇笔记/);
+  assert.ok($$('[data-tag] option').some(o=>o.value==='C++ STL'));assert.ok(!$$('[data-tag] option').some(o=>o.value==='LeetCode'));
+  assert.equal($('[data-group="writing"]').getAttribute('aria-pressed'),'true');
+  $('[data-group="hot100"]').click();const stale=latest();assert.equal(location.search,'?group=hot100');
+  assert.ok($$('[data-tag] option').some(o=>o.value==='LeetCode'));assert.ok(!$$('[data-tag] option').some(o=>o.value==='C++ STL'));
+  $('[data-group="all"]').click();const all=latest();reply(all);assert.match($('[data-archive-count]').textContent,/109 \/ 109 条内容/);
+  reply(stale);assert.match($('[data-archive-count]').textContent,/109 \/ 109 条内容/,'old worker replies cannot replace newer navigation');
+  let changed=pop();history.back();await changed;reply(latest());
+  assert.equal(readQuery(location.search).group,'hot100');assert.equal($('[data-group="hot100"]').getAttribute('aria-pressed'),'true');
+  assert.match($('[data-archive-count]').textContent,/100 \/ 100 道题/);assert.ok($('.record-context').textContent.includes('解析待补'));
+  changed=pop();history.forward();await changed;reply(latest());assert.equal(readQuery(location.search).group,'all');
+  changed=pop();history.back();await changed;reply(latest());assert.equal(readQuery(location.search).group,'hot100');
+  select('[data-tag]','链表');reply(latest());assert.ok($$('[data-archive-results] .record-context').every(n=>n.textContent.includes('链表')));
+  $('[data-group="writing"]').click();reply(latest());assert.equal($('[data-tag]').value,'','switching collections clears an unrelated topic');
+  select('[data-tag]','C++ STL');reply(latest());assert.equal($$('[data-archive-results] .archive-record').length,2);
+  select('#archive-sort','oldest');reply(latest());assert.match($('.archive-record h2').textContent,/vector/);
+  assert.deepEqual(readQuery(writeQuery(latest().query)),latest().query);
+  const input=$('#archive-q');input.dispatchEvent(new window.CompositionEvent('compositionstart'));input.value='set';input.dispatchEvent(new window.Event('input',{bubbles:true}));assert.equal(latest().query.q,'');input.dispatchEvent(new window.CompositionEvent('compositionend'));reply(latest());
+  assert.equal(readQuery(location.search).q,'set');assert.equal($$('[data-archive-results] .archive-record').length,1);assert.match($('.archive-record h2').textContent,/set/);
+  worker.onerror();assert.equal(worker.terminated,true);assert.equal($$('[data-archive-results] .archive-record').length,1,'worker failure falls back to the same pure query');
+  $('.archive-search').dispatchEvent(new window.Event('reset',{bubbles:true,cancelable:true}));assert.equal(location.search,'');assert.equal($$('[data-archive-results] .archive-record').length,9);
+  $('[data-view="graph"]').click();assert.equal($('.constellation').hidden,false);assert.equal($('[data-archive-results]').hidden,true);
+  assert.ok($$('[data-graph-select] option').some(o=>o.value==='tag:C++ STL'));
+  $('[data-view="list"]').click();assert.equal($$('[data-archive-results] .archive-record').length,9);
+  history.pushState({},'','?group=all&q=两数之和');window.dispatchEvent(new window.PopStateEvent('popstate'));assert.equal($('[data-group="all"]').getAttribute('aria-pressed'),'true');assert.ok($$('[data-archive-results] .archive-record').some(n=>n.textContent.includes('两数之和')));
+  history.pushState({},'','?group=writing&tag=不存在');window.dispatchEvent(new window.PopStateEvent('popstate'));assert.equal($('[data-tag]').value,'不存在');assert.ok($('.archive-empty'));
+  $('.archive-empty button').click();assert.equal($$('[data-archive-results] .archive-record').length,9);
+ }finally{window.dispatchEvent(new window.Event('pagehide'));window.close();delete globalThis.Worker;}
+});

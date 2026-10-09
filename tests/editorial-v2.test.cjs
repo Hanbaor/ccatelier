@@ -62,6 +62,6 @@ test('daylight is the first-visit default while an explicit night preference is 
 
 test('the catalogue defaults to a compact track list and grid links still round-trip',async()=>{
  const {readQuery,writeQuery}=await import('../source/atelier/js/archive-core.mjs');
- assert.equal(readQuery().view,'list');assert.equal(readQuery().group,'all');
+ assert.equal(readQuery().view,'list');assert.equal(readQuery().group,'writing');
  const grid={...readQuery(),view:'grid',q:'二叉树'};assert.deepEqual(readQuery(writeQuery(grid)),grid);
 });
