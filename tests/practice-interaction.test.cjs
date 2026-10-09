@@ -13,11 +13,12 @@ const originalScore = (overrides = {}) => ({
 
 // The production initializer reads browser globals. Every fixture restores their
 // original descriptors and owns its fake clock, audio contexts and downloads.
-async function practice(t, {deferredAudio = false, audioAvailable = true} = {}) {
+async function practice(t, {deferredAudio = false, audioAvailable = true, recordings = [], url = 'https://ccatelier.test/studio/practice/'} = {}) {
   const dom = new JSDOM(fs.readFileSync(path.join(__dirname, '../public/studio/practice/index.html'), 'utf8'), {
-    url: 'https://ccatelier.test/studio/practice/',
+    url,
   });
   const {window} = dom, {document} = window;
+  for (const value of recordings) window.localStorage.setItem('cc-live-take-v1:' + value.id, JSON.stringify(value));
   const globals = new Map(), intervals = new Map(), timers = new Map();
   const contexts = [], errors = [], downloads = [], blobs = new Map(), revoked = [], network = [];
   let now = 1000, nextId = 0, hidden = false, searchAvailable = false;
@@ -708,4 +709,34 @@ test('practice initialization is idempotent and teardown removes shared listener
   f.openDialog('menu-dialog');
   f.assertStopped();
   current.destroy();
+});
+
+test('an explicit recording URL opens its dedicated slot with tempo/range and never autoplays',async t=>{
+ const take=originalScore({id:'live-link-test',title:'My pad rhythm',bpm:137}),f=await practice(t,{recordings:[take],url:'https://ccatelier.test/studio/practice/?recording=live-link-test'});
+ assert.equal(f.demo.value,'recording:live-link-test');assert.equal(f.demo.options.length,4);assert.equal(f.bpm.value,'137');assert.equal(f.bars().length,2);assert.equal(f.from.value,'0');assert.equal(f.to.value,'1');assert.equal(f.find('[data-practice-remove-recording]').hidden,false);assert.equal(f.contexts.length,0);assert.match(f.status.textContent,/现场录音已载入/);
+ f.change(f.demo,'original-eighth-foundation');assert.equal(f.find('[data-practice-remove-recording]').hidden,true);f.change(f.demo,'recording:live-link-test');assert.equal(f.find('[data-practice-title]').textContent,'My pad rhythm');
+ await f.start();assert.equal(f.play.getAttribute('aria-pressed'),'true');f.stop();f.assertStopped();
+});
+
+test('same-page recording handoff preserves an imported project and invalidates stale imports',async t=>{
+ const f=await practice(t),imported=originalScore({title:'Keep my import'});await f.importScore(imported);
+ let resolve;f.importFile({size:1000,text:()=>new Promise(done=>{resolve=done;})});
+ const take=originalScore({id:'live-handoff',title:'New live take'});f.window.localStorage.setItem('cc-live-take-v1:'+take.id,JSON.stringify(take));
+ const event=new f.window.CustomEvent('atelier:recording-ready',{cancelable:true,detail:{id:take.id}});assert.equal(f.document.dispatchEvent(event),false);assert.equal(f.demo.value,'recording:live-handoff');resolve(JSON.stringify(originalScore({title:'Stale import'})));await settle();
+ assert.equal(f.find('[data-practice-title]').textContent,'New live take');f.change(f.demo,'local-import');assert.equal(f.find('[data-practice-title]').textContent,'Keep my import');assert.equal(f.demo.options.length,5);assert.equal(f.contexts.length,0);f.tick(0);
+});
+
+test('missing or malformed recording links preserve normal exercises with an honest recovery message',async t=>{
+ const f=await practice(t,{url:'https://ccatelier.test/studio/practice/?recording=live-missing'});assert.equal(f.demo.options.length,3);assert.match(f.status.textContent,/无法读取.*下载 JSON/);assert.equal(f.bars().length,4);
+ const event=new f.window.CustomEvent('atelier:recording-ready',{cancelable:true,detail:{id:'../not-a-take'}});assert.equal(f.document.dispatchEvent(event),true);assert.equal(f.bars().length,4);assert.equal(f.contexts.length,0);
+});
+
+test('local recording removal needs an explicit confirmation and leaves other recordings and imports',async t=>{
+ const take=originalScore({id:'live-remove'}),other=originalScore({id:'live-keep'}),f=await practice(t,{recordings:[take,other]});
+ await f.importScore(originalScore({title:'Keep imported'}));f.change(f.demo,'recording:live-remove');f.window.confirm=()=>false;f.find('[data-practice-remove-recording]').click();assert.equal(f.demo.value,'recording:live-remove');assert.ok(f.window.localStorage.getItem('cc-live-take-v1:live-remove'));
+ f.window.confirm=()=>true;f.find('[data-practice-remove-recording]').click();assert.equal(f.demo.value,'original-eighth-foundation');assert.equal(f.window.localStorage.getItem('cc-live-take-v1:live-remove'),null);assert.ok(f.window.localStorage.getItem('cc-live-take-v1:live-keep'));f.change(f.demo,'local-import');assert.equal(f.find('[data-practice-title]').textContent,'Keep imported');f.tick(0);
+});
+
+test('reinitialized practice audio uses the retained volume slider rather than a hidden default',async t=>{
+ const f=await practice(t);f.change(f.find('[data-practice-volume]'),40,'input');f.controller.destroy();const replacement=f.initPractice();t.after(()=>replacement.destroy());await f.start();assert.ok(Math.abs(f.contexts[0].gains[0].gain.value-.28)<1e-8);f.stop();
 });

@@ -113,3 +113,42 @@ body.livehouse-opened .stage-field {visibility:hidden}
  .livehouse-curtain,.live-pad-skin {animation:none!important}
  .live-pad,.livehouse-timeline>i {transition:none!important;transform:none!important}
 }
+
+/* A folded recording strip, leaving the stage artwork as the main event. */
+.livehouse-kit {bottom:202px}
+.live-recorder {margin-top:10px;border-top:1px solid #a6b9bd29;font-size:11px}
+.live-recorder summary {display:flex;align-items:center;gap:8px;min-height:34px;width:fit-content;cursor:pointer;color:#e8d1a2;list-style:none}
+.live-recorder summary::-webkit-details-marker {display:none}
+.live-recorder summary>span:last-child {margin-left:6px;font:9px var(--sans);letter-spacing:.12em;color:#a6b9bd}
+.live-record-dot {width:7px;height:7px;border:1px solid #edcc8f;border-radius:50%}
+.live-recorder[open] .live-record-dot {background:#edcc8f}
+.live-record-controls,.live-record-review {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.live-record-controls label {display:flex;align-items:center;gap:7px;color:#c3cfcb}
+.live-record-controls input,.live-record-controls select,.live-recorder button {min-height:40px;box-sizing:border-box;border:1px solid #b9d1d435;border-radius:4px;background:#10232c;color:#e7ecdf;font:11px var(--chinese);padding:6px 10px}
+.live-record-controls input {width:65px}
+.live-record-controls select {width:78px}
+.live-recorder button {min-height:40px;cursor:pointer}
+.live-recorder button:disabled {opacity:.4;cursor:default}
+.live-recorder button:not(:disabled):hover {border-color:#edcc8f}
+.live-recorder [data-live-record][aria-pressed=true] {color:#ffd5ba;border-color:#ddb199;background:#352d2a}
+.live-record-controls output {margin-left:auto;color:#edcc8f;font-variant-numeric:tabular-nums}
+.live-record-strip {display:grid;grid-template-columns:repeat(32,minmax(0,1fr));gap:3px;margin:8px 0}
+.live-record-strip i {height:6px;border-radius:2px;background:#66829335}
+.live-record-strip i:nth-child(4n+1) {border-left:1px solid #e8d1a266}
+.live-record-strip i.has-hit {background:#dfbd78a8}
+.live-record-strip i.is-current {outline:1px solid #fff1c9;outline-offset:1px}
+.live-record-review span {margin-left:auto;font-size:10px;color:#a6b9bd}
+.live-recorder p {margin:6px 0 0;min-height:18px;line-height:1.6;color:#c8d2ce;font-size:10px}
+#livehouse-dialog:has(.live-recorder[open]) .livehouse-room {min-height:790px}
+#livehouse-dialog:has(.live-recorder[open]) .livehouse-kit {bottom:350px}
+@media(max-width:760px) {
+ .livehouse-room {min-height:710px}
+ .livehouse-kit {bottom:250px}
+ .live-record-controls,.live-record-review {gap:7px}
+ .live-record-controls input,.live-record-controls select,.live-recorder button {min-height:44px;padding-inline:8px}
+ .live-record-controls {font-size:10px}
+ .live-record-controls output {width:100%;margin-left:0;font-size:10px}
+ .live-record-review span {width:100%;margin:0}
+ #livehouse-dialog:has(.live-recorder[open]) .livehouse-room {min-height:960px}
+ #livehouse-dialog:has(.live-recorder[open]) .livehouse-kit {bottom:470px}
+}

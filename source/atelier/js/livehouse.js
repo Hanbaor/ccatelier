@@ -1,6 +1,7 @@
 import {$,$$,motion,closeDialogs} from './ui.js';
 import {LivehouseAudio} from './livehouse-audio.js';
 import {SCORE_BPM,SCORE_BEATS,SCORE_DURATION,scoreEvents,sectionAt} from './livehouse-score.mjs';
+import {initLiveRecorder} from './livehouse-recorder.js';
 
 export function initLivehouse(){
  const dialog=$('#livehouse-dialog');if(!dialog)return {open(){}};
@@ -22,7 +23,7 @@ export function initLivehouse(){
   const pad=pads.get(type);if(!pad||!animated()||now-(padLast.get(type)||-1000)<400)return;
   padLast.set(type,now);pad.classList.add('is-hit');clearTimeout(padTimers.get(type));padTimers.set(type,setTimeout(()=>{pad.classList.remove('is-hit');padTimers.delete(type);},430));wake();
  }
- function hit(type){if(!dialog.open)return;audio.hit(type);pulse(type);hits++;say(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
+ function hit(type){if(!dialog.open||document.hidden)return;audio.hit(type);pulse(type);recorder.capture(type);hits++;say(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
  function clearVisuals(){visualTimers.forEach(clearTimeout);visualTimers.clear();padTimers.forEach(clearTimeout);padTimers.clear();pads.forEach(p=>p.classList.remove('is-hit'));rings=[];energy=0;}
  function stopShow(message='演出已停止'){playing=false;generation++;clearInterval(scheduler);scheduler=0;clearVisuals();showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');if(message)say(message);}
  function silence(){sound=false;audio.stop();syncSound();}
@@ -41,6 +42,7 @@ export function initLivehouse(){
   }
  }
  function toggleShow(){
+  recorder.cancel('录制或回放已取消；已完成的节奏保留。');
   if(playing){stopShow();silence();return;}
   clearVisuals();playing=true;generation++;start=performance.now()+120;cursor=0;section='';showButton.setAttribute('aria-pressed','true');$('span',showButton).textContent='停止演出';dialog.classList.add('livehouse-playing');say(sound?'原创现场 · 34 秒':'静音演出 · 可随时开启声音');scheduler=setInterval(transport,25);transport();wake();
  }
@@ -74,15 +76,21 @@ export function initLivehouse(){
  }
  function wake(){cancelAnimationFrame(raf);raf=0;last=0;if(dialog.open&&!document.hidden)raf=requestAnimationFrame(draw);}
  function resize(){const rect=dialog.getBoundingClientRect();width=rect.width;height=Math.max(rect.height,660);const scale=Math.min(1.5,1440/Math.max(width,1));canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);ctx?.setTransform(scale,0,0,scale,0,0);wake();}
- function cleanup(){stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
+ function cleanup(){recorder.cancel('录制或回放已取消；已完成的节奏保留。');stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
+ const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){if(playing){stopShow('演出已停止，舞台留给你的节奏');silence();}clearVisuals();}});
  showButton.addEventListener('click',toggleShow);soundButton.addEventListener('click',toggleSound);$('[data-live-close]',dialog).addEventListener('click',()=>dialog.close());
  $('[data-live-volume]',dialog).addEventListener('input',e=>audio.setVolume(Number(e.target.value)/100));motionButton.addEventListener('click',()=>{localMotion=!localMotion;clearVisuals();syncMotion();});
- pads.forEach((pad,type)=>pad.addEventListener('click',()=>hit(type)));
- dialog.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing||e.target.closest('input,select,textarea,[contenteditable]'))return;const type={a:'kick',s:'snare',d:'hat',f:'tom'}[e.key.toLowerCase()];if(type){e.preventDefault();hit(type);}});
+ pads.forEach((pad,type)=>{
+  // Capture contact, not release: touch players use the same clock as keys.
+  pad.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();pad.focus({preventScroll:true});hit(type);});
+  // Native keyboard/assistive clicks have detail 0; pointer clicks already hit.
+  pad.addEventListener('click',e=>{if(e.detail===0)hit(type);});
+ });
+ dialog.addEventListener('keydown',e=>{if(e.repeat&&e.target.closest('[data-live-pad]')&&['Enter',' '].includes(e.key)){e.preventDefault();return;}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing||e.target.closest('input,select,textarea,[contenteditable]'))return;const type={a:'kick',s:'snare',d:'hat',f:'tom'}[e.key.toLowerCase()];if(type){e.preventDefault();hit(type);}});
  dialog.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&animated())target=(e.clientX-dialog.getBoundingClientRect().left)/Math.max(width,1);},{passive:true});
  dialog.addEventListener('close',cleanup);
  document.addEventListener('atelier:motion',syncMotion);
- document.addEventListener('visibilitychange',()=>{if(document.hidden&&dialog.open){stopShow('已暂停，点击重新开场');silence();cancelAnimationFrame(raf);raf=0;}else if(dialog.open)wake();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&dialog.open){recorder.cancel('录制已取消；回到现场后可重新录制。');stopShow('已暂停，点击重新开场');silence();cancelAnimationFrame(raf);raf=0;}else if(dialog.open)wake();});
  window.addEventListener('pagehide',()=>{if(dialog.open)dialog.close();else cleanup();});window.addEventListener('resize',()=>{if(dialog.open)resize();},{passive:true});
  return {open(button){
   if(dialog.open)return;opener=button;closeDialogs();document.dispatchEvent(new CustomEvent('atelier:livehouse-open'));

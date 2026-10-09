@@ -17,6 +17,12 @@ export class LivehouseAudio {
   return ctx.state==='running';
  }
  setVolume(value){this.volume=Math.max(0,Math.min(.6,Number(value)||0));if(this.context&&this.master)this.master.gain.setTargetAtTime(this.volume*.7,this.context.currentTime,.035);}
+ click(strong=false,delay=0){
+  const ctx=this.context;if(!ctx||ctx.state!=='running'||!this.master)return;
+  const osc=ctx.createOscillator(),gain=ctx.createGain(),at=ctx.currentTime+Math.max(0,delay);
+  osc.type='sine';osc.frequency.value=strong?1400:1000;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.12,at+.002);gain.gain.exponentialRampToValueAtTime(.0001,at+.035);
+  osc.connect(gain);gain.connect(this.master);osc.start(at);osc.stop(at+.04);osc.onended=()=>{osc.disconnect();gain.disconnect();};
+ }
  hit(instrument,velocity=1,note=48,delay=0){
   const ctx=this.context;if(!ctx||ctx.state!=='running'||!this.master)return;
   const at=ctx.currentTime+Math.max(0,delay),destination=this.master.gain?this.master:null;

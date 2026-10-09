@@ -398,3 +398,68 @@ test('a missing canvas context leaves controls usable and schedules no repeated 
   f.close();
   assert.equal(f.intervals.size + f.frames.size + f.timers.size, 0);
 });
+
+function recordingControls(f) {
+ const panel=f.find('[data-live-recorder]');panel.open=true;
+ const bpm=f.find('[data-live-record-bpm]');bpm.value='120';
+ return {panel,bpm,record:f.find('[data-live-record]'),replay:f.find('[data-live-replay]'),send:f.find('[data-live-send]'),status:f.find('[data-live-record-status]'),position:f.find('[data-live-record-position]'),strip:f.find('[data-live-record-strip]')};
+}
+function finishSmallTake(f,r) {r.record.click();f.advance(2120);f.find('[data-live-pad="kick"]').click();f.advance(500);f.find('[data-live-pad="snare"]').click();f.advance(3500);}
+
+test('recording is opt-in, counts four beats, quantizes only pad hits and sends an independent local slot',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);
+ f.find('[data-live-pad="tom"]').click();assert.equal(r.send.disabled,true);assert.equal(f.intervals.size,0);
+ r.record.click();assert.equal(r.record.getAttribute('aria-pressed'),'true');assert.equal(r.bpm.disabled,true);assert.match(r.status.textContent,/四拍/);
+ f.find('[data-live-pad="hat"]').click();f.advance(2119);assert.match(r.position.textContent,/预备 4/);
+ f.advance(1);f.find('[data-live-pad="kick"]').click();f.advance(62.5);f.find('[data-live-pad="snare"]').click();f.advance(1);f.find('[data-live-pad="snare"]').click();
+ f.advance(3936.5);assert.equal(r.record.getAttribute('aria-pressed'),'false');assert.equal(r.send.disabled,false);assert.equal(f.intervals.size,0);assert.equal(f.contexts.length,0);assert.equal(r.strip.querySelectorAll('.has-hit').length,2);
+ let id;f.document.addEventListener('atelier:recording-ready',e=>{id=e.detail.id;e.preventDefault();});r.send.dataset.practiceUrl='/';f.window.localStorage.setItem('studio-project','unchanged');r.send.click();
+ assert.match(id,/^live-/);assert.equal(f.dialog.open,false);const saved=JSON.parse(f.window.localStorage.getItem('cc-live-take-v1:'+id));assert.equal(saved.bpm,120);assert.equal(saved.bars.length,2);assert.deepEqual(saved.bars[0].hits.map(h=>[h.step,h.type]),[[0,'kick'],[1,'snare']]);assert.equal(f.window.localStorage.getItem('studio-project'),'unchanged');
+ assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('cancelled retakes and empty takes preserve the completed review and never persist automatically',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);finishSmallTake(f,r);
+ const cells=()=>[...r.strip.querySelectorAll('.has-hit')].map(cell=>cell.dataset.recordCell);assert.deepEqual(cells(),['0','4']);
+ r.record.click();f.advance(2120);f.find('[data-live-pad="tom"]').click();r.record.click();assert.deepEqual(cells(),['0','4']);assert.equal(r.send.disabled,false);assert.equal(f.intervals.size,0);
+ r.record.click();f.advance(6120);assert.match(r.status.textContent,/上一段保留/);assert.deepEqual(cells(),['0','4']);
+ assert.equal(f.window.localStorage.length,0,'no completed or cancelled take is saved before explicit Send');
+ r.replay.click();assert.equal(r.replay.getAttribute('aria-pressed'),'true');f.advance(4120);assert.equal(r.replay.getAttribute('aria-pressed'),'false');assert.equal(f.intervals.size,0);assert.equal(f.contexts.length,0);
+});
+
+test('recording cancellation on drawer close, background, concert start and exit leaves no scheduler',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);
+ for(const stop of [()=>{r.panel.open=false;r.panel.dispatchEvent(new f.window.Event('toggle'));},()=>f.visibility(true),()=>f.show.click(),()=>f.close()]){
+  if(!f.dialog.open)f.open();f.visibility(false);r.panel.open=true;r.record.click();f.advance(2120);f.find('[data-live-pad="kick"]').click();stop();
+  assert.equal(r.record.getAttribute('aria-pressed'),'false');assert.equal(r.send.disabled,true);
+  if(f.show.getAttribute('aria-pressed')==='true')f.show.click();
+  assert.equal(f.intervals.size,0);f.advance(1000);assert.equal(r.send.disabled,true,'cancelled recordings cannot reappear from late callbacks');
+ }
+ assert.deepEqual(f.errors,[]);
+});
+
+test('sound opt-in is retained for natural recording/replay completion, and explicit replay stop silences',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);f.sound.click();await settle();const audio=f.contexts[0];
+ finishSmallTake(f,r);assert.equal(f.sound.getAttribute('aria-pressed'),'true');assert.equal(audio.state,'running');assert.ok(audio.started.length>2);
+ r.replay.click();f.advance(130);const count=audio.started.length;f.advance(500);assert.ok(audio.started.length>count);r.replay.click();assert.equal(audio.state,'closed');assert.equal(f.sound.getAttribute('aria-pressed'),'false');assert.equal(f.intervals.size,0);
+});
+
+test('storage failure keeps review and JSON fallback available instead of navigating or claiming success',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);finishSmallTake(f,r);
+ f.window.Storage.prototype.setItem=function(){throw Error('QuotaExceededError');};r.send.click();
+ assert.equal(f.dialog.open,true);assert.match(r.status.textContent,/保存不可用.*下载 JSON/);assert.equal(f.find('[data-live-record-export]').disabled,false);assert.equal(r.replay.disabled,false);
+ assert.equal(f.window.localStorage.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('repeated keyboard events cannot create extra recorded attacks and reduced motion remains static',async t=>{
+ const f=await livehouse(t,{motionEnabled:false});f.open();const r=recordingControls(f);r.record.click();f.advance(2120);
+ f.key(r.record,'a');f.advance(150);f.key(r.record,'a',{repeat:true});f.key(r.bpm,'s');f.advance(3850);
+ assert.equal(r.strip.querySelectorAll('.has-hit').length,1);assert.equal(f.find('.live-pad.is-hit'),null);f.frame();assert.equal(f.frames.size,0);assert.equal(f.contexts.length,0);
+});
+
+test('pointer contact records immediately, synthesized release click is ignored, and keyboard clicks remain usable',async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);r.record.click();f.advance(2120);const pad=f.find('[data-live-pad="kick"]');
+ const down=new f.window.MouseEvent('pointerdown',{button:0,bubbles:true,cancelable:true});pad.dispatchEvent(down);assert.equal(down.defaultPrevented,true);assert.equal(f.document.activeElement,pad);f.advance(180);pad.dispatchEvent(new f.window.MouseEvent('click',{detail:1,bubbles:true}));assert.equal(r.strip.querySelectorAll('.has-hit').length,1);
+ f.find('[data-live-pad="snare"]').click();assert.equal(r.strip.querySelectorAll('.has-hit').length,2);assert.equal(f.key(pad,'Enter',{repeat:true}).defaultPrevented,true);f.advance(3820);
+ let id;f.document.addEventListener('atelier:recording-ready',e=>{id=e.detail.id;e.preventDefault();});r.send.dataset.practiceUrl='/';r.send.click();assert.equal(new URL(f.window.location.href).searchParams.get('recording'),id);const saved=JSON.parse(f.window.localStorage.getItem('cc-live-take-v1:'+id));assert.deepEqual(saved.bars[0].hits.map(h=>[h.step,h.type]),[[0,'kick'],[1,'snare']]);
+});
