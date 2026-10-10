@@ -62,10 +62,10 @@
 .studio-editorial .studio-bottom p,.studio-editorial .studio-footnote{font-size:13px;line-height:1.8}
 .studio-editorial .studio-transport label,.studio-editorial .studio-pattern-bar,.studio-editorial .studio-export button,.studio-editorial .studio-export label,.studio-editorial .studio-import{font-size:13px}
 .studio-editorial .studio-transport button,.studio-editorial .studio-export button,.studio-editorial .studio-import{min-height:44px}
-.studio-editorial .studio-key{font-size:11px;line-height:1.7}
+.studio-editorial .studio-key{font-size:13px;line-height:1.7}
 .studio-editorial .studio-footnote{margin:20px 0 0}
 @media(max-width:800px){.studio-editorial .studio-introduction{gap:30px}.studio-editorial .studio-mast.studio-illustrated{min-height:390px;padding:34px}.studio-editorial .studio-starter-grid{gap:20px}.studio-editorial .studio-starter strong{font-size:19px}.studio-editorial .studio-starter-description{min-height:47px}.studio-editorial .studio-practice-link{padding-left:25px}}
-@media(max-width:600px){.music-studio.studio-editorial.content-view{padding:20px 0 50px}.studio-editorial .studio-page-heading{margin-bottom:18px}.studio-editorial .studio-page-heading p{font-size:9px;letter-spacing:1px}.studio-editorial .studio-page-heading>span{font-size:11px}.studio-editorial .studio-mast.studio-illustrated{min-height:410px;padding:95px 23px 28px}.studio-editorial .studio-soundcheck{width:100%;object-position:66% 25%;opacity:.7;mask-image:linear-gradient(0deg,transparent,#000 95%)}.studio-editorial .studio-mast-copy{max-width:100%}.studio-editorial .studio-eyebrow{font-size:9px;margin-bottom:18px;letter-spacing:1px}.studio-editorial .studio-mast h1{font-size:38px}.studio-editorial .studio-mast-deck{font-size:15px;margin:15px 0 20px}.studio-editorial .studio-hero-caption{font-size:10px}.studio-editorial .studio-introduction{grid-template-columns:1fr;gap:27px;margin:32px 0}.studio-editorial .studio-practice-link{padding:26px 0 0;border-left:0;border-top:1px solid var(--line)}.studio-editorial .studio-practice-staff{max-width:300px}.studio-editorial .studio-section-heading{display:block}.studio-editorial .studio-section-heading>span{display:block;margin-top:8px}.studio-editorial .studio-starter-grid{grid-template-columns:1fr;gap:0}.studio-editorial .studio-starter{position:relative;padding:20px 0}.studio-editorial .studio-starter-description{min-height:0}.studio-editorial .studio-starter-pattern{max-width:320px;margin:15px 0}.studio-editorial .studio-starter-meta{font-size:11px}.studio-editorial .studio-desk-heading{display:block;margin-top:36px}.studio-editorial .studio-desk-heading>p{text-align:left;margin-top:12px}.studio-editorial .studio-key{font-size:11px}.studio-editorial .studio-pattern-bar>span{font-size:11px}}
+@media(max-width:600px){.music-studio.studio-editorial.content-view{padding:20px 0 50px}.studio-editorial .studio-page-heading{margin-bottom:18px}.studio-editorial .studio-page-heading p{font-size:9px;letter-spacing:1px}.studio-editorial .studio-page-heading>span{font-size:11px}.studio-editorial .studio-mast.studio-illustrated{min-height:410px;padding:95px 23px 28px}.studio-editorial .studio-soundcheck{width:100%;object-position:66% 25%;opacity:.7;mask-image:linear-gradient(0deg,transparent,#000 95%)}.studio-editorial .studio-mast-copy{max-width:100%}.studio-editorial .studio-eyebrow{font-size:9px;margin-bottom:18px;letter-spacing:1px}.studio-editorial .studio-mast h1{font-size:38px}.studio-editorial .studio-mast-deck{font-size:15px;margin:15px 0 20px}.studio-editorial .studio-hero-caption{font-size:10px}.studio-editorial .studio-introduction{grid-template-columns:1fr;gap:27px;margin:32px 0}.studio-editorial .studio-practice-link{padding:26px 0 0;border-left:0;border-top:1px solid var(--line)}.studio-editorial .studio-practice-staff{max-width:300px}.studio-editorial .studio-section-heading{display:block}.studio-editorial .studio-section-heading>span{display:block;margin-top:8px}.studio-editorial .studio-starter-grid{grid-template-columns:1fr;gap:0}.studio-editorial .studio-starter{position:relative;padding:20px 0}.studio-editorial .studio-starter-description{min-height:0}.studio-editorial .studio-starter-pattern{max-width:320px;margin:15px 0}.studio-editorial .studio-starter-meta{font-size:11px}.studio-editorial .studio-desk-heading{display:block;margin-top:36px}.studio-editorial .studio-desk-heading>p{text-align:left;margin-top:12px}.studio-editorial .studio-key{font-size:13px}.studio-editorial .studio-pattern-bar>span{font-size:13px}}
 @media(prefers-reduced-motion:reduce){.studio-editorial .track-steps button,.studio-editorial .studio-monitor-level i{transition:none}}
 
 /* Sharing stays a single quiet action until explicitly opened. */
@@ -88,3 +88,32 @@
 .studio-editorial .studio-export{min-width:0}
 .studio-editorial .studio-export .studio-midi-note{margin:0;max-width:none;font-size:13px;line-height:1.8;overflow-wrap:anywhere}
 .studio-editorial [data-midi-export]:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+
+/* Readable track controls stay inside the instrument's existing scroll area. */
+.studio-editorial .studio-sequencer-scroll{min-width:0;max-width:100%;box-sizing:border-box;overscroll-behavior-x:contain}
+.studio-editorial .studio-sequencer{min-width:920px}
+.studio-editorial .studio-track{grid-template-columns:148px minmax(0,1fr) 196px;gap:16px}
+.studio-editorial .track-name{grid-template-columns:44px minmax(0,1fr);gap:4px 8px;min-width:0}
+.studio-editorial .track-name>button:first-child{width:44px;height:44px}
+.studio-editorial .track-name>div{gap:6px}
+.studio-editorial .track-name>div button{min-width:36px;min-height:36px;padding:4px 8px;font:13px/1 var(--sans);color:var(--text)}
+.studio-editorial .track-name>div button[aria-pressed=true]{color:#242119}
+.studio-editorial .track-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;min-width:0}
+.studio-editorial .track-controls label{display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px;min-width:0;font:13px/1.5 var(--sans);white-space:nowrap;color:var(--text)}
+.studio-editorial .track-controls input{box-sizing:border-box;display:block;width:100%;min-width:0;height:36px;margin:0;cursor:ew-resize}
+.studio-editorial .track-controls input:focus-visible,.studio-editorial .track-name button:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:3px}
+@media(pointer:coarse){.studio-editorial .studio-sequencer{min-width:1140px;--studio-long-sequence-width:1908px}.studio-editorial .track-steps button{box-sizing:border-box;width:100%;aspect-ratio:auto;height:48px;min-height:44px}.studio-editorial .track-controls input{height:44px}.studio-editorial .track-name>div button{min-width:44px;min-height:44px}}
+
+/* Only sounding steps receive a mark: solid for strong, hollow for soft. */
+.studio-editorial .track-steps button.on::before,.studio-editorial .track-steps button.soft::before,.studio-editorial .studio-key i::before{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;box-sizing:border-box;border:1.5px solid #302515;border-radius:50%;background:#302515;transform:translate(-50%,-50%);pointer-events:none}
+.studio-editorial .track-steps button.soft::before,.studio-editorial .studio-key i.soft::before{border-color:#fff1cf;background:transparent}
+.light .studio-editorial .track-steps button.soft::before,.light .studio-editorial .studio-key i.soft::before{border-color:#302515}
+.studio-editorial .studio-key i{position:relative;width:14px;height:14px;vertical-align:-2px;background:#d6ad61;margin-right:7px}
+.studio-editorial .studio-key i.soft{background:#675a41;opacity:1}
+.light .studio-editorial .studio-key i.soft{background:#cdb786}
+@media(forced-colors:active){
+ .studio-editorial .track-steps button.on::before,.studio-editorial .track-steps button.soft::before,.studio-editorial .studio-key i::before,.light .studio-editorial .track-steps button.soft::before,.light .studio-editorial .studio-key i.soft::before{forced-color-adjust:none;border-color:ButtonText;background:ButtonText}
+ .studio-editorial .track-steps button.soft::before,.studio-editorial .studio-key i.soft::before,.light .studio-editorial .track-steps button.soft::before,.light .studio-editorial .studio-key i.soft::before{background:transparent}
+ .studio-editorial .studio-key i,.studio-editorial .studio-key i.soft,.light .studio-editorial .studio-key i.soft{forced-color-adjust:none;background:ButtonFace}
+ .studio-editorial .track-steps button.playing::after{forced-color-adjust:none;background:Highlight}
+}
