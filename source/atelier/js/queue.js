@@ -14,6 +14,9 @@ export function initQueue(){
  async function loadList(){if(loading)return;loading=true;try{const {createQueueList}=await import('./queue-list.js');renderList=createQueueList(list,dialog);if(status.textContent===listError)status.textContent='';if(dialog.open)renderList(readQueue());}catch{if(dialog.open)status.textContent=listError;}finally{loading=false;}}
  async function renderHistory(){if(!dialog.open)return;try{const {renderQueueHistory}=await import('./queue-history.js');if(dialog.open)renderQueueHistory(history,getQueue());}catch{if(dialog.open)history.textContent='阅读记录暂时无法加载';}}
  function render(){const state=readQueue(),q=state.queue;$$('[data-queue-count]').forEach(n=>{n.textContent=q.filter(p=>!p.completed).length;});
+  const current=q.find(p=>p.path===location.pathname);
+  $$('[data-queue-add]').forEach(button=>{button.textContent=current?'已加入队列':'加入队列';button.setAttribute('aria-disabled',String(Boolean(current)));});
+  $$('[data-queue-done]').forEach(button=>{button.textContent=current?.completed?'已读':'标记已读';button.setAttribute('aria-disabled',String(Boolean(current?.completed)));});
   if(state.error||readError)status.textContent=state.error||'仅保存在这台浏览器，可以导出备份。';readError=state.error;if(!state.error&&!storage.persistent)status.textContent='浏览器存储不可用，队列仅在当前页面有效。请导出后保留。';
   const next=q.find(p=>!p.completed&&p.path!==location.pathname);$$('[data-queue-next]').forEach(a=>{a.hidden=!next;if(next){a.href=next.path;a.textContent='队列下一篇：'+next.title;}});
   if(!dialog.open)return;
@@ -21,6 +24,12 @@ export function initQueue(){
   renderHistory();
 
  }
- document.addEventListener('atelier:queue',render);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)render();});
- document.addEventListener('click',e=>{if(e.target.closest('.queue-open')){open();render();}const add=e.target.closest('[data-queue-add]'),done=e.target.closest('[data-queue-done]');if(add||done){let result=queueAction({type:'add',item:{path:location.pathname,title:$('[data-article-tools]')?.dataset.title||document.title}});if(result.ok&&done)result=queueAction({type:'done',path:location.pathname});if(result.ok&&result.persisted)toast(done?'这一篇，读完了。':'已加入阅读队列');}});render();
+ document.addEventListener('atelier:queue',render);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)render();});window.addEventListener('pageshow',render);
+ document.addEventListener('click',e=>{if(e.target.closest('.queue-open')){open();render();}const add=e.target.closest('[data-queue-add]'),done=e.target.closest('[data-queue-done]');if(add||done){
+  // Read current data rather than trusting a potentially stale button after another tab changes it.
+  render();const current=readQueue().queue.find(p=>p.path===location.pathname);
+  if(done?current?.completed:current)return;
+  let result=current?{ok:true}:queueAction({type:'add',item:{path:location.pathname,title:$('[data-article-tools]')?.dataset.title||document.title}});
+  if(result.ok&&done)result=queueAction({type:'done',path:location.pathname});if(result.ok&&result.persisted)toast(done?'这一篇，读完了。':'已加入阅读队列');
+ }});render();
 }
