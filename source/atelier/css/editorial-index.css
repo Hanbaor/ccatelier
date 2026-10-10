@@ -62,9 +62,9 @@
 .creation-query-visual {background:#eedb92;color:#232419}
 .creation-code-visual>span,.creation-query-visual>span {font:10px/1.6 var(--sans);letter-spacing:.12em;opacity:.75}
 .creation-code-visual strong,.creation-query-visual strong {font:400 clamp(27px,3vw,42px)/1.4 var(--chinese);letter-spacing:-.045em}
-.creation-code-visual strong>span {padding-left:24px;color:#efd176}
+.creation-code-visual strong>span {padding-left:24px;color:var(--bg)}
 .creation-code-visual>div {font:13px/1.6 var(--chinese);display:flex;gap:16px;flex-wrap:wrap}
-.creation-code-visual i {font-style:normal;color:#efd176}
+.creation-code-visual i {font-style:normal;color:var(--bg)}
 .creation-query-visual>div {display:flex;gap:12px;flex-wrap:wrap;font:12px/1.6 monospace}
 .creation-query-visual>div>span {border-bottom:1px solid #978449;padding-bottom:4px}
 .creation-small-copy {padding:22px 0 0}

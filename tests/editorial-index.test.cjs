@@ -57,8 +57,8 @@ test('curated article destinations exist in published content',()=>{
 const {parse:parseCSS}=require('rrweb-cssom');
 function selectorParts(value){let depth=0,start=0,result=[];for(let i=0;i<value.length;i++){if(value[i]==='('||value[i]==='[')depth++;if(value[i]===')'||value[i]===']')depth--;if(value[i]===','&&!depth){result.push(value.slice(start,i).trim());start=i+1;}}result.push(value.slice(start).trim());return result;}
 function specificity(selector){let score=0;selector=selector.replace(/:(is|not|has)\(([^()]*)\)/g,(_,name,args)=>{score+=Math.max(...selectorParts(args).map(specificity));return '';}).replace(/:where\([^()]*\)/g,'');return score+(selector.match(/#[\w-]+/g)||[]).length*10000+(selector.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+/g)||[]).length*100+(selector.replace(/#[\w-]+|\.[\w-]+|\[[^\]]*\]|:[\w-]+/g,'').match(/\b[a-z][\w-]*\b/gi)||[]).length;}
-function notesSheets(doc){
- const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'notes'},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>false,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
+function notesSheets(doc,route='notes'){
+ const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:route},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>false,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
  const head=new JSDOM(html),files=[...head.window.document.querySelectorAll('link[rel="stylesheet"]'),...doc.querySelectorAll('link[rel="stylesheet"]')].map(n=>n.getAttribute('href').slice(1));head.window.close();
  return files.map(file=>({file,rules:parseCSS(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules}));
 }
@@ -95,5 +95,20 @@ for(const width of [390,600,700,701,900,1170,1180])test(`notes hero has a bounde
  const scale=Math.min(imageWidth/dimensions.width,displayedHeight/dimensions.height);
  assert.ok(Math.abs(dimensions.height*scale-displayedHeight)<.001);
  assert.ok(Math.abs(dimensions.width*scale-imageWidth)<.001);
+ dom.window.close();
+});
+
+function contrastRatio(a,b){
+ const luminance=hex=>{let value=hex.replace('#','');if(value.length===3)value=value.split('').map(n=>n+n).join('');const linear=[0,2,4].map(i=>parseInt(value.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return .2126*linear[0]+.7152*linear[1]+.0722*linear[2];};
+ const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+for(const theme of ['light','dark'])test(`atelier reading-system arrows remain legible on the inverted ${theme} card`,()=>{
+ const dom=render('stage'),d=dom.window.document;d.body.className='nijika '+theme;d.body.dataset.section='atelier';const sheets=notesSheets(d,'atelier'),card=d.querySelector('.creation-code-visual'),arrows=card.querySelectorAll('strong>span,i');
+ assert.equal(arrows.length,3);
+ const bg=cascade(sheets,d.body,'--bg',1180).value,ink=cascade(sheets,d.body,'--ink',1180).value;
+ assert.match(bg,/^#[0-9a-f]{6}$/i);assert.match(ink,/^#[0-9a-f]{6}$/i);
+ assert.equal(cascade(sheets,card,'background',1180).value,'var(--ink)');
+ for(const arrow of arrows){const color=cascade(sheets,arrow,'color',1180);assert.equal(color.value,'var(--bg)');assert.equal(color.file,'atelier/css/editorial-index.css');assert.ok(contrastRatio(bg,ink)>=7,`${theme}: ${contrastRatio(bg,ink).toFixed(2)}:1`);}
+ if(theme==='dark'){const old=contrastRatio('#efd176',ink);assert.ok(old<1.5,`negative control reproduces the pale yellow on pale ink failure (${old.toFixed(2)}:1)`);assert.ok(contrastRatio(bg,ink)>old*10);}
  dom.window.close();
 });

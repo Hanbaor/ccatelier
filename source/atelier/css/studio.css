@@ -11,7 +11,10 @@
 @media(max-width:600px){.studio-practice-link{gap:12px;font-size:13px}.studio-practice-link>span:nth-child(2){font-size:9px}}
 
 /* The music route is an editorial room; the instrument sits inside its page grid. */
-.music-studio.studio-editorial.content-view{width:min(var(--layout-width),calc(100% - 2 * var(--page-gutter)));max-width:none;margin:0 auto;padding:30px 0 80px;--studio-gold:#d7ae61}
+.music-studio.studio-editorial.content-view{width:min(var(--layout-width),calc(100% - 2 * var(--page-gutter)));max-width:none;margin:0 auto;padding:30px 0 80px}
+/* Keep theme tokens below daylight overrides; layout specificity is unrelated. */
+.studio-editorial{--studio-gold:#d7ae61}
+.studio-editorial .studio-import:focus-within{outline:2px solid var(--ink);outline-offset:4px}
 .studio-editorial .studio-page-heading{display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin:0 0 23px;padding-bottom:16px;border-bottom:1px solid var(--line)}
 .studio-editorial .studio-page-heading p,.studio-editorial .studio-section-index{font:11px/1.6 var(--sans);letter-spacing:2px;color:var(--muted);margin:0}
 .studio-editorial .studio-page-heading>span{font:13px/1.7 var(--sans);color:var(--muted)}

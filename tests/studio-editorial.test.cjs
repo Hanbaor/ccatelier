@@ -112,3 +112,37 @@ for(const width of [360,398,768,1170,1440])for(const theme of ['light','dark'])t
  assert.ok(inset+1e-6>=gutterPixels);assert.ok(computedWidth<width);assert.equal(computedWidth,width===1440?1200:width-2*gutterPixels);
  dom.window.close();
 });
+
+function contrast(a,b){
+ const luminance=hex=>{const rgb=hex.replace('#','').match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];};
+ const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+for(const width of [360,1170])for(const theme of ['light','dark'])test(`music gold text respects the actual theme cascade at ${width}px ${theme}`,()=>{
+ const dom=fixture(),doc=dom.window.document;doc.body.className='nijika '+theme;doc.body.dataset.section='studio';const host=doc.querySelector('[data-studio]'),sheets=studioSheets();
+ try{
+  const gold=resolveCSS(sheets,host,'--studio-gold',width);
+  assert.equal(gold.value,theme==='light'?'#936823':'#d7ae61');
+  assert.equal(gold.file,theme==='light'?'atelier/css/daylight.css':'atelier/css/studio.css');
+  for(const variable of ['--bg','--surface']){
+   const background=resolveCSS(sheets,doc.body,variable,width).value;
+   assert.ok(contrast(gold.value,background)>=4.5,`${gold.value} against ${background} must pass normal-text contrast`);
+  }
+  if(theme==='light'){
+   // Mutation proof: the original three-class token overrode the daylight layer.
+   const oldSheets=sheets.map(sheet=>sheet.file==='atelier/css/studio.css'?{...sheet,rules:parseCSS(read('source/'+sheet.file)+'\n.music-studio.studio-editorial.content-view{--studio-gold:#d7ae61}').cssRules}:sheet);
+   const oldGold=resolveCSS(oldSheets,host,'--studio-gold',width);assert.equal(oldGold.value,'#d7ae61');assert.ok(contrast(oldGold.value,'#ffffff')<4.5);
+  }
+ }finally{dom.window.close();}
+});
+for(const theme of ['light','dark'])test(`transparent music import input exposes its keyboard focus on the label in ${theme}`,()=>{
+ const dom=fixture(),doc=dom.window.document;doc.body.className='nijika '+theme;doc.body.dataset.section='studio';const sheets=studioSheets(),label=doc.querySelector('.studio-import'),input=label.querySelector('input');
+ try{
+  assert.equal(resolveCSS(sheets,input,'opacity',1170).value,'0');
+  assert.equal(label.matches(':focus-within'),false);
+  input.focus();assert.equal(doc.activeElement,input);assert.equal(label.matches(':focus-within'),true);
+  const outline=resolveCSS(sheets,label,'outline',1170),offset=resolveCSS(sheets,label,'outline-offset',1170);
+  assert.equal(outline.value,'2px solid var(--ink)');assert.equal(outline.file,'atelier/css/studio.css');assert.equal(offset.value,'4px');
+  const ink=resolveCSS(sheets,doc.body,'--ink',1170).value,background=resolveCSS(sheets,doc.body,'--surface',1170).value;assert.ok(contrast(ink,background)>=3);
+  input.blur();assert.equal(label.matches(':focus-within'),false);assert.notEqual(resolveCSS(sheets,label,'outline',1170).value,'2px solid var(--ink)');
+ }finally{dom.window.close();}
+});
