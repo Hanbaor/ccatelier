@@ -16,6 +16,7 @@ hexo.extend.generator.register('live-archive',function(locals){
   return [{path:'atelier/data/archive.json',data:JSON.stringify({version:1,posts})},{path:'atelier/data/offline-shell.json',data:JSON.stringify(shell)},{path:'live-sw.js',data:sw}];
 });
 hexo.extend.helper.register('live_article_content',articleContent);
+hexo.extend.helper.register('live_reader_content',page=>articleContent(page,{reading:true}));
 hexo.extend.helper.register('live_metadata',function(post){return metadata(post,this.site.data.writing_catalog);});
 hexo.extend.helper.register('live_catalog_counts',function(){
   const posts=this.site.posts.toArray().map(post=>metadata(post,this.site.data.writing_catalog));

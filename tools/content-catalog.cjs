@@ -1,5 +1,6 @@
 'use strict';
-const {stripHTML,unescapeHTML}=require('hexo-util');
+const {stripHTML,unescapeHTML,escapeHTML}=require('hexo-util');
+const {parseDocument}=require('htmlparser2'); // Already used by Hexo's HTML helpers.
 const plain=html=>unescapeHTML(stripHTML(String(html||'').replace(/<\/(?:p|h[1-6]|li|tr|pre)>/gi,'$& '))).replace(/\s+/g,' ').trim();
 const CODE_PLACEHOLDER='```cpp\n// 在这里填写你的代码\n```';
 const ANALYSIS_PLACEHOLDER='> 在这里补充：解题思路、关键推导、时间复杂度、空间复杂度、易错点与复盘记录。';
@@ -38,11 +39,37 @@ function removeRenderedSection(content,title){
     return plain(heading)===title&&(text===expected||(title==='代码实现'&&text==='1 '+expected))?'':all;
   });
 }
-function articleContent(page){
+// Reading-only de-duplication. The catalog keeps its historical text unchanged.
+// Normalize only a spaced Markdown em-dash and whitespace, never arbitrary punctuation.
+const readerTitle=text=>String(text).replace(/\s+/g,' ').trim().replace(/(^| )---(?= |$)/g,'$1—');
+function readerTitleAnchor(content,title){
+  // Restrict this to a standard first heading; earlier elements/comments are preserved.
+  return content.replace(/^(\s*)<h1\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/h1\s*>/i,(all,space,attributes,body)=>{
+    const nodes=parseDocument('<h1'+attributes+'>'+body+'</h1>').children;
+    if(nodes.length!==1||nodes[0].name!=='h1')return all;
+    const heading=nodes[0];
+    function textOf(node){
+      if(node.type==='text')return node.data;
+      if(node.type!=='tag')return null;
+      // Only Hexo's empty generated permalink is disposable. Meaningful links,
+      // media, controls and named descendants must survive untouched.
+      if(node.name==='a'&&(node.attribs.class||'').split(/\s+/).includes('headerlink')&&node.attribs.href?.startsWith('#')&&!('id'in node.attribs)&&!('name'in node.attribs)&&node.children.every(child=>child.type==='text'&&!child.data.trim()))return '';
+      if(!['em','strong','b','i','code','span','small','s','del','mark','sub','sup'].includes(node.name)||'id'in node.attribs||'name'in node.attribs)return null;
+      const children=node.children.map(textOf);return children.includes(null)?null:children.join('');
+    }
+    const parts=heading.children.map(textOf);if(parts.includes(null))return all;
+    const normalized=readerTitle(parts.join(''));
+    if(!normalized||normalized!==readerTitle(title||''))return all;
+    const id=heading.attribs.id;
+    return space+'<span class="reader-title-anchor"'+(id?' id="'+escapeHTML(id)+'"':'')+' aria-hidden="true"></span>';
+  });
+}
+function articleContent(page,{reading=false}={}){
   let content=String(page.content||'');const state=exerciseState(page);
   // The raw section must equal the known empty template. Never discard partial work.
   if(state?.codePlaceholder)content=removeRenderedSection(content,'代码实现');
   if(state?.analysisPlaceholder)content=removeRenderedSection(content,'个人解析');
-  return content.replace(/^(\s*)<h1\b[^>]*>([\s\S]*?)<\/h1>/i,(all,space,title)=>plain(title)===plain(page.title)?space:all).replace(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(all,level,body)=>plain(body)||/<(?:img|svg|video)\b/i.test(body)?all:'');
+  content=reading?readerTitleAnchor(content,page.title):content.replace(/^(\s*)<h1\b[^>]*>([\s\S]*?)<\/h1>/i,(all,space,title)=>plain(title)===plain(page.title)?space:all);
+  return content.replace(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(all,level,body)=>plain(body)||/<(?:img|svg|video)\b/i.test(body)?all:'');
 }
 module.exports={plain,section,exerciseState,metadata,articleContent,CODE_PLACEHOLDER,ANALYSIS_PLACEHOLDER};

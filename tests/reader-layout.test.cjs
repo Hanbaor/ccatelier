@@ -3,7 +3,7 @@ const {JSDOM}=require('jsdom');
 const root=path.resolve(__dirname,'..');
 function render({chapters=true}={}){
  const content='<h1 id="opening">长篇技术文</h1><h2 id="p-2">B. 世界冰球锦标赛</h2><h3 id="analysis">思路</h3><p>正文内容</p>';
- return ejs.render(fs.readFileSync(path.join(root,'custom/redefine/nijika/post.ejs'),'utf8'),{page:{title:'测试文章',content,author:'CC'},config:{author:'CC'},url_for:v=>'/'+v,partial:()=>'<button data-reader-size-cycle>Aa</button>',after_hours_minutes:()=>5,live_article_content:()=>content,live_metadata:()=>({}),live_related:()=>[],toc:()=>chapters?'<ol><li><a href="#p-2">世界冰球锦标赛</a><ol><li><a href="#analysis">思路</a></li></ol></li></ol>':''});
+ return ejs.render(fs.readFileSync(path.join(root,'custom/redefine/nijika/post.ejs'),'utf8'),{page:{title:'测试文章',content,author:'CC'},config:{author:'CC'},url_for:v=>'/'+v,partial:()=>'<button data-reader-size-cycle>Aa</button>',after_hours_minutes:()=>5,live_reader_content:()=>content,live_metadata:()=>({}),live_related:()=>[],toc:()=>chapters?'<ol><li><a href="#p-2">世界冰球锦标赛</a><ol><li><a href="#analysis">思路</a></li></ol></li></ol>':''});
 }
 function setup(html,mobile=false){
  const dom=new JSDOM(html,{url:'https://ccatelier.test/writing/csdn-154834561/'}),{window}=dom;

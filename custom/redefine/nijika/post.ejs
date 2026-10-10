@@ -1,5 +1,5 @@
 <section class="reading-page reading-studio content-view"><div class="reading-nav"><a href="<%= url_for('notes/') %>" aria-label="返回笔记目录">← 留声档案</a><button class="queue-open">阅读队列 <span data-queue-count>0</span> <%- partial('nijika/editorial-arrow') %></button></div>
-  <% const articleToc = toc(live_article_content(page),{class:'nav',list_number:false,max_depth:3}); %>
+  <% const readerContent = live_reader_content(page); const articleToc = toc(readerContent,{class:'nav',list_number:false,max_depth:3}); %>
   <div class="reading-layout reader-columns<%= articleToc.trim() ? '' : ' reader-no-toc' %>">
   <div class="reader-frontmatter">
   <header class="reading-opener"><h1 id="article-title" tabindex="-1"><%= page.title %></h1><div class="reading-meta"><span><%= page.author || config.author %></span><% if (page.date) { %><time datetime="<%= date_xml(page.date) %>"><%= date(page.date,'YYYY.MM.DD') %></time><% } %><span><%= after_hours_minutes(page.content) %> MIN READ</span></div></header>
@@ -10,7 +10,7 @@
   <% } %>
   <article class="reader-paper" aria-labelledby="article-title">
   <% const readiness=live_metadata(page).exercise; if(readiness && (readiness.codePlaceholder || readiness.analysisPlaceholder)){ %><aside class="exercise-readiness" aria-label="本题内容状态"><strong><%= readiness.hasCode?'已有代码':'题面' %><% if(!readiness.hasAnalysis){ %> · 解析待补<% } %></strong><p><%= readiness.hasCode?'保留原有代码，尚未做正确性校验。':'代码尚未补充。' %></p></aside><% } %>
-  <div class="article-body markdown-body"><%- live_article_content(page) %></div>
+  <div class="article-body markdown-body"><%- readerContent %></div>
   <% if (page.tags && page.tags.length) { %><nav class="article-tags" aria-label="文章标签"><% page.tags.each(tag => { %><a href="<%= url_for(tag.path) %>"># <%= tag.name %></a><% }) %></nav><% } %>
   <% if(page.source_url){ %><p class="article-source">原载于 <a href="<%= page.source_url %>" target="_blank" rel="noopener noreferrer">CSDN ↗</a><% if(page.series === 'hot100'){ %> · <a href="<%= url_for('series/hot100/') %>">Hot100 专题</a><% } %></p><% } %>
   <footer class="article-footer"><span class="article-end" aria-hidden="true"></span><a href="<%= page.source_url ? "https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans" : "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" %>" target="_blank" rel="noopener noreferrer"><%= page.source_url ? "CC BY-SA 4.0" : "CC BY-NC-SA 4.0" %></a><a class="back-to-notes" href="<%= url_for(page.series === 'hot100' ? 'series/hot100/' : 'notes/') %>" aria-label="返回笔记目录">↖</a></footer>
