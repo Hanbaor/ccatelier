@@ -554,7 +554,7 @@ test('director is folded and full performance edits, undo and independent save r
  button('恢复原创').click();assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'false');button('载入已保存').click();assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'true');assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
 });
 test('pause resume and seek preserve a single clock and cancel scheduled audio buses without closing opt-in',async t=>{
- const f=await livehouse(t);f.open();f.sound.click();await settle();f.show.click();f.advance(1200);const oldBus=f.contexts[0].gains.filter(n=>n.connections.includes(f.contexts[0].gains[0])).at(-1);const pause=f.find('[data-live-pause]');pause.click();assert.equal(oldBus.disconnects,1);const at=f.find('[data-director-seek]').value;assert.equal(f.intervals.size,0);f.advance(3000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);assert.equal(f.contexts[0].state,'running');
+ const f=await livehouse(t);f.open();f.find('[data-live-director]').open=true;f.sound.click();await settle();f.show.click();f.advance(1200);const oldBus=f.contexts[0].gains.filter(n=>n.connections.includes(f.contexts[0].gains[0])).at(-1);const pause=f.find('[data-live-pause]');pause.click();assert.equal(oldBus.disconnects,1);const at=f.find('[data-director-seek]').value;assert.equal(f.intervals.size,0);f.advance(3000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);assert.equal(f.contexts[0].state,'running');
  const scrub=f.find('[data-director-seek]');scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));assert.equal(f.find('.livehouse-timeline').getAttribute('aria-valuenow'),'32');f.show.click();assert.equal(f.intervals.size,1);f.advance(500);assert.ok(Number(scrub.value)>32);assert.equal(f.contexts.length,1);f.sound.click();assert.equal(f.contexts[0].state,'closed');f.advance(500);assert.ok(Number(scrub.value)>33);assert.deepEqual(f.errors,[]);
 });
 test('a paused director yields to recording and close cancels all work without erasing saved projects',async t=>{
@@ -570,10 +570,10 @@ test('director grids have four tab stops with arrow/Home/End navigation and reta
  const f=await livehouse(t);f.open();const overview=f.find('.director-overview'),grid=f.find('.director-drum-grid');assert.equal(overview.querySelectorAll('button[tabindex="0"]').length,3);assert.equal(grid.querySelectorAll('button[tabindex="0"]').length,1);const first=grid.querySelector('button');first.focus();f.key(first,'End');assert.equal(f.document.activeElement.dataset.step,'15');f.key(f.document.activeElement,'ArrowDown');assert.equal(f.document.activeElement.dataset.drum,'snare');f.document.activeElement.click();assert.equal(f.document.activeElement.dataset.step,'15');assert.equal(grid.querySelectorAll('button[tabindex="0"]').length,1);const bar=overview.querySelector('button');bar.focus();f.key(bar,'End');assert.equal(f.document.activeElement.dataset.directorBar,'15');f.key(f.document.activeElement,'ArrowDown');assert.equal(f.document.activeElement.dataset.directorTrack,'lights');assert.equal(overview.querySelectorAll('button[tabindex="0"]').length,3);const hits=f.status.textContent;f.key(f.document.activeElement,'a');assert.equal(f.status.textContent,hits);
 });
 test('director pointer scrubbing cannot be overwritten by ongoing paint',async t=>{
- const f=await livehouse(t);f.open();f.show.click();const scrub=f.find('[data-director-seek]');scrub.dispatchEvent(new f.window.Event('pointerdown'));scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'32');scrub.dispatchEvent(new f.window.Event('pointerup'));f.advance(100);assert.ok(Number(scrub.value)>32);
+ const f=await livehouse(t);f.open();f.find('[data-live-director]').open=true;f.show.click();const scrub=f.find('[data-director-seek]');scrub.dispatchEvent(new f.window.Event('pointerdown'));scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'32');scrub.dispatchEvent(new f.window.Event('pointerup'));f.advance(100);assert.ok(Number(scrub.value)>32);
 });
 test('keyboard scrubbing remains stable until key release',async t=>{
- const f=await livehouse(t);f.open();f.show.click();const scrub=f.find('[data-director-seek]');f.key(scrub,'ArrowRight');scrub.value='16';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'16');scrub.dispatchEvent(new f.window.KeyboardEvent('keyup',{key:'ArrowRight'}));f.advance(50);assert.ok(Number(scrub.value)>16);
+ const f=await livehouse(t);f.open();f.find('[data-live-director]').open=true;f.show.click();const scrub=f.find('[data-director-seek]');f.key(scrub,'ArrowRight');scrub.value='16';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'16');scrub.dispatchEvent(new f.window.KeyboardEvent('keyup',{key:'ArrowRight'}));f.advance(50);assert.ok(Number(scrub.value)>16);
 });
 for(const motionEnabled of [true,false])test('late optional renderer immediately receives paused director snapshot, motion '+motionEnabled,async t=>{
  let resolve;const snapshots=[];const f=await livehouse(t,{motionEnabled,loadStage:()=>new Promise(r=>resolve=r)});f.open();const scrub=f.find('[data-director-seek]');scrub.value='26';scrub.dispatchEvent(new f.window.Event('input'));f.frame();assert.equal(f.frames.size,0);resolve({async createLiveStage(){return {setVisible(){},setMotion(){},setTimeline(strikes,light){snapshots.push({strikes,light});},clear(){},dispose(){},resize(){}};}});await settle();await settle();assert.equal(snapshots.length,1);assert.equal(snapshots[0].light.level,.95);assert.equal(snapshots[0].strikes.kick.elapsed,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
@@ -584,7 +584,7 @@ test('a reopened edited opening light reaches the optional renderer without auto
 
 
 test('paused transport has one resume action and moves focus before hiding the pause button',async t=>{
- const f=await livehouse(t);f.open();const pause=f.find('[data-live-pause]');assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);
+ const f=await livehouse(t);f.open();f.find('[data-live-director]').open=true;const pause=f.find('[data-live-pause]');assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);
  f.show.click();f.advance(1000);assert.equal(pause.hidden,false);assert.equal(pause.disabled,false);assert.equal(pause.textContent,'暂停');assert.equal(f.show.textContent.trim(),'停止演出');
  pause.focus();pause.click();assert.equal(f.document.activeElement,f.show);assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);assert.equal(pause.getAttribute('aria-label'),'暂停演出');assert.equal(f.show.textContent.trim(),'继续演出');assert.equal(f.show.getAttribute('aria-pressed'),'false');assert.equal(f.intervals.size,0);
  const at=f.find('[data-director-seek]').value;f.advance(2000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);pause.click();pause.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,detail:0}));assert.equal(f.intervals.size,0,'secondary control cannot resume even if an obsolete activation arrives');
@@ -603,4 +603,96 @@ for(const key of ['Enter',' '])test('native '+JSON.stringify(key)+' activation k
 
 test('pausing from an unfocused control does not steal focus from another transport control',async t=>{
  const f=await livehouse(t);f.open();f.show.click();f.sound.focus();f.find('[data-live-pause]').click();assert.equal(f.document.activeElement,f.sound);assert.equal(f.find('[data-live-pause]').hidden,true);assert.equal(f.intervals.size,0);assert.deepEqual(f.errors,[]);
+});
+
+// Direct calls make the paint work count independent of jsdom's frame timing.
+async function directorFixture(t) {
+ const f=await livehouse(t),{initDirector}=await import('../source/atelier/js/livehouse-director.js'),{originalPerformance}=await import('../source/atelier/js/performance-core.mjs');
+ const dialog=f.document.createElement('dialog');dialog.open=true;dialog.innerHTML='<details data-live-director><summary><span></span></summary><div data-director-body></div></details>';f.document.body.append(dialog);
+ let project=originalPerformance(),director;
+ director=initDirector({dialog,getProject:()=>project,change(value){project=value;director.paint(0);},seek:beat=>director.paint(beat)});
+ const panel=dialog.querySelector('details'),find=selector=>dialog.querySelector(selector);
+ return {...f,dialog,panel,find,director,getProject:()=>project,toggle(open){panel.open=open;panel.dispatchEvent(new f.window.Event('toggle'));}};
+}
+
+test('director skips folded painting and visible repeated beats only update scrub, without overview scans',async t=>{
+ const f=await directorFixture(t),overview=f.find('.director-overview'),output=f.find('output'),scrub=f.find('[data-director-seek]');
+ let scans=0,buttonVisits=0;
+ const query=overview.querySelectorAll.bind(overview);overview.querySelectorAll=(...args)=>{const result=query(...args);scans++;buttonVisits+=result.length;return result;};
+ const observer=new f.window.MutationObserver(()=>{});observer.observe(overview,{attributes:true,subtree:true});observer.observe(output,{childList:true});
+ // One controlled second: 40 scheduler calls plus 20 drawing calls, all in bar 1.
+ for(let i=0;i<60;i++)f.director.paint(i/60*2);
+ assert.equal(observer.takeRecords().length,0);assert.equal(scans,0);assert.equal(buttonVisits,0);assert.equal(output.textContent,'');
+ f.toggle(true);assert.equal(output.textContent,'1 / 16 小节');assert.equal(Number(scrub.value),59/60*2);assert.equal(query('.is-playing').length,3);observer.takeRecords();
+ for(let i=0;i<60;i++)f.director.paint(i/60*2);
+ assert.equal(observer.takeRecords().length,0,'same bar never replaces text or rewrites button classes');assert.equal(scans,0);assert.equal(buttonVisits,0);
+ f.director.paint(4.25);const records=observer.takeRecords();assert.equal(records.filter(r=>r.type==='attributes').length,6);assert.equal(records.filter(r=>r.type==='childList').length,1);assert.equal(output.textContent,'2 / 16 小节');assert.equal(scrub.value,'4.25');
+ f.toggle(false);f.director.paint(32.5);assert.equal(observer.takeRecords().length,0);f.toggle(true);assert.equal(scrub.value,'32.5');assert.equal(output.textContent,'9 / 16 小节');assert.ok([...query('.is-playing')].every(b=>b.dataset.directorBar==='8'));observer.disconnect();
+});
+
+test('director rebuild, seek, end and dialog reopen immediately paint the current state',async t=>{
+ const f=await livehouse(t);f.open();const panel=f.find('[data-live-director]');panel.open=true;panel.dispatchEvent(new f.window.Event('toggle'));const scrub=f.find('[data-director-seek]'),output=f.find('.director-scrub output');
+ const seek=beat=>{scrub.value=String(beat);scrub.dispatchEvent(new f.window.Event('input'));};
+ seek(36);assert.equal(output.textContent,'10 / 16 小节');f.find('[data-director-track="shots"][data-director-bar="9"]').click();assert.equal(f.find('.director-overview .is-playing').dataset.directorBar,'9');
+ f.find('[data-drum="tom"][data-step="0"]').click();assert.equal(output.textContent,'10 / 16 小节');assert.equal(scrub.value,'36');assert.equal(f.find('.director-overview .is-playing').dataset.directorBar,'9','change paints before render; rebuild must invalidate the old DOM cache');
+ seek(63);f.show.click();f.advance(2000);assert.equal(f.show.getAttribute('aria-pressed'),'false');assert.equal(scrub.value,'64');assert.equal(output.textContent,'16 / 16 小节');assert.equal(f.find('.director-overview .is-playing'),null);seek(4);assert.equal(output.textContent,'2 / 16 小节');
+ f.close();f.open();f.frame();assert.equal(output.textContent,'1 / 16 小节');assert.equal(scrub.value,'0');assert.equal(f.find('.director-overview .is-playing').dataset.directorBar,'0');assert.deepEqual(f.errors,[]);
+});
+
+function pendingDirectorImport(f,project){
+ let resolve;const input=f.find('input[type="file"]');Object.defineProperty(input,'files',{configurable:true,value:[{size:100,text:()=>new Promise(yes=>resolve=yes)}]});input.dispatchEvent(new f.window.Event('change'));
+ return ()=>resolve(JSON.stringify(project));
+}
+
+for(const target of ['drum','overview','short overview'])test('pending JSON import restores current '+target+' logical focus without scrolling',async t=>{
+ const f=await directorFixture(t);f.toggle(true);const p=structuredClone(f.getProject());p.title='Imported focus test';
+ if(target==='short overview'){f.find('[data-director-track="notes"][data-director-bar="15"]').click();p.beats=8;p.notes=p.notes.filter(n=>n.beat<8);p.lights=p.lights.filter(c=>c.beat<8);p.shots=p.shots.filter(c=>c.beat<8);}
+ const finish=pendingDirectorImport(f,p);
+ // Move after file.text started; focus at import initiation is deliberately irrelevant.
+ const old=f.find(target==='drum'?'[data-drum="snare"][data-step="11"]':'[data-director-track="lights"][data-director-bar="15"]');old.focus();
+ const nativeFocus=f.window.HTMLElement.prototype.focus,calls=[];f.window.HTMLElement.prototype.focus=function(options){calls.push({node:this,options});return nativeFocus.call(this,options);};
+ try{finish();await settle();}finally{f.window.HTMLElement.prototype.focus=nativeFocus;}
+ const active=f.document.activeElement;assert.notEqual(active,old);assert.equal(active.isConnected,true);assert.equal(f.getProject().title,p.title);
+ if(target==='drum'){assert.equal(active.dataset.drum,'snare');assert.equal(active.dataset.step,'11');assert.equal(f.find('.director-drum-grid').querySelectorAll('[tabindex="0"]').length,1);}
+ else{assert.equal(active.dataset.directorTrack,'lights');assert.equal(active.dataset.directorBar,target==='short overview'?'1':'15');assert.equal(active.tabIndex,0);assert.equal(active.parentElement.querySelectorAll('[tabindex="0"]').length,1);}
+ if(target==='short overview')assert.equal(f.find('.director-editor h3').textContent,'第 02 小节 / 2');
+ assert.equal(calls.length,1);assert.equal(calls[0].options.preventScroll,true);assert.deepEqual(f.errors,[]);
+});
+
+for(const target of ['input[type="file"]','select[aria-label="灯光"]','[data-director-seek]','summary','external'])test('pending JSON import leaves stable focus on '+target,async t=>{
+ const f=await directorFixture(t);f.toggle(true);const finish=pendingDirectorImport(f,structuredClone(f.getProject()));let control=f.find(target==='external'?'summary':target);
+ if(target==='external'){control=f.document.createElement('button');f.document.body.append(control);}control.focus();finish();await settle();assert.equal(f.document.activeElement,control);assert.deepEqual(f.errors,[]);
+});
+
+test('pending JSON import cannot overwrite a newer edit or undo, and rebuild retains drum focus',async t=>{
+ const f=await directorFixture(t);f.toggle(true);const imported=structuredClone(f.getProject());imported.title='Must not apply';const finish=pendingDirectorImport(f,imported),cell=f.find('[data-drum="tom"][data-step="11"]');cell.focus();cell.click();
+ const edited=f.document.activeElement;assert.equal(edited.dataset.drum,'tom');assert.equal(edited.dataset.step,'11');finish();await settle();assert.notEqual(f.getProject().title,imported.title);assert.equal(f.document.activeElement,edited);
+ const finishAgain=pendingDirectorImport(f,imported);[...f.panel.querySelectorAll('button')].find(b=>b.textContent==='撤销').click();finishAgain();await settle();assert.notEqual(f.getProject().title,imported.title);assert.equal(f.document.activeElement.dataset.drum,'tom');assert.equal(f.document.activeElement.dataset.step,'11');assert.deepEqual(f.errors,[]);
+});
+
+for(const close of [false,true])test('pending JSON import never restores hidden grid focus when '+(close?'dialog closes':'panel folds'),async t=>{
+ const f=await directorFixture(t);f.toggle(true);const project=structuredClone(f.getProject());project.title='Hidden import';const finish=pendingDirectorImport(f,project);f.find('[data-drum="snare"][data-step="11"]').focus();
+ if(close){f.dialog.open=false;f.director.invalidate();}else f.toggle(false);
+ const nativeFocus=f.window.HTMLElement.prototype.focus;let calls=0;f.window.HTMLElement.prototype.focus=function(options){calls++;return nativeFocus.call(this,options);};
+ try{finish();await settle();}finally{f.window.HTMLElement.prototype.focus=nativeFocus;}
+ assert.equal(calls,0);assert.equal(f.dialog.open,!close);assert.equal(f.panel.open,close);assert.equal(f.getProject().title,close?'After the last light · 原创现场':'Hidden import');assert.deepEqual(f.errors,[]);
+});
+
+for(const folded of [false,true])test('explicit stop resets the reduced-motion snapshot '+(folded?'while folded, then paints on expand':'immediately while director is visible'),async t=>{
+ const snapshots=[],strikes=[];const f=await livehouse(t,{motionEnabled:false,loadStage:async()=>({async createLiveStage(){return {setVisible(){},setMotion(){},setTimeline(hits,light){snapshots.push({hits,light});},strike(...args){strikes.push(args);},clear(){},dispose(){},resize(){}};}})});
+ f.open();await settle();const panel=f.find('[data-live-director]');panel.open=!folded;panel.dispatchEvent(new f.window.Event('toggle'));f.frame();assert.equal(f.frames.size,0);
+ f.show.click();f.advance(4000);f.frame();assert.equal(f.frames.size,0);assert.ok(Number(f.progress.parentElement.getAttribute('aria-valuenow'))>0);
+ f.show.click();assert.equal(f.progress.parentElement.getAttribute('aria-valuenow'),'0');if(!folded){assert.equal(f.find('[data-director-seek]').value,'0');assert.equal(f.find('.director-scrub output').textContent,'1 / 16 小节');}f.frame();assert.equal(f.frames.size,0);f.show.click();
+ // Seek to authored non-opening lights and camera before exercising explicit Stop.
+ const scrub=f.find('[data-director-seek]');scrub.value='26';scrub.dispatchEvent(new f.window.Event('input'));f.frame();assert.match(f.find('[data-live-framing]').style.transform,/scale\(1.09\)/);assert.equal(f.find('[data-live-framing]').style.getPropertyValue('--performance-level'),'0.95');
+ f.show.click();assert.equal(f.intervals.size,0);assert.equal(f.show.getAttribute('aria-pressed'),'false');assert.equal(f.progress.parentElement.getAttribute('aria-valuenow'),'0');assert.equal(f.progress.style.getPropertyValue('--show-progress'),'0.00%');assert.equal(f.find('[data-live-framing]').style.transform,'translate(0%,0%) scale(1)');assert.equal(f.find('[data-live-framing]').style.getPropertyValue('--performance-light'),'104,180,216');assert.equal(f.find('[data-live-framing]').style.getPropertyValue('--performance-level'),'0.35');assert.equal(snapshots.at(-1).hits,null);assert.equal(snapshots.at(-1).light.level,.35);
+ if(folded){panel.open=true;panel.dispatchEvent(new f.window.Event('toggle'));}
+ assert.equal(scrub.value,'0');assert.equal(f.find('.director-scrub output').textContent,'1 / 16 小节');assert.equal(f.find('.director-overview .is-playing').dataset.directorBar,'0');assert.equal(f.find('.performance-hit'),null);assert.equal(f.contexts.length,0);assert.deepEqual(strikes,[]);
+ assert.equal(f.frames.size,1,'one redraw refreshes the canvas, without a continuous loop');f.frame();assert.equal(f.frames.size,0);f.advance(4000);f.frame();assert.equal(f.frames.size,0);assert.equal(scrub.value,'0');
+ f.close();assert.equal(f.frames.size,0);f.open();f.frame();assert.equal(f.frames.size,0);assert.equal(scrub.value,'0');assert.equal(f.find('.director-scrub output').textContent,'1 / 16 小节');assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('stopping an unstarted room through cleanup stays silent and leaves a zero snapshot on reopen',async t=>{
+ const f=await livehouse(t,{motionEnabled:false});f.hidePage();assert.equal(f.dialog.open,false);assert.equal(f.frames.size+f.intervals.size,0);assert.equal(f.contexts.length,0);
+ f.open();const panel=f.find('[data-live-director]');panel.open=true;panel.dispatchEvent(new f.window.Event('toggle'));f.frame();f.close();assert.equal(f.frames.size+f.intervals.size,0);f.open();f.frame();assert.equal(f.find('[data-director-seek]').value,'0');assert.equal(f.find('.director-scrub output').textContent,'1 / 16 小节');assert.equal(f.progress.parentElement.getAttribute('aria-valuenow'),'0');assert.equal(f.find('.performance-hit'),null);assert.equal(f.frames.size+f.intervals.size,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
 });

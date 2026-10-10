@@ -128,3 +128,116 @@ test('Escape preserves focused reading while a dialog, consumed event or IME own
     window.close();
   }
 });
+
+async function speechSetup(t) {
+  const html = fs.readFileSync(path.join(__dirname, '../public/hot100/036/index.html'), 'utf8');
+  const dom = new JSDOM(html, {url:'https://ccatelier.test/hot100/036/'}), {window} = dom;
+  const calls = [], spoken = [], queue = [];
+  const synthesis = {
+    paused:false,
+    cancel() { calls.push(['cancel']); queue.splice(0); }, // Per API, cancel does not reset paused.
+    pause() { this.paused = true; calls.push(['pause']); },
+    resume() { calls.push(['resume', queue.length]); this.paused = false; },
+    speak(utterance) { calls.push(['speak', this.paused]); spoken.push(utterance); queue.push(utterance); },
+  };
+  class Utterance { constructor(text) { this.text = text; } }
+  Object.assign(window, {speechSynthesis:synthesis, SpeechSynthesisUtterance:Utterance});
+  const globals = new Map();
+  for (const [name,value] of Object.entries({window,document:window.document,localStorage:window.localStorage,
+    NodeFilter:window.NodeFilter, speechSynthesis:synthesis, SpeechSynthesisUtterance:Utterance,
+    matchMedia:()=>({matches:false}),getSelection:()=>window.getSelection()})) {
+    globals.set(name,Object.getOwnPropertyDescriptor(globalThis,name));
+    Object.defineProperty(globalThis,name,{configurable:true,writable:true,value});
+  }
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+  t.after(() => {
+    window.dispatchEvent(new window.Event('pagehide')); window.close();
+    for (const [name,descriptor] of globals) {
+      if (descriptor) Object.defineProperty(globalThis,name,descriptor); else delete globalThis[name];
+    }
+  });
+  const {initReader} = await import('../source/atelier/js/reader.js'); initReader();
+  const control = name => window.document.querySelector(`[data-speech-${name}]`);
+  return {window,document:window.document,synthesis,calls,spoken,queue,control};
+}
+
+for (const interruption of ['stop','restart','collapse','background','pagehide']) {
+  test(`paused speech restarts after ${interruption} with only the new queue resumed (simulated)`, async t => {
+    const s = await speechSetup(t), status = s.control('status');
+    s.control('play').click(); const old = s.spoken[0], firstText = old.text;
+    assert.ok(firstText.length); s.control('pause').click();
+    assert.equal(s.synthesis.paused,true); assert.equal(s.control('pause').textContent,'继续');
+    const resumes = () => s.calls.filter(c=>c[0]==='resume');
+    if (interruption === 'stop') s.control('stop').click();
+    if (interruption === 'collapse') {
+      const details = s.document.querySelector('.reader-options');
+      details.open = false; details.dispatchEvent(new s.window.Event('toggle'));
+    }
+    if (interruption === 'background') {
+      Object.defineProperty(s.document,'hidden',{configurable:true,value:true});
+      s.document.dispatchEvent(new s.window.Event('visibilitychange'));
+    }
+    if (interruption === 'pagehide') s.window.dispatchEvent(new s.window.Event('pagehide'));
+    assert.equal(resumes().length,0,'stopping or hiding must never resume old audio');
+    if (interruption !== 'restart') {
+      assert.equal(s.queue.length,0); assert.equal(status.textContent,'朗读已停止。');
+      old.onend(); old.onerror({error:'synthesis-failed'});
+      assert.equal(s.spoken.length,1); assert.equal(status.textContent,'朗读已停止。');
+    }
+    if (interruption === 'background') {
+      Object.defineProperty(s.document,'hidden',{configurable:true,value:false});
+      s.document.dispatchEvent(new s.window.Event('visibilitychange'));
+      assert.equal(resumes().length,0,'returning to the page does not autoplay');
+    }
+    if (interruption === 'collapse') {
+      const details = s.document.querySelector('.reader-options');
+      details.open = true; details.dispatchEvent(new s.window.Event('toggle'));
+      assert.equal(resumes().length,0,'opening the panel does not autoplay');
+    }
+    s.control('play').click();
+    assert.equal(s.synthesis.paused,false); assert.equal(s.spoken.length,2);
+    assert.equal(s.spoken[1].text,firstText,'explicit restart begins at the start');
+    assert.deepEqual(resumes(),[['resume',0]],'resume is called after the old queue is empty');
+    assert.deepEqual(s.calls.slice(-3),[['cancel'],['resume',0],['speak',false]]);
+    assert.equal(s.control('pause').textContent,'暂停');
+    const currentStatus = status.textContent;
+    old.onend(); for (const error of ['canceled','interrupted','synthesis-failed']) old.onerror({error});
+    assert.equal(status.textContent,currentStatus); assert.equal(s.spoken.length,2,'stale callbacks cannot advance the new reading');
+    s.spoken[1].onend(); assert.equal(s.spoken.length,3,'current callback still advances');
+  });
+}
+
+test('ordinary pause/continue resumes the existing reading rather than replacing it (simulated)', async t => {
+  const s = await speechSetup(t);
+  s.control('play').click(); s.control('pause').click(); s.control('pause').click();
+  assert.equal(s.spoken.length,1); assert.equal(s.synthesis.paused,false);
+  assert.deepEqual(s.calls.slice(-2),[['pause'],['resume',1]]);
+  assert.equal(s.control('pause').textContent,'暂停');
+});
+
+test('real Hexo article search and speech both omit decorative gutter numbers (simulated)', async t => {
+  const s = await speechSetup(t), input = s.document.querySelector('#reader-find');
+  input.value = '12'; input.dispatchEvent(new s.window.CompositionEvent('compositionend'));
+  assert.equal(s.document.querySelector('[data-find-status]').textContent,'没有匹配');
+  input.value = '输入：root'; input.dispatchEvent(new s.window.CompositionEvent('compositionend'));
+  assert.equal(s.document.querySelector('[data-find-status]').textContent,'3 处匹配');
+  s.control('play').click();
+  for (let i=0; i<s.spoken.length; i++) {
+    assert.ok(i<1000,'speech eventually finishes'); s.spoken[i].onend();
+  }
+  const {articleText} = await import('../source/atelier/js/text-anchors.js');
+  const clean = articleText(s.document.querySelector('.article-body')).text;
+  assert.equal(s.spoken.map(u=>u.text).join('').replace(/\s/g,''),clean.replace(/\s/g,''));
+  assert.ok(!s.spoken.some(u=>u.text.includes('12输入')));
+  assert.ok(s.spoken.some(u=>u.text.includes('[1,null,2,3]')),'actual numerical code is retained');
+  assert.equal(s.control('status').textContent,'这一篇，读完了。');
+});
+
+test('synchronous cancel callbacks cannot advance the old speech before an explicit restart (simulated)',async t=>{
+  const s=await speechSetup(t);s.control('play').click();const old=s.spoken[0];s.control('pause').click();
+  const cancel=s.synthesis.cancel.bind(s.synthesis);
+  s.synthesis.cancel=()=>{cancel();old.onend();old.onerror({error:'synthesis-failed'});};
+  s.control('play').click();
+  assert.equal(s.spoken.length,2);assert.equal(s.spoken[1].text,old.text);
+  assert.equal(s.synthesis.paused,false);assert.match(s.control('status').textContent,/正在朗读 1 \/ /);
+});

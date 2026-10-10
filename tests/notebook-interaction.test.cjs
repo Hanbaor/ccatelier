@@ -81,3 +81,109 @@ test('a refreshed record updates its quote and keeps a reordered focused row att
  const reopening=s.open();control.focus();await reopening;assert.equal(s.row(3),row);assert.equal(row.querySelector('blockquote').textContent,'改后引用');assert.equal(row.notebookRecord.quote,'改后引用');assert.equal(s.document.activeElement,control);assert.ok(!moves.includes(row),'reordering must not detach the focused row');
  control.click();assert.equal(s.dialog.open,true,'locate must use the updated unmatched quote instead of the original matching quote');assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位/);
 });
+
+const hexoCode='<figure class="iseeu highlight text"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">输入：12</span><br><span class="line">输出：34</span><br></pre></td></tr></tbody></table></figure>';
+async function anchorSetup(t,html) {
+ // Drain selectionchange's debounce before closing this DOM. An open dialog
+ // keeps the capture listener inactive during teardown, as it is in the UI.
+ t.after(async()=>{s.dialog.open=true;await flush();await new Promise(r=>setTimeout(r,110));});
+ const s=await setup(t,0);s.document.querySelector('.article-body').innerHTML=html;
+ s.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ const {articleText,textRange}=await import('../source/atelier/js/text-anchors.js');
+ const {anchorQuote,locateQuote}=await import('../source/atelier/js/notebook-core.mjs');
+ const article=s.document.querySelector('.article-body');
+ const clean=articleText(article),legacy=articleText(article,{legacyCodeGutter:true});
+ const add=async(id,anchor)=>{await s.vault.put('notes',{id,path:location.pathname,title:'文章',note:'保留批注',updated:100,...anchor});await s.open();};
+ return {...s,article,clean,legacy,anchorQuote,locateQuote,textRange,add};
+}
+test('old exact gutter prefix/suffix anchors fall back to legacy text without changing their saved records',async t=>{
+ const s=await anchorSetup(t,`<p>前言合法数字12</p>${hexoCode}<p>结语56</p>`);
+ for(const [id,quote] of [['prefix','输入：12'],['suffix','前言合法数字12']]) {
+  const start=s.legacy.text.indexOf(quote),anchor=s.anchorQuote(s.legacy.text,start,start+quote.length);
+  assert.equal(s.locateQuote(s.clean.text,anchor),-1,'old gutter context requires the legacy snapshot');
+  await s.add(id,anchor);const before=await s.vault.all('notes');
+  s.row(id).querySelector('button').click();
+  assert.equal(s.dialog.open,false);assert.equal(s.window.getSelection().toString(),quote);
+  const range=s.window.getSelection().getRangeAt(0);
+  assert.equal(range.startContainer.parentElement.closest('td.gutter'),null);
+  assert.deepEqual(await s.vault.all('notes'),before,'locating does not rewrite old anchors');
+ }
+});
+test('clean-only anchors locate and duplicate exact excerpts still refuse unreliable location',async t=>{
+ const s=await anchorSetup(t,`<p>前言</p>${hexoCode}<p>结束</p>`);
+ const start=s.clean.text.indexOf('输入：12'),anchor=s.anchorQuote(s.clean.text,start,start+5);
+ assert.equal(s.locateQuote(s.legacy.text,anchor),-1);
+ await s.add('clean',anchor);s.row('clean').querySelector('button').click();
+ assert.equal(s.dialog.open,false);assert.equal(s.window.getSelection().toString(),'输入：12');
+ s.article.innerHTML=hexoCode+hexoCode;
+ await s.add('ambiguous',{quote:'输入：12',prefix:'',suffix:'',start:999});
+ const before=await s.vault.all('notes');s.row('ambiguous').querySelector('button').click();
+ assert.equal(s.dialog.open,true);assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位；摘录仍被保留/);
+ assert.deepEqual(await s.vault.all('notes'),before);
+});
+test('changed legacy context stays unlocated even when the excerpt itself is unique',async t=>{
+ const s=await anchorSetup(t,`<p>原来前言</p>${hexoCode}<p>结尾</p>`);
+ const start=s.legacy.text.indexOf('输入：12'),anchor=s.anchorQuote(s.legacy.text,start,start+5);
+ await s.add('changed',anchor);s.article.querySelector('p').textContent='已经修改前言';
+ const before=await s.vault.all('notes');s.row('changed').querySelector('button').click();
+ assert.equal(s.dialog.open,true);assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位/);
+ assert.deepEqual(await s.vault.all('notes'),before);
+});
+test('new notebook capture saves clean code context and relocates real numerical text',async t=>{
+ const s=await anchorSetup(t,`<p>正文数字12</p>${hexoCode}<p>尾声34</p>`);
+ s.dialog.close();
+ const start=s.clean.text.indexOf('输入：12'),range=s.textRange(s.clean,start,start+5);
+ range.getBoundingClientRect=()=>({left:20,bottom:40});
+ const selection=s.window.getSelection();selection.removeAllRanges();selection.addRange(range);
+ s.document.dispatchEvent(new s.window.Event('selectionchange'));await new Promise(r=>setTimeout(r,110));
+ s.document.querySelector('.selection-note').click();await flush();
+ s.dialog.querySelector('textarea').value='新批注';s.dialog.querySelector('.note-editor button').click();await flush();
+ const records=await s.vault.all('notes');assert.equal(records.length,1);
+ const record=records[0];assert.equal(record.quote,'输入：12');assert.equal(record.prefix,'正文数字12');assert.equal(record.suffix,'输出：34尾声34');
+ const before=structuredClone(record);s.row(record.id).querySelector('button').click();
+ assert.equal(s.dialog.open,false);assert.equal(selection.toString(),'输入：12');
+ assert.deepEqual((await s.vault.all('notes'))[0],before);
+});
+
+test('conflicting unique clean and legacy matches refuse location without changing the record',async t=>{
+ const s=await anchorSetup(t,`<p>A12</p>${hexoCode}<p>A</p>${hexoCode}`);
+ const anchor={quote:'输入：12',prefix:'A12',suffix:'',start:3};
+ const cleanAt=s.locateQuote(s.clean.text,anchor),legacyAt=s.locateQuote(s.legacy.text,anchor);
+ assert.ok(cleanAt>=0&&legacyAt>=0);
+ const cleanRange=s.textRange(s.clean,cleanAt,cleanAt+anchor.quote.length),legacyRange=s.textRange(s.legacy,legacyAt,legacyAt+anchor.quote.length);
+ assert.notEqual(cleanRange.startContainer,legacyRange.startContainer,'the two extraction modes genuinely disagree');
+ await s.add('priority',anchor);s.row('priority').querySelector('button').click();
+ assert.equal(s.dialog.open,true);
+ assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位/);
+ assert.deepEqual((await s.vault.all('notes'))[0].quote,anchor.quote);
+});
+
+test('an actual 40-character legacy anchor refuses a conflicting clean occurrence',async t=>{
+ const block=hexoCode.replace('输入：12','目标摘录'+'后'.repeat(45)).replace('输出：34','');
+ const s=await anchorSetup(t,`<p>${'前'.repeat(38)}12</p>${block}<p>${'前'.repeat(38)}</p>${block}`);
+ const start=s.legacy.text.lastIndexOf('目标摘录'),anchor=s.anchorQuote(s.legacy.text,start,start+4);
+ assert.equal(anchor.prefix.length,40);assert.equal(anchor.suffix.length,40);
+ assert.equal(s.locateQuote(s.legacy.text,anchor),131);assert.equal(s.locateQuote(s.clean.text,anchor),40);
+ await s.add('old-real',anchor);const before=await s.vault.all('notes');
+ const selection=s.window.getSelection();selection.removeAllRanges();s.row('old-real').querySelector('button').click();
+ assert.equal(s.dialog.open,true);assert.equal(selection.rangeCount,0);
+ assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位；摘录仍被保留/);
+ assert.deepEqual(await s.vault.all('notes'),before);
+});
+for(const mode of ['legacy','clean'])test(`${mode} ambiguity cannot be overridden by the other snapshot's unique match`,async t=>{
+ const html=mode==='legacy'?`<p>12</p>${hexoCode}<p>尾声</p>${hexoCode}`:`<p>A12</p>${hexoCode}${hexoCode.replace('输入：12','A12输入：12')}`;
+ const s=await anchorSetup(t,html),anchor={quote:'输入：12',prefix:mode==='legacy'?'12':'A12',suffix:'',start:0};
+ const {locateQuoteCandidates}=await import('../source/atelier/js/notebook-core.mjs');
+ assert.equal(locateQuoteCandidates(s.clean.text,anchor).length,mode==='clean'?2:1);
+ assert.equal(locateQuoteCandidates(s.legacy.text,anchor).length,mode==='legacy'?2:1);
+ await s.add('ambiguous-mode',anchor);const before=await s.vault.all('notes');s.row('ambiguous-mode').querySelector('button').click();
+ assert.equal(s.dialog.open,true);assert.match(s.dialog.querySelector('.live-status').textContent,/无法可靠定位/);
+ assert.deepEqual(await s.vault.all('notes'),before);
+});
+test('both snapshots locating the same DOM range remain usable despite shifted text offsets',async t=>{
+ const s=await anchorSetup(t,`${hexoCode}<p>${'前'.repeat(45)}共同摘录${'后'.repeat(45)}</p>`);
+ const start=s.clean.text.indexOf('共同摘录'),anchor=s.anchorQuote(s.clean.text,start,start+4);
+ assert.equal(s.locateQuote(s.legacy.text,anchor),start+2);
+ await s.add('same-range',anchor);s.row('same-range').querySelector('button').click();
+ assert.equal(s.dialog.open,false);assert.equal(s.window.getSelection().toString(),'共同摘录');
+});

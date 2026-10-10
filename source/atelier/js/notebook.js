@@ -1,9 +1,20 @@
 import {$,toast} from './ui.js';
 import {vault} from './vault.js';
-import {anchorQuote,locateQuote,validateNotebook} from './notebook-core.mjs';
+import {anchorQuote,locateQuoteCandidates,validateNotebook} from './notebook-core.mjs';
 import {element,action,download,readImport,root} from './archive-store.js';
 import {makeDialog} from './live-dialog.js';
 import {articleText,textRange,revealRange} from './text-anchors.js';
+// Old anchors may contain line-number context, but neither extraction mode may
+// overrule ambiguity or point at a different occurrence. Stored notes stay intact.
+function notebookRange(article,record){
+ const snapshots=[articleText(article),articleText(article,{legacyCodeGutter:true})];
+ const candidates=snapshots.map(snapshot=>locateQuoteCandidates(snapshot.text,record));
+ if(candidates.some(matches=>matches.length>1))return null;
+ const ranges=candidates.map((matches,i)=>matches.length?textRange(snapshots[i],matches[0],matches[0]+record.quote.length):null);
+ const [clean,legacy]=ranges;
+ if(clean&&legacy&&(clean.startContainer!==legacy.startContainer||clean.startOffset!==legacy.startOffset||clean.endContainer!==legacy.endContainer||clean.endOffset!==legacy.endOffset))return null;
+ return clean||legacy;
+}
 export function initNotebook(){
  const article=$('.article-body');if(!article)return;
  const {dialog,open}=makeDialog('notebook-dialog','页边札记'),editor=element('div','note-editor'),quote=element('blockquote'),textarea=element('textarea'),status=element('p','live-status','选中正文后，留下摘录和自己的想法。批注保存在本机。'),list=element('div','notebook-list'),tools=element('div','live-dialog-tools');let draft=null;
@@ -42,7 +53,7 @@ export function initNotebook(){
  }
  function createNoteRow(n){
   const row=element('article','notebook-note'),quote=element('blockquote'),note=element('p'),buttons=element('div','live-dialog-tools');row.dataset.notebookId=n.id;
-  buttons.append(action('定位原文',()=>{const snapshot=articleText(article),at=locateQuote(snapshot.text,row.notebookRecord);if(at<0){status.textContent='原文已变化或有重复段落，无法可靠定位；摘录仍被保留。';return;}const range=textRange(snapshot,at,at+row.notebookRecord.quote.length);dialog.close();if(globalThis.CSS?.highlights&&globalThis.Highlight)CSS.highlights.set('notebook',new Highlight(range));else{const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}revealRange(range);}),action('删除',()=>removeNote(n.id)));
+  buttons.append(action('定位原文',()=>{const range=notebookRange(article,row.notebookRecord);if(!range){status.textContent='原文已变化或有重复段落，无法可靠定位；摘录仍被保留。';return;}dialog.close();if(globalThis.CSS?.highlights&&globalThis.Highlight)CSS.highlights.set('notebook',new Highlight(range));else{const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}revealRange(range);}),action('删除',()=>removeNote(n.id)));
   buttons.lastElementChild.dataset.notebookDelete='';row.append(quote,note,buttons);return row;
  }
  async function render(){

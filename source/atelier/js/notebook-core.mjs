@@ -4,13 +4,15 @@ export function anchorQuote(text,start,end){
   if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||end>text.length||end-start>3000)throw Error('请选择 1–3000 字正文');
   return {quote:text.slice(start,end),prefix:text.slice(Math.max(0,start-40),start),suffix:text.slice(end,end+40),start};
 }
-export function locateQuote(text,a){
-  if(!a?.quote)return -1;
+export function locateQuoteCandidates(text,a){
+  if(!a?.quote)return [];
   const positions=[];let at=text.indexOf(a.quote);
   while(at!==-1){positions.push(at);at=text.indexOf(a.quote,at+1);}
-  const contextual=positions.filter(i=>(!a.prefix||text.slice(0,i).endsWith(a.prefix))&&(!a.suffix||text.slice(i+a.quote.length).startsWith(a.suffix)));
-  if(contextual.length===1)return contextual[0];
-  return -1;
+  return positions.filter(i=>(!a.prefix||text.slice(0,i).endsWith(a.prefix))&&(!a.suffix||text.slice(i+a.quote.length).startsWith(a.suffix)));
+}
+export function locateQuote(text,a){
+  const contextual=locateQuoteCandidates(text,a);
+  return contextual.length===1?contextual[0]:-1;
 }
 const string=(s,max,empty=true)=>typeof s==='string'&&s.length<=max&&(empty||s.length>0);
 const validPath=(p,root)=>safePath(p)&&p.startsWith(root);

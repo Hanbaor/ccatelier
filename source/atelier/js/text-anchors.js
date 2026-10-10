@@ -1,5 +1,12 @@
-export function articleText(article){
- const nodes=[];let text='';const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT,{acceptNode(node){return node.parentElement.closest('button,script,style,[data-reader-exclude]')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT;}});
+// Only Hexo's line-number cell is decoration; prose and real code may also use
+// classes such as gutter or line and must keep their text (including digits).
+function codeGutter(node){
+ const cell=node.parentElement.closest('figure.highlight > table > tbody > tr > td.gutter');
+ return cell?.nextElementSibling?.matches('td.code')&&cell.querySelector(':scope > pre');
+}
+// Legacy extraction is only for exact matching of existing notebook anchors.
+export function articleText(article,{legacyCodeGutter=false}={}){
+ const nodes=[];let text='';const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT,{acceptNode(node){return (node.parentElement.closest('button,script,style,[data-reader-exclude]')||(!legacyCodeGutter&&codeGutter(node)))?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT;}});
  let node;while(node=walker.nextNode()){nodes.push({node,start:text.length,end:text.length+node.textContent.length});text+=node.textContent;}return {text,nodes};
 }
 export function textRange(snapshot,start,end){

@@ -26,3 +26,17 @@ test('queue operations deduplicate, reorder and preserve completion state',async
  assert.deepEqual(validateQueue({version:1,queue:q},'/'),q);
  assert.throws(()=>validateQueue({version:1,queue:[{path:'javascript:alert(1)',title:'bad'}]},'/'));
 });
+test('exact quote candidates distinguish zero, one and many matches without changing locateQuote semantics',async()=>{
+ const {locateQuoteCandidates,locateQuote}=await core();
+ for(const [text,anchor,expected] of [
+  ['重复 重复',{quote:'重复',prefix:'',suffix:'',start:0},[0,3]],
+  ['甲重复 乙重复',{quote:'重复',prefix:'乙',suffix:'',start:1},[5]],
+  ['甲重复',{quote:'重复',prefix:'乙',suffix:''},[]],
+  ['甲重复',{quote:''},[]],
+  ['aaa',{quote:'aa'},[0,1]],
+ ]) {
+  assert.deepEqual(locateQuoteCandidates(text,anchor),expected);
+  assert.equal(locateQuote(text,anchor),expected.length===1?expected[0]:-1);
+ }
+ assert.deepEqual(locateQuoteCandidates('原文',null),[]);
+});

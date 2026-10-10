@@ -25,7 +25,9 @@ function speech(article,details){
  let chunks=[],at=0,running=false,generation=0,utterance;
  function stop(){generation++;running=false;speechSynthesis.cancel();pause.textContent='暂停';play.textContent='朗读';status.textContent='朗读已停止。';}
  function say(token){if(token!==generation||!running)return;if(at>=chunks.length){stop();status.textContent='这一篇，读完了。';return;}utterance=new SpeechSynthesisUtterance(chunks[at]);utterance.lang='zh-CN';utterance.rate=Number(rate.value);utterance.onend=()=>{if(token!==generation)return;at++;say(token);};utterance.onerror=e=>{if(token!==generation||e.error==='interrupted'||e.error==='canceled')return;stop();status.textContent='当前设备没有可用语音，或朗读被浏览器中断。';};status.textContent='正在朗读 '+(at+1)+' / '+chunks.length;speechSynthesis.speak(utterance);}
- play.addEventListener('click',()=>{stop();chunks=[];const text=articleText(article).text;for(const sentence of text.split(/(?<=[。！？.!?\n])/)){for(let i=0;i<sentence.length;i+=180){const part=sentence.slice(i,i+180).trim();if(part)chunks.push(part);}}at=0;running=true;play.textContent='从头朗读';say(generation);});
+ // cancel() may leave the synthesis engine paused. Resume only after clearing the
+ // old queue and only for an explicit new reading request, never while stopping.
+ play.addEventListener('click',()=>{stop();if(speechSynthesis.paused)speechSynthesis.resume();chunks=[];const text=articleText(article).text;for(const sentence of text.split(/(?<=[。！？.!?\n])/)){for(let i=0;i<sentence.length;i+=180){const part=sentence.slice(i,i+180).trim();if(part)chunks.push(part);}}at=0;running=true;play.textContent='从头朗读';say(generation);});
  pause.addEventListener('click',()=>{if(!running)return;if(speechSynthesis.paused){speechSynthesis.resume();pause.textContent='暂停';}else{speechSynthesis.pause();pause.textContent='继续';}});stopButton.addEventListener('click',stop);
  details?.addEventListener('toggle',()=>{if(!details.open&&running)stop();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stop();});window.addEventListener('pagehide',stop);
 }

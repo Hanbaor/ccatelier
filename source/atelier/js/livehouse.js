@@ -58,7 +58,7 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
   return frame;
  }
  function stopShow(message='演出已停止'){
-  playing=false;generation++;clearInterval(scheduler);scheduler=0;transportClock.stop();clearVisuals();pads.forEach(p=>p.classList.remove('performance-hit'));showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');syncPauseControl();if(message)say(message);
+  playing=false;generation++;clearInterval(scheduler);scheduler=0;transportClock.stop();clearVisuals();pads.forEach(p=>p.classList.remove('performance-hit'));showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');paintPerformance(true);wake();if(message)say(message);
  }
  function silence(){soundGeneration++;clearHitSummary();transportClock.clock(()=>performance.now()/1000);sound=false;soundButton.disabled=false;audio.stop();syncSound();}
  function transport(){
