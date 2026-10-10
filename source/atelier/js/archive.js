@@ -75,7 +75,7 @@ export async function initArchive({loadConstellation=()=>import('./constellation
    const top=p.group==='hot100'?element('div','record-top',String(p.order||i+1).padStart(3,'0')):null;
    const h=element('h2'),a=element('a','',p.title);a.href=p.path;h.append(a);
    const bottom=element('div','record-bottom');const date=element('time','',p.date.slice(0,10).replaceAll('-','.'));date.dateTime=p.date.slice(0,10);bottom.append(date);
-   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});toast(exists?'已移出队列':'已加入阅读队列');});add.dataset.queuePath=p.path;add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add);
+   const add=action(queue.has(p.path)?'✓':'+',()=>{const exists=getQueue().some(n=>n.path===p.path);const result=queueAction(exists?{type:'remove',path:p.path}:{type:'add',item:p});if(result.ok&&result.persisted)toast(exists?'已移出队列':'已加入阅读队列');});add.dataset.queuePath=p.path;add.setAttribute('aria-label','阅读队列：'+p.title);add.setAttribute('aria-pressed',String(queue.has(p.path)));bottom.append(add);
    const context=element('div','record-context');
    if(p.exercise){context.append(element('span','record-state',p.exercise.hasCode?'已有代码':'题面'));if(!p.exercise.hasAnalysis)context.append(element('span','','解析待补'));}
    (p.topics||p.tags||[]).slice(0,2).forEach(topic=>context.append(element('span','',topic)));

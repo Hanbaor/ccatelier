@@ -4,8 +4,10 @@ export const $$ = (selector, root = document) => [...root.querySelectorAll(selec
 const sessionMemory = new Map();
 export const storage = {
   persistent:true,
-  get(key) { if(sessionMemory.has(key))return sessionMemory.get(key);try { return localStorage.getItem(key); } catch { this.persistent=false;return null; } },
-  set(key, value) { try { localStorage.setItem(key, value);sessionMemory.delete(key);return true; } catch { sessionMemory.set(key,value);this.persistent=false;return false; } }
+  snapshot(key) { if(sessionMemory.has(key))return {raw:sessionMemory.get(key),available:true};try{return {raw:localStorage.getItem(key),available:true};}catch{this.persistent=false;return {raw:null,available:false};} },
+  setMemory(key,value) { sessionMemory.set(key,value);this.persistent=false;return false; },
+  get(key) { return this.snapshot(key).raw; },
+  set(key, value) { try { localStorage.setItem(key, value);sessionMemory.delete(key);return true; } catch { return this.setMemory(key,value); } }
 };
 let toastTimer;
 export function toast(message) {
