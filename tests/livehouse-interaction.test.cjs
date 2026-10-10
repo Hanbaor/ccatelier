@@ -8,7 +8,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 
 // Each fixture owns its clock and restores every global, even after a failed
 // assertion. No real show scheduler or animation frame can outlive a test.
-async function livehouse(t, {motionEnabled = true, canvasAvailable = true, deferredAudio = false} = {}) {
+async function livehouse(t, {motionEnabled = true, canvasAvailable = true, deferredAudio = false, loadStage} = {}) {
   const dom = new JSDOM(fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8'), {
     url: 'https://ccatelier.test/',
   });
@@ -90,7 +90,7 @@ async function livehouse(t, {motionEnabled = true, canvasAvailable = true, defer
   const {motion} = await import('../source/atelier/js/ui.js');
   motion.enabled = motionEnabled;
   const {initLivehouse} = await import('../source/atelier/js/livehouse.js');
-  const controller = initLivehouse();
+  const controller = initLivehouse({loadStage});
   const dialog = document.querySelector('#livehouse-dialog');
   assert.ok(dialog, 'the generated cover contains the livehouse dialog');
   dialog.getBoundingClientRect = () => ({width: 1200, height: 800});
@@ -148,6 +148,23 @@ test('livehouse opens silently, lazily loads its scene, and never autoplays on p
   assert.equal(f.show.getAttribute('aria-pressed'), 'true');
   assert.equal(f.contexts.length, 0, 'even starting the arranged performance requires explicit sound opt-in');
   assert.deepEqual(f.errors, []);
+});
+
+test('optional 3D module waits for explicit open and import failure never blocks the room',async t=>{
+ let loads=0;const f=await livehouse(t,{loadStage:()=>{loads++;return Promise.reject(Error('offline'));}});
+ assert.equal(loads,0);f.open();assert.equal(loads,1);await settle();assert.equal(f.dialog.open,true);f.find('[data-live-pad="kick"]').click();assert.match(f.status.textContent,/1 拍/);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);f.close();assert.equal(f.frames.size,0);
+});
+
+test('a 3D module resolving after close cannot create a renderer',async t=>{
+ let resolve,created=0;const f=await livehouse(t,{loadStage:()=>new Promise(yes=>resolve=yes)});f.open();f.close();resolve({createLiveStage(){created++;}});await settle();assert.equal(created,0);assert.equal(f.frames.size,0);assert.equal(f.dialog.open,false);
+});
+
+test('pending 3D creation is aborted on close and cannot replace a newer open',async t=>{
+ const pending=[],calls=[];
+ const f=await livehouse(t,{loadStage:async()=>({createLiveStage:options=>new Promise(resolve=>pending.push({options,resolve}))})});
+ const make=id=>Object.fromEntries(['setVisible','setMotion','strike','clear','resize','pointer','dispose'].map(method=>[method,(...args)=>calls.push([id,method,...args])]));
+ f.open();await settle();f.close();assert.equal(pending[0].options.signal.aborted,true);f.open();await settle();pending[1].resolve(make('new'));await settle();pending[0].resolve(make('old'));await settle();assert.deepEqual(calls.filter(call=>call[0]==='old'),[['old','dispose']]);
+ f.find('[data-live-pad="snare"]').click();assert.ok(calls.some(call=>call[0]==='new'&&call[1]==='strike'&&call[2]==='snare'));f.visibility(true);assert.ok(calls.some(call=>call[0]==='new'&&call[1]==='setVisible'&&call[2]===false));f.visibility(false);f.find('[data-live-motion]').click();assert.ok(calls.some(call=>call[0]==='new'&&call[1]==='setMotion'&&call[2]===false));f.close();assert.ok(calls.some(call=>call[0]==='new'&&call[1]==='dispose'));assert.equal(f.frames.size,0);
 });
 
 test('closing and reopening resets transport, clears work, and returns focus to the latest opener', async t => {

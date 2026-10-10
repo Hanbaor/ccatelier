@@ -13,7 +13,26 @@ test('the entry, studio index and notes have distinct editorial compositions and
   assert.equal(cover.window.document.querySelectorAll('.entry-index,.entry-running-head,.entry-art-seal').length,0);
   assert.ok(cover.window.document.querySelector('.cinema-enter[data-enter][href="/atelier/"]'));
   assert.ok(cover.window.document.querySelector('.header-navigation a[href="/notes/"]'));
-  assert.equal(stage.window.document.querySelectorAll('.hub-grid>a').length,5);
+  const hub=stage.window.document.querySelector('.hub-grid');
+  assert.deepEqual([...hub.querySelectorAll('a.hub-card')].map(card=>({
+   title:card.querySelector('h2').textContent,
+   route:card.getAttribute('href')
+  })),[
+   {title:'笔记',route:'/notes/'},
+   {title:'节奏实验室',route:'/studio/'},
+   {title:'研究',route:'/research/'},
+   {title:'项目',route:'/projects/'}
+  ],'four primary cards lead to published reading, music, research and project experiences');
+  assert.deepEqual([...hub.querySelectorAll('.hub-secondary>a')].map(link=>({
+   title:link.textContent.trim(),route:link.getAttribute('href')
+  })),[
+   {title:'生活',route:'/life/'},
+   {title:'关于 CC',route:'/about/'}
+  ],'life and about remain lightweight secondary destinations');
+  const practice=hub.querySelector('.hub-studio .hub-practice');
+  assert.equal(practice.getAttribute('href'),'/studio/practice/');
+  assert.equal(practice.textContent.trim(),'鼓谱排练室');
+  assert.equal(hub.querySelectorAll('a a').length,0,'rehearsal is a separate native link, never a nested interactive control');
   assert.equal(stage.window.document.querySelectorAll('.atelier-room').length,0,'tile names must not inherit secondary-room page styles');
   assert.ok(notes.window.document.querySelector('.catalog-heading-v3'));
   assert.equal(notes.window.document.querySelectorAll('.archive-editor-pick').length,0);

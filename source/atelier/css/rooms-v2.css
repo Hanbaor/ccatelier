@@ -31,6 +31,11 @@
 .life-scene h1 {left:auto;right:clamp(28px,4vw,64px);bottom:42px}
 .scene-state {position:absolute;left:clamp(28px,4vw,64px);bottom:50px;color:#f5ecd7;font:13px/1.8 var(--chinese);padding:10px 15px;background:#10221e66;border:1px solid #eee2c933;backdrop-filter:blur(12px)}
 
+.life-paths {display:flex;flex-wrap:wrap;gap:12px 32px;margin-top:22px;padding-block:10px;border-bottom:1px solid var(--line)}
+.life-paths>a {display:flex;align-items:center;gap:22px;min-height:44px;color:var(--text);font:13px var(--chinese)}
+.life-paths svg {width:18px;height:18px;flex:none;color:var(--yellow)}
+.life-paths>a:hover {color:var(--yellow)}
+
 /* Projects / the image is the stage, the real project is the only caption. */
 .projects-scene {aspect-ratio:1672/941;min-height:0}
 .projects-scene>img {object-position:center}

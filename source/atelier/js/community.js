@@ -1,12 +1,28 @@
 import {$, $$} from './ui.js';
 
 const symbols={star:'✦',drum:'◉',ticket:'▤',ribbon:'⋈'};
+const commentId=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+function validComments(data, submitted, status) {
+  if(!record(data))return false;
+  if(submitted)return status===202&&typeof data.id==='string'&&commentId.test(data.id)&&['pending','approved','rejected'].includes(data.status);
+  return status===200&&Array.isArray(data.items)&&Number.isSafeInteger(data.total)&&data.total>=data.items.length&&
+    (data.next===null||(Number.isSafeInteger(data.next)&&data.next>0&&data.next<data.total))&&
+    data.items.every(item=>record(item)&&typeof item.id==='string'&&commentId.test(item.id)&&
+      ['nickname','message','reply','createdAt'].every(key=>typeof item[key]==='string')&&
+      Object.hasOwn(symbols,item.stamp)&&Number.isFinite(Date.parse(item.createdAt)));
+}
+
 export async function communityAPI(route,body) {
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),9000);
   try {
     const response=await fetch('/api/'+route,{method:body===undefined?'GET':'POST',credentials:'same-origin',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:controller.signal});
-    const data=await response.json().catch(()=>({message:'留言和统计服务暂未连接。'}));
-    if(!response.ok){const error=new Error(data.message||'请求没有成功，请稍后重试。');error.status=response.status;throw error;}
+    const comments=route.split('?')[0]==='comments';
+    const protocolFailure=()=>new Error(body===undefined?'留言服务返回了无法识别的结果，请重试。':'未能确认投递结果，请重试。');
+    let data;
+    try { data=await response.json(); } catch { if(comments)throw protocolFailure();data={message:'留言和统计服务暂未连接。'}; }
+    if(comments&&response.ok&&(!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type')||'')||!validComments(data,body!==undefined,response.status)))throw protocolFailure();
+    if(!response.ok){const error=new Error(typeof data?.message==='string'?data.message:'请求没有成功，请稍后重试。');error.status=response.status;throw error;}
     return data;
   }catch(error){
     if(error.name==='AbortError')throw new Error('连接有点慢，请稍后再试。');
@@ -42,12 +58,22 @@ function initComments(root) {
   more.addEventListener('click',()=>load(true));
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(submit.disabled)return;
-    const data=new FormData(form);const body={page,nickname:String(data.get('nickname')).trim(),message:String(data.get('message')).trim(),stamp:data.get('stamp'),website:data.get('website')};
+    const readDraft=()=>{const data=new FormData(form);return {page,nickname:String(data.get('nickname')).trim(),message:String(data.get('message')).trim(),stamp:data.get('stamp'),website:data.get('website')};};
+    const snapshot=JSON.stringify([...new FormData(form)]);
+    const body=readDraft();
     if([...body.nickname].length>24||[...body.message].length>1200){status.textContent='昵称最多 24 个字，留言最多 1200 个字。';return;}
     const current=JSON.stringify(body);if(current!==draft){submissionId=crypto.randomUUID();draft=current;}
     submit.disabled=true;status.textContent='正在投递……';
-    try{await communityAPI('comments',{...body,submissionId});status.textContent='已收到，审核后会出现在这里。谢谢你留下回声。';input.value='';$('[data-comment-length]',form).textContent='0 / 1200';draft='';}
-    catch(error){status.textContent=error.message;}finally{submit.disabled=false;}
+    try{
+      const receipt=await communityAPI('comments',{...body,submissionId});
+      if(receipt.status==='rejected'){status.textContent='这条留言已被收起，未公开。内容仍在当前表单中。';return;}
+      status.textContent=receipt.status==='approved'?'这条留言已公开。':'已收到，审核后会出现在这里。谢谢你留下回声。';
+      // Typing remains possible during delivery. Never erase a newer draft.
+      if(JSON.stringify([...new FormData(form)])===snapshot){input.value='';$('[data-comment-length]',form).textContent='0 / 1200';}
+      else status.textContent+=' 当前修改的草稿已保留，尚未投递。';
+      draft='';
+    }
+    catch(error){status.textContent=error.message+' 内容仍在当前表单中，可再次投递。';}finally{submit.disabled=false;}
   });
   $('fieldset[data-form-guard]',form).disabled=false;
   load();

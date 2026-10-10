@@ -1,3 +1,7 @@
 <section class="atelier-room room-life" aria-label="生活">
   <header class="room-scene life-scene" data-reveal><img src="<%= url_for('atelier/images/v2/life.webp') %>" srcset="<%= url_for('atelier/images/v2/life-960.webp') %> 960w, <%= url_for('atelier/images/v2/life.webp') %> 1536w" sizes="94vw" alt="雨后的下北泽街头，虹夏在暖灯与湿润街道间回望的主题插画" width="1536" height="1024" fetchpriority="high"><h1 tabindex="-1">生活</h1><p class="scene-state">相册尚未发布</p></header>
+  <nav class="life-paths" aria-label="继续逛逛">
+    <a href="<%= url_for('notes/') %>"><span>读笔记</span><%- partial('nijika/editorial-arrow') %></a>
+    <a href="<%= url_for('studio/practice/') %>"><span>去排练</span><%- partial('nijika/editorial-arrow') %></a>
+  </nav>
 </section>

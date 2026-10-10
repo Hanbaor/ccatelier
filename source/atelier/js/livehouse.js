@@ -3,7 +3,7 @@ import {LivehouseAudio} from './livehouse-audio.js';
 import {SCORE_BPM,SCORE_BEATS,SCORE_DURATION,scoreEvents,sectionAt} from './livehouse-score.mjs';
 import {initLiveRecorder} from './livehouse-recorder.js';
 
-export function initLivehouse(){
+export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={}){
  const dialog=$('#livehouse-dialog');if(!dialog)return {open(){}};
  const canvas=$('[data-live-canvas]',dialog),ctx=canvas.getContext('2d'),audio=new LivehouseAudio(),score=scoreEvents();
  const showButton=$('[data-live-show]',dialog),soundButton=$('[data-live-sound]',dialog),motionButton=$('[data-live-motion]',dialog),status=$('[data-live-status]',dialog),scene=$('[data-live-scene]',dialog),progress=$('[data-live-progress]',dialog),timeline=progress.parentElement;
@@ -12,19 +12,21 @@ export function initLivehouse(){
  let opener=null,sound=false,playing=false,start=0,cursor=0,scheduler=0,raf=0,last=0,clock=0,energy=0,visualAt=-1000,localMotion=true,generation=0,section='',hits=0,width=0,height=0;
  let pointer=.5,target=.5,rings=[],visualTimers=new Set(),padTimers=new Map(),padLast=new Map();
  const wave=new Uint8Array(256);
+ let stage=null,stageAbort=null,stageGeneration=0;
  const animated=()=>motion.enabled&&localMotion;
  function say(text){status.textContent=text;}
  function syncSound(){soundButton.setAttribute('aria-pressed',String(sound));$('span',soundButton).textContent=sound?'声音已开启':'开启声音';}
- function syncMotion(){const active=animated();dialog.classList.toggle('livehouse-still',!active);motionButton.setAttribute('aria-pressed',String(active));motionButton.textContent=active?'动态灯光':'静态灯光';motionButton.disabled=!motion.enabled;motionButton.title=motion.enabled?'只切换现场动效':'已遵循全站或系统减少动态设置';wake();}
+ function syncMotion(){const active=animated();dialog.classList.toggle('livehouse-still',!active);motionButton.setAttribute('aria-pressed',String(active));motionButton.textContent=active?'动态灯光':'静态灯光';motionButton.disabled=!motion.enabled;motionButton.title=motion.enabled?'只切换现场动效':'已遵循全站或系统减少动态设置';stage?.setMotion(active);wake();}
  function pulse(type,velocity=.7){
   const now=performance.now();
+  stage?.strike(type,velocity);
   // Soft light envelopes, never high-frequency full-screen flashes.
   if(now-visualAt>=400){energy=Math.max(energy,velocity*.65);visualAt=now;if(animated()){rings.push({at:now,type});rings=rings.slice(-5);}}
   const pad=pads.get(type);if(!pad||!animated()||now-(padLast.get(type)||-1000)<400)return;
   padLast.set(type,now);pad.classList.add('is-hit');clearTimeout(padTimers.get(type));padTimers.set(type,setTimeout(()=>{pad.classList.remove('is-hit');padTimers.delete(type);},430));wake();
  }
  function hit(type){if(!dialog.open||document.hidden)return;audio.hit(type);pulse(type);recorder.capture(type);hits++;say(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
- function clearVisuals(){visualTimers.forEach(clearTimeout);visualTimers.clear();padTimers.forEach(clearTimeout);padTimers.clear();pads.forEach(p=>p.classList.remove('is-hit'));rings=[];energy=0;}
+ function clearVisuals(){visualTimers.forEach(clearTimeout);visualTimers.clear();padTimers.forEach(clearTimeout);padTimers.clear();pads.forEach(p=>p.classList.remove('is-hit'));rings=[];energy=0;stage?.clear();}
  function stopShow(message='演出已停止'){playing=false;generation++;clearInterval(scheduler);scheduler=0;clearVisuals();showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');if(message)say(message);}
  function silence(){sound=false;audio.stop();syncSound();}
  function transport(){
@@ -75,8 +77,15 @@ export function initLivehouse(){
   if(active)raf=requestAnimationFrame(draw);
  }
  function wake(){cancelAnimationFrame(raf);raf=0;last=0;if(dialog.open&&!document.hidden)raf=requestAnimationFrame(draw);}
- function resize(){const rect=dialog.getBoundingClientRect();width=rect.width;height=Math.max(rect.height,660);const scale=Math.min(1.5,1440/Math.max(width,1));canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);ctx?.setTransform(scale,0,0,scale,0,0);wake();}
- function cleanup(){recorder.cancel('录制或回放已取消；已完成的节奏保留。');stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
+ function resize(){const rect=dialog.getBoundingClientRect();width=rect.width;height=Math.max(rect.height,660);const scale=Math.min(1.5,1440/Math.max(width,1));canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);ctx?.setTransform(scale,0,0,scale,0,0);stage?.resize();wake();}
+ function cleanup(){stageGeneration++;stageAbort?.abort();stageAbort=null;stage?.dispose();stage=null;recorder.cancel('录制或回放已取消；已完成的节奏保留。');stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
+ async function enhanceStage(){
+  const token=++stageGeneration;stageAbort=new AbortController();const signal=stageAbort.signal;
+  try{const module=await loadStage();if(signal.aborted||token!==stageGeneration||!dialog.open)return;
+   const created=await module.createLiveStage({dialog,kit:$('.livehouse-kit',dialog),pads,signal,isCurrent:()=>token===stageGeneration&&dialog.open,isMotion:animated});
+   if(signal.aborted||token!==stageGeneration||!dialog.open){created?.dispose();return;}stage=created;stage?.setVisible(!document.hidden);stage?.setMotion(animated());
+  }catch{/* Optional decoration never prevents opening or playing the HTML kit. */}
+ }
  const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){if(playing){stopShow('演出已停止，舞台留给你的节奏');silence();}clearVisuals();}});
  showButton.addEventListener('click',toggleShow);soundButton.addEventListener('click',toggleSound);$('[data-live-close]',dialog).addEventListener('click',()=>dialog.close());
  $('[data-live-volume]',dialog).addEventListener('input',e=>audio.setVolume(Number(e.target.value)/100));motionButton.addEventListener('click',()=>{localMotion=!localMotion;clearVisuals();syncMotion();});
@@ -87,14 +96,14 @@ export function initLivehouse(){
   pad.addEventListener('click',e=>{if(e.detail===0)hit(type);});
  });
  dialog.addEventListener('keydown',e=>{if(e.repeat&&e.target.closest('[data-live-pad]')&&['Enter',' '].includes(e.key)){e.preventDefault();return;}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing||e.target.closest('input,select,textarea,[contenteditable]'))return;const type={a:'kick',s:'snare',d:'hat',f:'tom'}[e.key.toLowerCase()];if(type){e.preventDefault();hit(type);}});
- dialog.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&animated())target=(e.clientX-dialog.getBoundingClientRect().left)/Math.max(width,1);},{passive:true});
+ dialog.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&animated()){target=(e.clientX-dialog.getBoundingClientRect().left)/Math.max(width,1);stage?.pointer(target);}},{passive:true});
  dialog.addEventListener('close',cleanup);
  document.addEventListener('atelier:motion',syncMotion);
- document.addEventListener('visibilitychange',()=>{if(document.hidden&&dialog.open){recorder.cancel('录制已取消；回到现场后可重新录制。');stopShow('已暂停，点击重新开场');silence();cancelAnimationFrame(raf);raf=0;}else if(dialog.open)wake();});
+ document.addEventListener('visibilitychange',()=>{stage?.setVisible(!document.hidden);if(document.hidden&&dialog.open){recorder.cancel('录制已取消；回到现场后可重新录制。');stopShow('已暂停，点击重新开场');silence();cancelAnimationFrame(raf);raf=0;}else if(dialog.open)wake();});
  window.addEventListener('pagehide',()=>{if(dialog.open)dialog.close();else cleanup();});window.addEventListener('resize',()=>{if(dialog.open)resize();},{passive:true});
  return {open(button){
   if(dialog.open)return;opener=button;closeDialogs();document.dispatchEvent(new CustomEvent('atelier:livehouse-open'));
   $$('[data-src]',dialog).forEach(img=>{img.src=img.dataset.src;delete img.dataset.src;});$$('[data-srcset]',dialog).forEach(el=>{el.srcset=el.dataset.srcset;delete el.dataset.srcset;});
-  sound=false;hits=0;cursor=0;section='';dialog.dataset.liveScene='arrival';scene.textContent='舞台交给你';progress.style.setProperty('--show-progress','0%');timeline.setAttribute('aria-valuenow','0');$('span',showButton).textContent='开始演出';syncSound();say('静音待场');document.body.classList.add('livehouse-opened');dialog.showModal();syncMotion();resize();$('[data-live-close]',dialog).focus({preventScroll:true});
+  sound=false;hits=0;cursor=0;section='';dialog.dataset.liveScene='arrival';scene.textContent='舞台交给你';progress.style.setProperty('--show-progress','0%');timeline.setAttribute('aria-valuenow','0');$('span',showButton).textContent='开始演出';syncSound();say('静音待场');document.body.classList.add('livehouse-opened');dialog.showModal();syncMotion();resize();$('[data-live-close]',dialog).focus({preventScroll:true});enhanceStage();
  }};
 }

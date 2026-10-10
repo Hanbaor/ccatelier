@@ -39,6 +39,10 @@ body.livehouse-opened .stage-field {visibility:hidden}
 .live-pad-hat .live-pad-skin {border-color:#bfa26b;background:repeating-radial-gradient(ellipse,#ac884026 0 2px,#1b252c 3px 6px);box-shadow:inset 0 0 0 3px #655339,0 5px 0 #373229,0 20px 30px #0009}
 .live-pad-tom {left:37%;top:-28px;width:150px;height:115px;--pad-color:189,173,237}
 .live-pad.is-hit .live-pad-skin {animation:live-drum-hit .42s ease-out}
+/* Progressive instrument skins. The same native buttons and labels stay above. */
+.livehouse-stage {position:absolute;left:-38px;top:-38px;z-index:0;pointer-events:none;opacity:0;max-width:none;max-height:none}
+.livehouse-3d-ready .livehouse-stage {opacity:1}
+.livehouse-3d-ready .live-pad-skin {opacity:0}
 @keyframes live-drum-hit {0%{box-shadow:inset 0 0 0 5px #152834,0 8px 0 #20394a,0 0 40px rgba(var(--pad-color),.32);border-color:rgb(var(--pad-color));transform:scale(.98)}100%{transform:none}}
 .livehouse-floor {position:absolute;inset:auto -15% 120px;height:200px;border-top:1px solid #f1cf8a26;border-radius:50%;background:radial-gradient(ellipse at 50% 30%,#4c879b13,transparent 60%);z-index:0;pointer-events:none;box-shadow:0 -30px 80px #33647910}
 .livehouse-deck {position:absolute;inset:auto 0 0;padding:22px 30px 18px;background:linear-gradient(0deg,#08131df5,#08131dd9 80%,transparent);z-index:4}
