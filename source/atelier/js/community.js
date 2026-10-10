@@ -49,7 +49,9 @@ function friendlyFailure(container,message,retry) {
   container.replaceChildren();const box=element('div','community-empty');box.append(element('p','',message));const button=element('button','community-retry','再试一次 ↻');button.addEventListener('click',retry);box.append(button);container.append(box);
 }
 function initComments(root) {
-  const form=$('form',root),list=$('[data-comment-list]',root),more=$('[data-comment-more]',root),status=$('.comment-status',root),submit=$('button[type=submit]',form);
+  const form=$('form',root),list=$('[data-comment-list]',root),more=$('[data-comment-more]',root),status=$('[data-comment-status],.comment-status:not([data-comment-connection])',root),submit=$('button[type=submit]',form);
+  const connection=$('[data-comment-connection]',root);
+  const showConnection=message=>{if(connection)connection.textContent=message;};
   const initialPlaceholder=$(':scope > p.community-empty',list);
   const page=location.pathname,doc=root.ownerDocument,view=doc.defaultView;
   let next=null,loading=null,loadRecoveryNeeded=false,unavailable=false,requestSequence=0,availabilitySequence=0,statusOwner='',submissionId=crypto.randomUUID(),draft='',navigationEpoch=0,active=true,inFlight=null,recoveryNeeded=false;
@@ -65,7 +67,7 @@ function initComments(root) {
   function syncAvailabilityStatus(){
     if(unavailable){
       if(!inFlight&&statusOwner!=='receipt'){
-        status.textContent='留言暂未开放。内容仍在当前表单中。';statusOwner='availability';
+        status.textContent='留言暂未开放。';statusOwner='availability';
       }else status.append(availabilityNote);
       status.append(recheck);recheck.disabled=!!loading;
     }else{
@@ -77,7 +79,7 @@ function initComments(root) {
   function recordAvailability(sequence,value){
     // Only explicit, validated evidence changes availability. Newer requests win.
     if(sequence<availabilitySequence)return false;
-    availabilitySequence=sequence;unavailable=value;syncSubmit();syncAvailabilityStatus();return true;
+    availabilitySequence=sequence;unavailable=value;showConnection(value?'':'留言已开放。');syncSubmit();syncAvailabilityStatus();return true;
   }
   function restoreInterruptedStatus(){
     if(recoveryNeeded&&!inFlight&&visibleView()){
@@ -97,6 +99,7 @@ function initComments(root) {
   async function load(append=false) {
     if(loading||!visibleView())return;
     const attempt={},epoch=navigationEpoch,sequence=++requestSequence;
+    showConnection(unavailable?'':'正在连接留言服务……');
     loading=attempt;more.disabled=true;recheck.disabled=true;listRetry.disabled=true;list.setAttribute('aria-busy','true');
     const currentView=()=>loading===attempt&&navigationEpoch===epoch&&visibleView();
     try {
@@ -110,6 +113,7 @@ function initComments(root) {
     }catch(error){
       if(!currentView())return;
       initialPlaceholder?.remove();
+      if(sequence>=availabilitySequence&&!unavailable)showConnection('暂时无法确认留言服务，请稍后重试。');
       if(notConfigured(error)){
         if(!recordAvailability(sequence,true)&&!unavailable)list.append(listFailure);else listFailure.remove();
       }else if(!append)friendlyFailure(list,error.message,()=>load());

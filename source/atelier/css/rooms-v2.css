@@ -258,7 +258,7 @@ body.light .atelier-room {--room-panel:#fffaf1ef;--room-shadow:0 24px 70px #554c
   .room-guestbook .comment-stamps>legend {float:none;margin:0 0 10px;padding:0}
   .room-guestbook .comment-form-bottom {gap:12px}
   .room-guestbook .comment-form-bottom>span {font-size:10px}
-  .room-guestbook .comment-form-bottom>button {font-size:12px;padding-inline:12px;gap:12px}
+  .room-guestbook .comment-form-bottom>button {font-size:13px;padding-inline:12px;gap:12px}
 }
 @media(max-width:380px) {
   .room-scene h1 {left:20px}

@@ -625,3 +625,7 @@ h1,h2 {text-wrap:balance}
   .reading-opener h1 {font-size:24pt!important}
   .article-body img,.article-body blockquote {break-inside:avoid}
 }
+
+/* Availability is readable before entering a comment, on every route. */
+.encore-comments .comment-status,.encore-comments .community-retry,.encore-comments .comment-form-bottom button,.encore-comments .comment-stamps legend {font-size:13px}
+.encore-comments .comment-status:empty {display:none}
