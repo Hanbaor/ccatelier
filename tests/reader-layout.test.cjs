@@ -45,3 +45,49 @@ test('reading styles have two real columns, compact nesting and no sidebar selec
  const reader=fs.readFileSync(path.join(root,'source/atelier/css/reader.css'),'utf8'),refinement=fs.readFileSync(path.join(root,'source/atelier/css/refinement.css'),'utf8');
  assert.match(reader,/grid-template-columns:150px minmax\(0,840px\)/);assert.match(refinement,/grid-template-columns:150px minmax\(0,840px\)/);assert.doesNotMatch(reader+refinement,/reader-workbench/);assert.match(reader,/padding-left:8px!important/);assert.match(reader,/scrollbar-color:var\(--line\) transparent/);
 });
+test('chapter copy uses decorative SVGs with named buttons and preserves encoded copy and reading text',async t=>{
+ const dom=setup(render()),doc=dom.window.document;
+ const navigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ const nodeFilterDescriptor=Object.getOwnPropertyDescriptor(globalThis,'NodeFilter');
+ const copied=[];let rejectCopy=false;
+ // Only this in-memory clipboard is used; no system clipboard is accessed.
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{async writeText(value){if(rejectCopy)throw new Error('denied');copied.push(value);}}}});
+ Object.defineProperty(globalThis,'NodeFilter',{configurable:true,value:dom.window.NodeFilter});
+ t.mock.timers.enable({apis:['setTimeout']});
+ try{
+  const {initReader}=await import('../source/atelier/js/reader.js');
+  const {articleText}=await import('../source/atelier/js/text-anchors.js');
+  const toast=doc.createElement('div');toast.id='toast';doc.body.append(toast);
+  doc.querySelector('.article-body h3').id='题目 描述';
+  const article=doc.querySelector('.article-body'),before=articleText(article).text;
+  const headings=[...article.querySelectorAll('h2,h3')],titles=headings.map(h=>h.textContent);
+  initReader();
+  assert.equal(article.querySelectorAll('.chapter-copy').length,2);
+  assert.equal(article.querySelector('h1 .chapter-copy'),null);
+  const template=fs.readFileSync(path.join(root,'custom/redefine/nijika/editorial-arrow.ejs'),'utf8');
+  for(const [index,heading] of headings.entries()){
+   const button=heading.querySelector('button.chapter-copy'),svg=button.querySelector('svg');
+   assert.equal(button.getAttribute('aria-label'),'复制章节链接：'+titles[index]);
+   assert.ok(button.hasAttribute('data-reader-exclude'));
+   assert.equal(button.textContent,'','no font-dependent arrow glyph remains');
+   assert.equal(svg.namespaceURI,'http://www.w3.org/2000/svg');
+   assert.equal(svg.getAttribute('viewBox'),'0 0 24 24');
+   assert.equal(svg.getAttribute('aria-hidden'),'true');
+   assert.equal(svg.getAttribute('focusable'),'false');
+   assert.equal(svg.querySelector('path').getAttribute('d'),template.match(/d="([^"]+)"/)[1]);
+   button.click();await Promise.resolve();
+   assert.equal(copied.at(-1),'https://ccatelier.test/writing/csdn-154834561/#'+encodeURIComponent(heading.id));
+   assert.equal(toast.textContent,'已复制章节链接');
+  }
+  assert.equal(articleText(article).text,before,'SVG controls do not enter search or speech text');
+  headings[1].querySelector('button').click();await Promise.resolve();
+  assert.equal(copied.length,3,'repeated clicks keep copying the same chapter');
+  rejectCopy=true;headings[0].querySelector('button').click();await Promise.resolve();
+  assert.equal(copied.length,3);
+  assert.equal(toast.textContent,'复制失败，可从左侧目录打开章节并复制地址');
+ }finally{
+  if(navigatorDescriptor)Object.defineProperty(globalThis,'navigator',navigatorDescriptor);else delete globalThis.navigator;
+  if(nodeFilterDescriptor)Object.defineProperty(globalThis,'NodeFilter',nodeFilterDescriptor);else delete globalThis.NodeFilter;
+  dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();
+ }
+});

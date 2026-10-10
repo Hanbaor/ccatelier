@@ -85,7 +85,7 @@ test('navigation styles parse and retain mobile, focus and theme-aware safeguard
     assert.match(hub, /\.hub-v3 a:focus-visible\s*\{outline:2px solid var\(--yellow\)/);
     assert.match(hub, /\.hub-v3 a\[data-reveal\]:focus-visible \{clip-path:none;opacity:1;transform:none\}/);
     assert.match(hub, /@media\(max-width:600px\)[\s\S]*\.hub-grid \{grid-template-columns:minmax\(0,1fr\);gap:24px\}/);
-    assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 35%\}/);
+    assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 0%;transform-origin:center top\}/);
     assert.match(hub, /\.hub-secondary>a[^}]*min-height:44px[^}]*color:var\(--text\)/);
     assert.match(rooms, /\.life-paths \{display:flex;flex-wrap:wrap/);
     assert.match(rooms, /\.atelier-room a:focus-visible/);

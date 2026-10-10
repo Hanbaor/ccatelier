@@ -74,9 +74,9 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 .hub-card-caption h2 {font:500 clamp(25px,2.4vw,32px)/1.25 var(--chinese);letter-spacing:-.045em;margin:0}
 .hub-card-caption p {grid-column:1;grid-row:2;font-size:13px;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}
 .hub-card-caption>svg {grid-column:2;grid-row:1/3;align-self:center;width:24px;height:24px;color:var(--yellow);transition:transform .24s}
-.hub-writing>img {object-position:43% center}
+.hub-writing>img {object-position:43% 0%;transform-origin:center top}
 .hub-studio {min-width:0}
-.hub-studio .hub-card>img {object-position:52% 35%}
+.hub-studio .hub-card>img {object-position:52% 0%;transform-origin:center top}
 .hub-research,.hub-projects {display:grid;grid-template-columns:140px minmax(0,1fr);align-items:center;gap:24px;border-top:1px solid var(--line);padding-top:24px;border-radius:0}
 .hub-research>img,.hub-projects>img {aspect-ratio:1.25;object-position:55% center;border-radius:3px}
 .hub-research .hub-card-caption,.hub-projects .hub-card-caption {padding:0}

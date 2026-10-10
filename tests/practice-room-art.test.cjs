@@ -64,5 +64,17 @@ test('art styling preserves the compact rehearsal header and centered face focus
   assert.match(practice, /\.practice-heading>img \{[^}]*aspect-ratio:1\.5;object-fit:cover;object-position:52% 0%/);
   assert.match(practice, /@media\(max-width:600px\)[\s\S]*\.practice-heading>img \{position:static;[^}]*width:100%;aspect-ratio:\.85;object-position:52% 35%/);
   assert.match(hub, /\.hub-card>img \{[^}]*aspect-ratio:1\.75/);
-  assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 35%\}/);
+  assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 0%;transform-origin:center top\}/);
+});
+
+// Both source illustrations put the hair ornament at the upper edge. Preserve
+// that edge while the shared aspect ratio removes only lower scene context.
+test('hub leads preserve the upper source edge at desktop, mobile and during hover scaling', () => {
+  const hub = read('source/atelier/css/immersive.css');
+  assert.match(hub, /\.hub-writing>img \{object-position:43% 0%;transform-origin:center top\}/);
+  assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 0%;transform-origin:center top\}/);
+  assert.equal((hub.match(/\.hub-writing>img\s*\{/g) || []).length, 1, 'mobile inherits the same top-aligned source crop');
+  assert.equal((hub.match(/\.hub-studio \.hub-card>img\s*\{/g) || []).length, 1, 'no breakpoint restores the old cropped head position');
+  assert.match(hub, /\.hub-card>img \{[^}]*aspect-ratio:1\.75/);
+  assert.match(hub, /@media\(max-width:600px\)[\s\S]*\.hub-card>img \{aspect-ratio:1\.7\}/);
 });
