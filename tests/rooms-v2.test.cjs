@@ -24,7 +24,7 @@ test('each secondary room has a distinct art-forward opening without decorative 
       assert.ok(!room.querySelector('.quiet-composition'), 'old placeholder composition has been replaced');
     } finally {dom.window.close();}
   }
-  assert.match(read('public/research/index.html'), /Database[\s\S]*Text-to-SQL[\s\S]*整理中/);
+  assert.match(read('public/research/index.html'), /Database[\s\S]*Text-to-SQL[\s\S]*教学示例/);
   assert.match(read('public/life/index.html'), /相册尚未发布/);
   assert.match(read('public/life/index.html'), /主题插画/);
   assert.match(read('public/projects/index.html'), /Hexo[\s\S]*Redefine/);

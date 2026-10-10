@@ -1,4 +1,59 @@
+<%
+// Tests compare this no-script content with the worker's canonical fixtures.
+const sqlCases = [
+  {id:'empty-count',label:'空集计数',question:'列出每位创作者的曲目数，包含 0 首，按 id 排序。',
+   tables:[{name:'artists',columns:['id','name'],rows:[[1,'Aster'],[2,'Lumen'],[3,'Moss']]},{name:'tracks',columns:['id','artist_id','title'],rows:[[101,1,'Blue'],[102,1,'Gold'],[103,2,'Echo']]}],
+   candidate:'SELECT a.name, COUNT(*) AS tracks\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+   reference:'SELECT a.name, COUNT(t.id) AS tracks\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+   expected:{columns:['name','tracks'],rows:[['Aster',2],['Lumen',1],['Moss',0]]},
+   insight:'LEFT JOIN 为 Moss 留下一行，t.id 是 NULL。COUNT(*) 数行；COUNT(t.id) 只数非空值。',source:'https://sqlite.org/lang_aggfunc.html'},
+  {id:'top-ties',label:'并列第一',question:'列出所有最高分曲目，保留并列，按曲名排序。',
+   tables:[{name:'scores',columns:['track','points'],rows:[['Blue',95],['Gold',95],['Echo',88]]}],
+   candidate:'SELECT track, points\nFROM scores\nORDER BY points DESC, track\nLIMIT 1',
+   reference:'SELECT track, points\nFROM scores\nWHERE points = (SELECT MAX(points) FROM scores)\nORDER BY track',
+   expected:{columns:['track','points'],rows:[['Blue',95],['Gold',95]]},
+   insight:'LIMIT 1 只保留一行。先取最高分，再筛选同分曲目，才能保留全部并列。',source:'https://sqlite.org/lang_select.html#the_limit_clause'}
+];
+%>
+<link rel="stylesheet" href="<%= url_for('atelier/css/research-sql.css') %>">
 <section class="atelier-room room-research" aria-label="研究">
   <header class="room-scene research-scene" data-reveal><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="94vw" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><h1 tabindex="-1">研究</h1></header>
-  <div class="research-focus"><div class="research-topics"><span>Database</span><span>Text-to-SQL</span></div><span class="room-status"><i aria-hidden="true"></i>整理中</span><a class="room-action" href="<%= url_for('notes/') %>">笔记 <%- partial('nijika/editorial-arrow') %></a></div>
+  <div class="research-focus"><div class="research-topics"><span>Database</span><span>Text-to-SQL</span></div><span class="room-status"><i aria-hidden="true"></i>教学示例</span><a class="room-action" href="<%= url_for('notes/') %>">笔记 <%- partial('nijika/editorial-arrow') %></a></div>
+  <section class="sql-lab" data-sql-lab aria-labelledby="sql-lab-title">
+    <header class="sql-lab-heading"><div><p>QUERY / RESULT</p><h2 id="sql-lab-title">能运行，然后呢？</h2></div><span>SQLite · 浏览器内运行</span></header>
+    <div class="sql-case-switch" data-sql-switch hidden aria-label="选择 SQL 教学示例">
+      <% sqlCases.forEach((item,index) => { %><button type="button" data-sql-select="<%= item.id %>" aria-controls="sql-case-<%= item.id %>" aria-pressed="<%= index === 0 ? 'true' : 'false' %>"><span>0<%= index + 1 %></span><%= item.label %></button><% }); %>
+    </div>
+    <% sqlCases.forEach((item,index) => { %>
+    <article class="sql-case" id="sql-case-<%= item.id %>" data-sql-case="<%= item.id %>" aria-labelledby="sql-question-<%= item.id %>">
+      <div class="sql-question"><span aria-hidden="true">0<%= index + 1 %></span><h3 id="sql-question-<%= item.id %>"><%= item.question %></h3></div>
+      <div class="sql-fixtures" aria-label="本例全部数据">
+        <% item.tables.forEach(table => { %>
+        <div class="sql-table-wrap"><table data-sql-fixture="<%= table.name %>"><caption><%= table.name %><span><%= table.rows.length %> rows</span></caption><thead><tr><% table.columns.forEach(column => { %><th scope="col"><%= column %></th><% }); %></tr></thead><tbody><% table.rows.forEach(row => { %><tr><% row.forEach(value => { %><td><%= value %></td><% }); %></tr><% }); %></tbody></table></div>
+        <% }); %>
+      </div>
+      <div class="sql-comparison">
+        <section class="sql-query-panel" aria-labelledby="sql-candidate-<%= item.id %>">
+          <header><h4 id="sql-candidate-<%= item.id %>">候选 SQL</h4><button type="button" class="sql-text-button" data-sql-reset hidden>恢复示例</button></header>
+          <label class="sr-only" for="sql-editor-<%= item.id %>">编辑 <%= item.label %> 的候选 SQL</label>
+          <textarea id="sql-editor-<%= item.id %>" data-sql-editor readonly maxlength="4000" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="sql-editor-help"><%= item.candidate %></textarea>
+          <div class="sql-result-heading"><h5>实际结果</h5><span data-sql-result-count>尚未运行</span></div>
+          <div class="sql-result sql-result-actual" data-sql-actual><p class="sql-result-empty">运行查询，看看哪些行不同。</p></div>
+        </section>
+        <section class="sql-query-panel sql-reference-panel" aria-labelledby="sql-reference-<%= item.id %>">
+          <header><h4 id="sql-reference-<%= item.id %>">参考 SQL</h4><button type="button" class="sql-text-button" data-sql-use-reference hidden>放入编辑器</button></header>
+          <pre data-sql-reference tabindex="0" aria-label="<%= item.label %> 的参考 SQL"><code><%= item.reference %></code></pre>
+          <div class="sql-result-heading"><h5>预期结果</h5><span><%= item.expected.rows.length %> 行</span></div>
+          <div class="sql-result" data-sql-expected><table><caption class="sr-only">根据题意和全部示例数据得到的预期结果</caption><thead><tr><th scope="col" class="sql-mark-column"><span class="sr-only">比较状态</span></th><% item.expected.columns.forEach(column => { %><th scope="col"><%= column %></th><% }); %></tr></thead><tbody><% item.expected.rows.forEach(row => { %><tr><td class="sql-mark-column" data-sql-row-mark></td><% row.forEach(value => { %><td><%= value %></td><% }); %></tr><% }); %></tbody></table></div>
+        </section>
+      </div>
+      <details class="sql-insight"><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
+    </article>
+    <% }); %>
+    <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
+    <p class="sql-editor-help" id="sql-editor-help">只读 SELECT / WITH · 不含分号 · 最多 100 行 · Ctrl / ⌘ + Enter 运行</p>
+    <details class="sql-boundaries"><summary>运行边界与来源</summary><p>本站原创小数据，比较只对本例成立。列按位置对应，值类型、重复次数和顺序都参与比较。</p><p>首次运行按需下载约 705 KB 的本地 SQLite 资源；需要支持 WebAssembly 和 Worker 的浏览器。查询仅在当前浏览器运行，不保存或上传。离线时不保证可用。</p><p>查询限 4,000 字符；所有分号都需删除，包括注释和字符串中的分号。执行超过 1.5 秒即停止；SQLite 分配限 16 MiB，结果限 16 列，每格最多 512 字符。</p><p><a href="https://github.com/sql-js/sql.js/releases/tag/v1.14.2" target="_blank" rel="noopener noreferrer">sql.js 1.14.2 / MIT ↗</a></p></details>
+    <noscript><p class="sql-noscript">启用 JavaScript 后可编辑并执行查询；上方保留了两个示例的完整数据与预期结果。</p></noscript>
+  </section>
 </section>
+<script type="module" src="<%= url_for('atelier/js/research-sql.js') %>"></script>
