@@ -5,13 +5,14 @@ import {element,action,download,readImport} from './archive-store.js';
 import {vault} from './vault.js';
 import {makeDialog} from './live-dialog.js';
 import {PlaybackController} from './playback.mjs';
+import {createShareURL,decodeShare} from './studio-share.mjs';
 export function initStudio(){
- const host=$('[data-studio]');if(!host)return;
+ const host=$('[data-studio]');if(!host||host.dataset.studioReady)return;host.dataset.studioReady='true';
  let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
  const status=$('[data-studio-status]'),grid=$('[data-sequencer]'),play=$('[data-studio-play]'),canvas=$('[data-audio-scope]'),ctx=canvas.getContext('2d');
  grid.addEventListener('focusin',e=>{const button=e.target.closest('[data-studio-step]');if(!button||!grid.contains(button))return;stepFocus={track:Number(button.dataset.studioTrack),step:Number(button.dataset.studioStep)};$$('[data-studio-step]',grid).forEach(b=>{b.tabIndex=b===button?0:-1;});});
  const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();});
- function saveHistory(){updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
+ function saveHistory(){if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
  const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
@@ -52,12 +53,37 @@ export function initStudio(){
   button.disabled=false;button.addEventListener('click',()=>loadStarter(button.dataset.studioStarter));
  }
 
- $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
+ $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();status.textContent='已撤销；当前编排：「'+project.name+'」。';setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();status.textContent='已重做；当前编排：「'+project.name+'」。';setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
  let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
  document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
  $('[data-project-export]').addEventListener('click',()=>download('cc-rhythm-project.json',JSON.stringify(validateProject(project),null,2)));
  $('[data-project-import]').addEventListener('change',async e=>{try{const imported=validateProject(await readImport(e.target.files[0]));stop();project=imported;saveHistory();render();status.textContent='项目已导入。';}catch(error){status.textContent=error.message;}e.target.value='';});
  $('[data-studio-save]').addEventListener('click',async()=>{try{await vault.put('projects',{id:crypto.randomUUID(),name:project.name,updated:Date.now(),project:validateProject(project)});status.textContent='已保存到本机资料库。';}catch(error){status.textContent=error.message+'，可以导出 JSON 备份。';}});
+ const shareButton=$('[data-studio-share]'),share=makeDialog('studio-share','分享当前节奏');
+ share.dialog.classList.add('studio-share-dialog');
+ const shareNote=element('p','','链接包含当前编排和曲名，不含本机其他作品。打开后需手动播放。'),shareLabel=element('label','','节奏链接'),shareField=element('textarea'),shareStatus=element('p','live-status');
+ shareField.id='studio-share-url';shareField.readOnly=true;shareField.rows=3;shareField.spellcheck=false;shareField.setAttribute('aria-describedby','studio-share-note');shareNote.id='studio-share-note';shareLabel.htmlFor=shareField.id;shareStatus.setAttribute('role','status');
+ let shareGeneration=0,shareActive=true;
+ const copyShare=action('复制链接',async()=>{
+  const generation=shareGeneration;copyShare.disabled=true;
+  try{if(!window.navigator.clipboard?.writeText)throw Error('unavailable');await window.navigator.clipboard.writeText(shareField.value);if(generation===shareGeneration&&share.dialog.open&&shareActive&&!document.hidden)shareStatus.textContent='链接已复制。';}
+  catch{if(generation===shareGeneration&&share.dialog.open&&shareActive&&!document.hidden){shareStatus.textContent='未能自动复制。链接已选中，请按 Ctrl+C 或 ⌘C 复制。';shareField.focus();shareField.select();}}
+  finally{if(generation===shareGeneration)copyShare.disabled=false;}
+ });
+ share.dialog.append(shareNote,shareLabel,shareField,copyShare,shareStatus);
+ shareButton?.addEventListener('click',()=>{
+  try{const url=createShareURL(project,window.location.href,window.location.href);shareGeneration++;copyShare.disabled=false;shareField.value=url;shareStatus.textContent='仅在点击复制后写入剪贴板。';share.open();copyShare.focus();}
+  catch(error){status.textContent=error.message;}
+ });
+ share.dialog.addEventListener('close',()=>{if(share.dialog.open)return;shareGeneration++;copyShare.disabled=false;shareField.value='';shareStatus.textContent='';if(shareActive&&!document.hidden&&!$('dialog[open]'))shareButton?.focus({preventScroll:true});});
+ function readSharedProject(){
+  try{const incoming=decodeShare(window.location.hash);if(!incoming)return;stop();history.push(project);project=incoming;saveHistory();render();status.textContent='已载入分享的节奏；按播放试听，撤销可回到载入前的编排。';}
+  catch(error){status.textContent=error.message;}
+ }
+ window.addEventListener('hashchange',readSharedProject);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){shareGeneration++;copyShare.disabled=false;}});
+ window.addEventListener('pagehide',()=>{shareActive=false;shareGeneration++;if(share.dialog.open)share.dialog.close();});
+ window.addEventListener('pageshow',()=>{shareActive=true;});
  const saved=makeDialog('studio-projects','你的录音带'),savedList=element('div');saved.dialog.append(savedList);$('[data-studio-load]').addEventListener('click',async()=>{savedList.replaceChildren();saved.open();try{const projects=(await vault.all('projects')).sort((a,b)=>b.updated-a.updated);if(!projects.length)savedList.append(element('p','live-status','还没有保存的录音带。'));for(const p of projects){const row=element('div','queue-row');row.append(element('span','','▣'),element('span','',p.name));const buttons=element('div');buttons.append(action('载入',()=>{try{const value=validateProject(p.project);stop();project=value;saveHistory();render();saved.dialog.close();}catch(error){toast(error.message);}}),action('删除',async()=>{try{await vault.remove('projects',p.id);row.remove();}catch(error){toast(error.message);}}));row.append(buttons);savedList.append(row);}}catch(error){savedList.append(element('p','live-status',error.message));}});
  $('[data-wav-export]').addEventListener('click',async e=>{const button=e.currentTarget;button.disabled=true;status.textContent='正在离线渲染音频…';try{const buffer=await renderWav(structuredClone(project),Number($('[data-export-loops]').value));download('cc-rhythm.wav',buffer,'audio/wav');status.textContent='WAV 已导出：44.1 kHz / 16 bit / 立体声。';}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
  function resize(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx?.setTransform(d,0,0,d,0,0);drawScope();}
@@ -68,5 +94,5 @@ export function initStudio(){
   ctx.strokeStyle='#e5c279';ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<wave.length;i+=4){const x=i/wave.length*w,y=h*.45+(wave[i]-128)/128*h*.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();document.dispatchEvent(new CustomEvent('atelier:spectrum',{detail:{energy:Math.min(1,rms*5),bass:freq[3]/255}}));
  }
  let last=0;function scopeLoop(time=0){animation=0;if(document.hidden)return;if(time-last>33||!time){drawScope();last=time;if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+project.bpm+' BPM';}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
- $('.studio-console').hidden=false;render();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);document.addEventListener('atelier:practice-start',stop);
+ $('.studio-console').hidden=false;render();readSharedProject();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);document.addEventListener('atelier:practice-start',stop);
 }
