@@ -34,8 +34,8 @@ test('shared-link UI loads silently, preserves storage, undoes, copies only on r
  t.after(()=>{window.dispatchEvent(new window.Event('pagehide'));vault.put=oldPut;window.Storage.prototype.setItem=oldSet;dom.window.close();for(const [name,value] of previous){if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name];}});
  const {initStudio}=await import('../source/atelier/js/studio.js');initStudio();initStudio();
  const q=s=>document.querySelector(s),status=q('[data-studio-status]'),share=q('[data-studio-share]');
- assert.equal(q('[data-project-name]').value,incoming.name);assert.equal(q('[data-bpm]').value,'86');assert.equal(audio,0);assert.equal(writes,0);assert.match(status.textContent,/已载入分享/);assert.equal(q('[data-studio-undo]').disabled,false);assert.equal(document.querySelectorAll('#studio-share').length,1);
- q('[data-studio-undo]').click();assert.equal(q('[data-project-name]').value,preset().name);assert.match(status.textContent,/已撤销/);assert.doesNotMatch(status.textContent,/已载入分享/);
+ assert.equal(q('[data-project-name]').value,incoming.name);assert.equal(q('[data-bpm]').value,'86');assert.equal(audio,0);assert.equal(writes,0);assert.match(q('[data-share-arrival-message]').textContent,/已载入分享/);assert.equal(q('[data-share-arrival]').hidden,false);assert.ok(q('[data-share-arrival-message]').textContent.includes(incoming.name));assert.equal(document.activeElement,document.body);assert.equal(window.scrollY,0);assert.equal(q('[data-studio-undo]').disabled,false);assert.equal(document.querySelectorAll('#studio-share').length,1);
+ q('[data-studio-undo]').click();assert.equal(q('[data-project-name]').value,preset().name);assert.match(status.textContent,/已撤销/);assert.equal(q('[data-share-arrival]').hidden,true);assert.equal(q('[data-share-arrival-message]').textContent,'');assert.doesNotMatch(status.textContent,/已载入分享/);
  q('[data-studio-redo]').click();assert.equal(q('[data-project-name]').value,incoming.name);
  share.focus();share.click();const dialog=q('#studio-share'),field=q('#studio-share-url'),copy=dialog.querySelector(':scope>button'),notice=dialog.querySelector('[role=status]');
  assert.equal(dialog.open,true);assert.equal(document.activeElement,copy);assert.deepEqual(decodeShare(new URL(field.value).hash),incoming);assert.equal(new URL(field.value).search,'');assert.equal(copies,0);
@@ -45,11 +45,17 @@ test('shared-link UI loads silently, preserves storage, undoes, copies only on r
  let resolve;window.navigator.clipboard.writeText=()=>new Promise(r=>{resolve=r;});copy.click();dialog.close();share.click();resolve();await new Promise(r=>setImmediate(r));assert.doesNotMatch(notice.textContent,/已复制/);assert.equal(copy.disabled,false);
  // Delayed clipboard completion must not steal focus while the page is hidden.
  copy.click();Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new window.Event('visibilitychange'));resolve();await new Promise(r=>setImmediate(r));assert.doesNotMatch(notice.textContent,/已复制/);assert.equal(copy.disabled,false);Object.defineProperty(document,'hidden',{configurable:true,value:false});
- window.history.replaceState(null,'','#rhythm=v1.bad');window.dispatchEvent(new window.HashChangeEvent('hashchange'));assert.equal(q('[data-project-name]').value,incoming.name);assert.match(status.textContent,/无效/);
+ window.history.replaceState(null,'','#rhythm=v1.bad');window.dispatchEvent(new window.HashChangeEvent('hashchange'));assert.equal(q('[data-project-name]').value,incoming.name);assert.match(status.textContent,/无效/);assert.equal(q('[data-share-arrival]').hidden,false);assert.match(q('[data-share-arrival-message]').textContent,/当前编排未改变/);
  window.history.replaceState(null,'','#rhythm-desk');window.dispatchEvent(new window.HashChangeEvent('hashchange'));assert.equal(q('[data-project-name]').value,incoming.name);
- const name=q('[data-project-name]');name.value='尚未失焦的编辑';name.dispatchEvent(new window.Event('input'));
+ const name=q('[data-project-name]');name.value='尚未失焦的编辑';name.dispatchEvent(new window.Event('input'));assert.equal(q('[data-share-arrival]').hidden,true);
  copy.click();
  window.history.replaceState(null,'',encodeShare(preset('blank')));window.dispatchEvent(new window.HashChangeEvent('hashchange'));assert.equal(q('[data-project-name]').value,'空白录音带');assert.equal(dialog.open,false);resolve();await new Promise(r=>setImmediate(r));assert.doesNotMatch(notice.textContent,/已复制/);q('[data-studio-undo]').click();assert.equal(q('[data-project-name]').value,'尚未失焦的编辑');
+ // Incoming names are literal text, never HTML; anchor navigation leaves the project intact.
+ const named=preset();named.name='<img src=x onerror=alert(1)> 节奏';window.history.replaceState(null,'',encodeShare(named));window.dispatchEvent(new window.HashChangeEvent('hashchange'));
+ const arrival=q('[data-share-arrival]');assert.equal(arrival.hidden,false);assert.equal(arrival.querySelector('img'),null);assert.ok(arrival.textContent.includes(named.name));assert.equal(arrival.querySelector('a').getAttribute('href'),'#rhythm-desk');
+ window.history.replaceState(null,'','#rhythm-desk');window.dispatchEvent(new window.HashChangeEvent('hashchange'));assert.equal(q('[data-project-name]').value,named.name);assert.equal(arrival.hidden,false);
+ q('[data-studio-starter="blank"]').click();assert.equal(arrival.hidden,true);q('[data-studio-undo]').click();assert.equal(arrival.hidden,true);q('[data-studio-redo]').click();assert.equal(arrival.hidden,true);
+ window.history.replaceState(null,'',encodeShare(named));window.dispatchEvent(new window.HashChangeEvent('hashchange'));q('[data-studio-step]').click();assert.equal(arrival.hidden,true);
  // BFCache return allows new copies, but never revives a prior asynchronous attempt.
  share.click();copy.click();const oldResolve=resolve;
  window.dispatchEvent(new window.PageTransitionEvent('pagehide',{persisted:true}));assert.equal(dialog.open,false);
@@ -73,4 +79,9 @@ test('codec is only in studio route graph and included by automatic offline mani
  try{globalThis.hexo={extend:{generator:{register:(name,fn)=>generators.set(name,fn)},helper:{register(){}}}};const file=require.resolve('../scripts/live-archive.js');delete require.cache[file];require(file);
   for(const root of ['/','/preview/']){const artifacts=generators.get('live-archive').call({config:{root},base_dir:path.resolve(__dirname,'..')},{posts:{sort:()=>({toArray:()=>[]})},data:{}});const shell=JSON.parse(artifacts.find(a=>a.path==='atelier/data/offline-shell.json').data);assert.ok(shell.includes(root+'atelier/js/studio-share.mjs'));}
  }finally{if(previous===undefined)delete globalThis.hexo;else globalThis.hexo=previous;}
+});
+
+test('share arrival is hidden without JavaScript and precedes the hero with an accessible desk link',()=>{
+ const html=ejs.render(read('custom/redefine/nijika/studio.ejs'),{theme:{nijika:{studio_art:'/atelier/images/studio.webp'}},url_for:p=>p,nijika_art_srcset:()=>'',partial:()=>''}),dom=new JSDOM(html),doc=dom.window.document;
+ try{const arrival=doc.querySelector('[data-share-arrival]');assert.equal(arrival.hidden,true);assert.equal(arrival.nextElementSibling,doc.querySelector('.studio-mast'));assert.equal(arrival.querySelector('a').hash,'#rhythm-desk');assert.ok(doc.querySelector(arrival.querySelector('a').getAttribute('href')));assert.equal(arrival.querySelector('[role=status]').textContent,'');const css=read('source/atelier/css/studio.css');assert.match(css,/\.studio-share-arrival\[hidden\]\{display:none\}/);assert.match(css,/\.studio-share-arrival a\{[^}]*min-height:44px[^}]*font-size:13px/);assert.match(css,/\.studio-share-arrival p\{[^}]*overflow-wrap:anywhere/);}finally{dom.window.close();}
 });

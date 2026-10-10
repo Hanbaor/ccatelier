@@ -17,7 +17,7 @@
   <%- open_graph({title:metadata.title, description:metadata.description, url:metadata.url, image:theme.nijika.cover, twitter_card:'summary_large_image'}).replace(/<meta (?:name="description"|property="og:description")[^>]*>\n?/g,'') %>
   <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
   <% if (page.nijika === 'cover') { %><link rel="preload" as="image" media="(min-width:601px)" href="<%= url_for('atelier/images/v3/hero.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px"><link rel="preload" as="image" media="(max-width:600px)" href="<%= url_for('atelier/images/v3/hero-960.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px"><% } %>
-  <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.ttf') %>" type="font/ttf" crossorigin>
+  <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.woff2') %>" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="<%= url_for('atelier/css/fonts.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/redefine.css') %>">
   <% if (page.content && page.content.trim()) { %><link rel="stylesheet" href="<%= url_for('css/build/tailwind.css') %>"><% } %>

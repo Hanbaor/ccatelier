@@ -54,7 +54,8 @@ for (const base of ['/', '/lab/']) {
       const doc = dom.window.document;
       assert.equal(doc.querySelector('[data-live-open]').hidden, true);
       assert.equal(doc.querySelector('.studio-console').hidden, true);
-      assert.equal(doc.querySelectorAll('[hidden]').length, 2);
+      assert.equal(doc.querySelector('[data-share-arrival]').hidden, true);
+      assert.deepEqual([...doc.querySelectorAll('[hidden]')], [doc.querySelector('[data-share-arrival]'), doc.querySelector('[data-live-open]'), doc.querySelector('.studio-console')]);
       assert.equal(doc.querySelectorAll('noscript').length, 1);
       const fallback = doc.querySelector('noscript');
       assert.match(fallback.textContent, /节奏实验室需要 JavaScript/);

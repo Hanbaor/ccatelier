@@ -5,6 +5,8 @@ import {loadArchive,getQueue,queueAction,element,action} from './archive-store.j
 export async function initArchive({loadConstellation=()=>import('./constellation.js')}={}){
  const host=$('[data-archive]');if(!host)return;
  const status=$('[data-archive-count]',host),results=$('[data-archive-results]',host),more=$('[data-archive-more]',host);
+ const app=$('.archive-app',host),staticList=$('.archive-fallback',host);
+ let resultsReady=false;
  let posts,query=readQuery(location.search),matches=[],limit=18,worker,requestId=0,pendingTimer,graph,graphPromise,pageActive=true;
  const graphHost=$('.constellation',host),graphControls=$$('button,select',graphHost);
  let graphNotice;
@@ -14,6 +16,15 @@ export async function initArchive({loadConstellation=()=>import('./constellation
   if(!graphNotice.isConnected)graphHost.prepend(graphNotice);
  }
  function graphBusy(busy){graphHost.setAttribute('aria-busy',String(busy));graphControls.forEach(control=>{control.disabled=busy;});}
+ // Finish the first result before replacing the static directory. Someone already
+ // using its links keeps that directory until focus naturally leaves it.
+ function activate(){
+  if(!resultsReady||!pageActive||staticList.contains(document.activeElement))return;
+  app.hidden=false;staticList.hidden=true;
+  document.removeEventListener('focusin',activate);staticList.removeEventListener('focusout',leaveStatic);
+  if(query.view==='graph')showGraph();
+ }
+ function leaveStatic(){queueMicrotask(activate);}
  function showGraph(){
   if(graph){if(pageActive&&query.view==='graph')graph.setPosts(matches);return;}
   if(graphPromise)return;
@@ -62,15 +73,16 @@ export async function initArchive({loadConstellation=()=>import('./constellation
   $$('[data-filter-tag]',host).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filterTag===query.tag)));
  }
  function syncQueue(){const queued=new Set(getQueue().map(p=>p.path));$$('[data-queue-path]',results).forEach(button=>{const added=queued.has(button.dataset.queuePath);button.textContent=added?'✓':'+';button.setAttribute('aria-pressed',String(added));});}
- function render(){
+ function render(append=false){
   const total=posts.filter(p=>query.group==='all'||p.group===query.group).length;
   const hasFilters=Boolean(query.q.trim()||query.tag||query.duration!=='all');
   status.classList.toggle('sr-only',!hasFilters&&matches.length>0);
   status.textContent=matches.length+' / '+total+(query.group==='hot100'?' 道题':query.group==='writing'?' 篇笔记':' 条内容');results.hidden=query.view==='graph';$('.constellation',host).hidden=query.view!=='graph';more.hidden=query.view==='graph'||matches.length<=limit;
-  if(query.view==='graph'){showGraph();return;}
-  graph?.pause();results.dataset.mode=query.view;results.replaceChildren();const queue=new Set(getQueue().map(p=>p.path));
-  if(!matches.length){const empty=element('div','archive-empty','没有符合条件的内容。换个关键词，或清空筛选。');empty.append(action('清空筛选',()=>change(readQuery())));results.append(empty);return;}
-  matches.slice(0,limit).forEach((p,i)=>{
+  if(query.view==='graph'){resultsReady=true;activate();return;}
+  graph?.pause();results.dataset.mode=query.view;if(!append)results.replaceChildren();const start=results.children.length,queue=new Set(getQueue().map(p=>p.path));
+  if(!matches.length){const empty=element('div','archive-empty','没有符合条件的内容。换个关键词，或清空筛选。');empty.append(action('清空筛选',()=>change(readQuery())));results.append(empty);}
+  matches.slice(start,limit).forEach((p,offset)=>{
+   const i=start+offset;
    const card=element('article','archive-record');card.dataset.group=p.group;card.style.setProperty('--record-color',p.group==='hot100'?'#caa06a':'#efc66c');
    const top=p.group==='hot100'?element('div','record-top',String(p.order||i+1).padStart(3,'0')):null;
    const h=element('h2'),a=element('a','',p.title);a.href=p.path;h.append(a);
@@ -82,6 +94,7 @@ export async function initArchive({loadConstellation=()=>import('./constellation
    if(p.difficulty)context.append(element('span','',p.difficulty));
    if(top)card.append(top);card.append(h,element('p','',p.excerpt),context,bottom);results.append(card);
   });
+  resultsReady=true;activate();
  }
  const input=$('#archive-q');let composing=false,debounce;
  input.addEventListener('compositionstart',()=>{composing=true;clearTimeout(debounce);});input.addEventListener('compositionend',()=>{composing=false;change({q:input.value},true);});input.addEventListener('input',()=>{if(composing)return;clearTimeout(debounce);debounce=setTimeout(()=>change({q:input.value},true),160);});
@@ -89,12 +102,20 @@ export async function initArchive({loadConstellation=()=>import('./constellation
  $$('[data-group]',host).forEach(b=>b.addEventListener('click',()=>change({group:b.dataset.group,tag:''})));
  $$('[data-view]',host).forEach(b=>b.addEventListener('click',()=>change({view:b.dataset.view})));
  tagSelect.addEventListener('change',()=>change({tag:tagSelect.value}));$('[data-duration]').addEventListener('change',e=>change({duration:e.target.value}));$('#archive-sort').addEventListener('change',e=>change({sort:e.target.value}));
- more.addEventListener('click',()=>{limit+=18;render();});
+ more.addEventListener('click',event=>{
+  if(more.hidden)return;
+  const start=results.children.length,keyboard=event.detail===0&&document.activeElement===more;
+  limit+=18;render(true);
+  // Native keyboard/assistive activation continues at the new material. Pointer
+  // activation only appends, preserving its viewport and the existing cards.
+  if(keyboard)results.children[start]?.querySelector('h2 a')?.focus();
+ });
  const invite=$('[data-graph-invite]');if(invite){invite.hidden=false;invite.addEventListener('click',()=>{change({view:'graph'});$('.archive-toolbar').scrollIntoView({block:'start'});});}
  document.addEventListener('atelier:queue',syncQueue);window.addEventListener('storage',e=>{if(e.key==='cc-queue'||e.key===null)syncQueue();});
  window.addEventListener('popstate',()=>{query=readQuery(location.search);limit=18;sync();search();});
- document.addEventListener('keydown',e=>{if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.target.closest('input,textarea,select,[contenteditable]')&&!$('dialog[open]')){e.preventDefault();input.focus();}});
+ document.addEventListener('keydown',e=>{if(!app.hidden&&e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.target.closest('input,textarea,select,[contenteditable]')&&!$('dialog[open]')){e.preventDefault();input.focus();}});
  window.addEventListener('pagehide',()=>{pageActive=false;worker?.terminate();worker=null;clearTimeout(debounce);clearTimeout(pendingTimer);graph?.pause();});
  window.addEventListener('pageshow',e=>{pageActive=true;if(e.persisted){query=readQuery(location.search);sync();search();}});
- $('.archive-app').hidden=false;$('.archive-fallback').hidden=true;sync();search();
+ document.addEventListener('focusin',activate);staticList.addEventListener('focusout',leaveStatic);
+ sync();search();
 }

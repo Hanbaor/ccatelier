@@ -11,14 +11,18 @@ export function initStudio(){
  let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
  const status=$('[data-studio-status]'),grid=$('[data-sequencer]'),play=$('[data-studio-play]'),canvas=$('[data-audio-scope]'),ctx=canvas.getContext('2d');
  grid.addEventListener('focusin',e=>{const button=e.target.closest('[data-studio-step]');if(!button||!grid.contains(button))return;stepFocus={track:Number(button.dataset.studioTrack),step:Number(button.dataset.studioStep)};$$('[data-studio-step]',grid).forEach(b=>{b.tabIndex=b===button?0:-1;});});
+ const arrival=$('[data-share-arrival]',host),arrivalMessage=$('[data-share-arrival-message]',host);
+ function clearShareArrival(){if(arrival){arrival.hidden=true;arrivalMessage.textContent='';}}
+ function showShareArrival(message){if(arrival){arrivalMessage.textContent=message;arrival.hidden=false;}}
+ host.addEventListener('input',clearShareArrival,{capture:true});
  const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();});
- function saveHistory(){if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
+ function saveHistory(){clearShareArrival();if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
  const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
  function paintPosition(){const step=active>=0&&active<project.steps?active:-1;$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));}
  function render(){
-  updateOverview();paintPosition();$('[data-studio-preset]').value='';setStarterStatus('当前编排：「'+project.name+'」。按下播放试听。');
+  clearShareArrival();updateOverview();paintPosition();$('[data-studio-preset]').value='';setStarterStatus('当前编排：「'+project.name+'」。按下播放试听。');
   const restoreStepFocus=grid.contains(document.activeElement)&&document.activeElement.hasAttribute('data-studio-step');stepFocus.step=Math.min(stepFocus.step,project.steps-1);
   $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
   grid.style.setProperty('--steps',project.steps);grid.style.minWidth=project.steps===32?'1100px':'';grid.replaceChildren();
@@ -77,8 +81,8 @@ export function initStudio(){
  });
  share.dialog.addEventListener('close',()=>{if(share.dialog.open)return;shareGeneration++;copyShare.disabled=false;shareField.value='';shareStatus.textContent='';if(shareActive&&!document.hidden&&!$('dialog[open]'))shareButton?.focus({preventScroll:true});});
  function readSharedProject(){
-  try{const incoming=decodeShare(window.location.hash);if(!incoming)return;stop();history.push(project);project=incoming;saveHistory();render();status.textContent='已载入分享的节奏；按播放试听，撤销可回到载入前的编排。';}
-  catch(error){status.textContent=error.message;}
+  try{const incoming=decodeShare(window.location.hash);if(!incoming)return;stop();history.push(project);project=incoming;saveHistory();render();showShareArrival('已载入分享：「'+project.name+'」。按播放后才会发声。');status.textContent=arrival?'按播放试听；撤销可回到载入前的编排。':'已载入分享的节奏；按播放试听，撤销可回到载入前的编排。';}
+  catch(error){status.textContent=error.message;showShareArrival(error.message);}
  }
  window.addEventListener('hashchange',readSharedProject);
  document.addEventListener('visibilitychange',()=>{if(document.hidden){shareGeneration++;copyShare.disabled=false;}});
