@@ -6,12 +6,12 @@ const ejs = require('ejs');
 const {pageMetadata} = require('../tools/site-metadata.cjs');
 const root = path.resolve(__dirname, '..');
 const head = fs.readFileSync(path.join(root, 'custom/redefine/nijika/head.ejs'), 'utf8');
-const shared = ['fonts','redefine','atelier','content','effects','stage','backstage','after-hours','archive','stage-engine','live-art','daylight','refinement','editorial','rooms-v2','immersive','navigation-scenes'];
+const shared = ['fonts','redefine','atelier','content','effects','stage','after-hours','archive','stage-engine','daylight','refinement','editorial','immersive','navigation-scenes'];
 function styles(page = {}, type = 'generated', prefix = '/') {
   const context = {
     page, config: {title:'CC Atelier', description:'Test', url:'https://example.test'+prefix, root:prefix}, theme: {nijika:{cover:'/cover.webp'}},
     is_post: () => type === 'post', is_page: () => type === 'page', is_home: () => type === 'home',
-    is_category: () => false, is_tag: () => false, is_archive: () => false,
+    is_category: () => type === 'category', is_tag: () => type === 'tag', is_archive: () => type === 'archive',
     url_for: value => prefix + value.replace(/^\//,''), full_url_for: value => 'https://example.test' + prefix + value,
     nijika_list_title: () => 'Archive', nijika_art_srcset: () => '', open_graph: () => '', export_config: () => ''
   };
@@ -74,4 +74,56 @@ test('removed links reduce selected source bytes without changing shared styles'
   assert.equal(removed({nijika:'cover'},'generated'),bytes('reader')+bytes('studio'));
   assert.equal(removed({},'post'),bytes('studio'));
   assert.equal(removed({nijika:'studio'},'generated'),bytes('reader'));
+});
+
+const legacyScenes = ['backstage','live-art','rooms-v2'];
+const sceneCases = [
+  ['cover',{nijika:'cover'},'generated',['live-art']],
+  ['atelier',{nijika:'atelier'},'generated',['backstage']],
+  ...['projects','research','life','about','lounge','guestbook'].map(nijika=>[nijika,{nijika},'generated',['rooms-v2']]),
+  ...['notes','studio','practice','admin','categories','tags'].map(nijika=>[nijika,{nijika},'generated',[]]),
+  ...['post','home','archive','category','tag'].map(type=>[type,{},type,[]]),
+  ['series introduction',{nijika:'notes',introHtml:'<p>Reading introduction</p>'},'generated',[]],
+  ['ordinary page',{content:'<p>Custom page</p>'},'page',legacyScenes],
+  ['empty ordinary page',{},'page',legacyScenes],
+  ['unknown page',{nijika:'future-page'},'page',legacyScenes],
+  ['unknown generated route',{nijika:'future-room'},'generated',legacyScenes],
+  ['unknown post template',{nijika:'future-post'},'post',legacyScenes],
+  ['legacy unclassified listing',{},'generated',legacyScenes],
+  ['404 fallback',{layout:'404'},'generated',legacyScenes]
+];
+test('legacy scene styles follow audited template identities and keep unknown fallbacks at root and /lab/',()=>{
+  for(const prefix of ['/','/lab/']) for(const [name,page,type,expected] of sceneCases) {
+    for(const route of ['original/index.html','alias/unrelated-name/index.html']) {
+      const links=styles({...page,path:route},type,prefix);
+      const selected=legacyScenes.filter(file=>links.includes(prefix+'atelier/css/'+file+'.css'));
+      assert.deepEqual(selected,expected,`${prefix} ${name} ${route}`);
+      // The smaller set is still server-rendered, with the original cascade positions.
+      for(const [file,before,after] of [['backstage','stage','after-hours'],['live-art','stage-engine','daylight'],['rooms-v2','editorial','immersive']]) {
+        if(!expected.includes(file)) continue;
+        const index=name=>links.indexOf(prefix+'atelier/css/'+name+'.css');
+        assert.ok(index(before)<index(file)&&index(file)<index(after),name+' '+file+' cascade position');
+      }
+    }
+  }
+});
+test('scene guards preserve globally generated dialogs, queue, offline rows and accessibility styles',()=>{
+  for(const prefix of ['/','/lab/']) for(const [name,page,type] of sceneCases) {
+    const links=styles(page,type,prefix);
+    for(const file of ['atelier','content','after-hours','archive','stage-engine','refinement','editorial','immersive','navigation-scenes'])
+      assert.ok(links.includes(prefix+'atelier/css/'+file+'.css'),name+' shared dynamic styles '+file);
+  }
+  const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+  const archive=read('source/atelier/css/archive.css');
+  for(const selector of ['.live-dialog','.live-dialog-head','.live-dialog-tools','.live-status','.queue-row','.queue-history'])assert.ok(archive.includes(selector),selector);
+  assert.match(read('source/atelier/js/queue.js'),/makeDialog\('queue-dialog'/);
+  assert.match(read('source/atelier/js/offline.js'),/makeDialog\('offline-dialog'/);
+  assert.match(read('source/atelier/js/offline.js'),/element\('div','queue-row'/);
+  assert.match(read('custom/redefine/layout.ejs'),/partial\('nijika\/dialogs'\)/);
+  for(const selector of ['.sequencer','.sequence-row','.rhythm-bottom','.help-shortcuts'])assert.ok(read('source/atelier/css/after-hours.css').includes(selector),selector);
+  assert.match(read('source/atelier/css/stage-engine.css'),/\.sr-only\{/);
+  assert.match(read('source/atelier/js/route-features.js'),/notice.className='sr-only'/);
+  // Offline restoration serves the complete saved HTML and its styles; this change must not prune the shell.
+  assert.match(read('scripts/live-archive.js'),/\['js','css','fonts'\]/);
+  assert.match(read('custom/live-sw.template'),/articleResources\(html,articleURL,BASE\)/);
 });

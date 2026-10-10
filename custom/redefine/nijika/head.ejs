@@ -1,4 +1,10 @@
-<% const metadata=nijika_page_metadata(); %>
+<% const metadata=nijika_page_metadata();
+   // Route identity, never URL spelling: aliases and prefixed deployments share the same contract.
+   // Unrecognised templates and ordinary content pages keep the legacy layers as a safe fallback.
+   const knownScene = ['cover','atelier','notes','studio','practice','guestbook','lounge','admin','projects','research','life','about','categories','tags'].includes(page.nijika);
+   const knownReadingRoute = !page.nijika && (is_post() || is_home() || is_archive() || is_category() || is_tag());
+   const preserveLegacyScenes = !knownScene && !knownReadingRoute;
+%>
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#ffffff"><meta name="color-scheme" content="light dark">
@@ -22,7 +28,7 @@
   <link rel="stylesheet" href="<%= url_for('atelier/css/content.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/effects.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/stage.css') %>">
-  <link rel="stylesheet" href="<%= url_for('atelier/css/backstage.css') %>">
+  <% if (preserveLegacyScenes || page.nijika === 'atelier') { %><link rel="stylesheet" href="<%= url_for('atelier/css/backstage.css') %>"><% } %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/after-hours.css') %>">
   <% /* archive.css also owns global queue/live-dialog styles. Keep it on every route. */ %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/archive.css') %>">
@@ -31,11 +37,11 @@
      if (readerStyles) { %><link rel="stylesheet" href="<%= url_for('atelier/css/reader.css') %>"><% } %>
   <% if (page.nijika === 'studio') { %><link rel="stylesheet" href="<%= url_for('atelier/css/studio.css') %>"><% } %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/stage-engine.css') %>">
-  <link rel="stylesheet" href="<%= url_for('atelier/css/live-art.css') %>">
+  <% if (preserveLegacyScenes || page.nijika === 'cover') { %><link rel="stylesheet" href="<%= url_for('atelier/css/live-art.css') %>"><% } %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/daylight.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/refinement.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/editorial.css') %>">
-  <link rel="stylesheet" href="<%= url_for('atelier/css/rooms-v2.css') %>">
+  <% if (preserveLegacyScenes || ['projects','research','life','about','lounge','guestbook'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/rooms-v2.css') %>"><% } %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/immersive.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/navigation-scenes.css') %>">
   <% if (['cover','studio'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/livehouse.css') %>"><% } %>

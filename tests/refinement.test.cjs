@@ -20,7 +20,9 @@ test('editorial styles load after refinements and quick navigation identifies th
         styles.pop();
       }
       assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/immersive\.css$/);
-      assert.match(styles.at(-2).getAttribute('href'), /atelier\/css\/rooms-v2\.css$/);
+      const needsRooms = ['lounge/index.html','about/index.html','research/index.html'].includes(route);
+      assert.equal(styles.some(style=>style.href.endsWith('/rooms-v2.css')), needsRooms);
+      assert.ok(styles.at(-2).href.endsWith(needsRooms ? '/rooms-v2.css' : '/editorial.css'));
       assert.ok(styles.some(style=>style.href.endsWith('/refinement.css')));
       assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/refinement.css'));
       const nav = dom.window.document.querySelector('nav.header-navigation');
