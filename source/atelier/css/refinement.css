@@ -612,6 +612,7 @@ h1,h2 {text-wrap:balance}
 .motion-off .archive-record:hover,.motion-off .shelf-object:hover {transform:none}
 @media print {
   .site-header,.site-footer,.chapter-rail,.reader-options,.article-toolbox,.reading-nav,.reader-encore,.encore-comments,.surface-noise,.stage-field {display:none!important}
+  .reading-page [data-reader-exclude],.reading-page .copy-code,.reading-page .code-workbench-open,.reading-page .chapter-copy,.reading-page .reader-comments,.reading-progress,.selection-note {display:none!important}
   body.nijika {background:#fff!important;color:#111!important;--text:#222;--ink:#111;--yellow:#493616;--line:#ccc}
   .reading-studio {padding:0;max-width:none}
   .reading-studio .reader-columns {display:block}

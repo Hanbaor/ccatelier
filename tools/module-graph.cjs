@@ -12,7 +12,7 @@ function graph(directory,entries){
  const files=[...seen].map(file=>({path:path.relative(directory,file).replaceAll('\\','/'),bytes:fs.statSync(file).size})).sort((a,b)=>a.path.localeCompare(b.path));
  return {modules:files.length,bytes:files.reduce((total,file)=>total+file.bytes,0),files};
 }
-const routes=[['/',[]],['/atelier/',[]],['/notes/',['archive.js','archive-worker.js']],['/notes/?view=graph',['archive.js','archive-worker.js','constellation.js']],['/2026/09/22/Hello-CC-Atelier/',['reader.js','notebook.js']],['/hot100/001/',['reader.js','notebook.js','code-studio.js']],['/studio/',['studio.js']],['/studio/practice/',['practice.js']],['/projects/',[]]];
+const routes=[['/',[]],['/atelier/',[]],['/notes/',['archive.js','archive-worker.js']],['/notes/?view=graph',['archive.js','archive-worker.js','constellation.js']],['/2026/09/22/Hello-CC-Atelier/',['reader.js','notebook.js']],['/hot100/001/',['reader.js','notebook.js','code-studio.js','algorithm-demo.js']],['/studio/',['studio.js']],['/studio/practice/',['practice.js']],['/projects/',[]]];
 function report(directory){
  const initial=graph(directory,['atelier/js/main.js']);
  return {metric:'Built uncompressed file bytes; not measured network transfer, parse time, or a performance score',initial,routes:routes.map(([route,features])=>({route,...graph(directory,['atelier/js/main.js',...features.map(file=>'atelier/js/'+file)])}))};

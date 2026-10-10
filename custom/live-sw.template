@@ -1,6 +1,7 @@
 import {cacheableURL} from './atelier/js/offline-core.mjs';
 const ROOT=__ROOT__,BASE=new URL(ROOT,self.location.origin).href,CACHE='cc-live-shelf-v1-'+encodeURIComponent(ROOT),META=new URL(ROOT+'atelier/offline-records.json',BASE).href;
 let serial=Promise.resolve();
+function publicPath(path){return !(typeof path!=='string'||!path.startsWith(ROOT)||!/^\/(?!\/)/.test(path)||/[\\?#\u0000-\u0020]/.test(path)||/%2e|%2f|%5c/i.test(path)||path.split('/').some(part=>part==='.'||part==='..')||/^(?:api|admin)(?:\/|$)/.test(path.slice(ROOT.length)));}
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 async function readMeta(cache){const response=await cache.match(META);return response?response.json():[];}
@@ -8,12 +9,26 @@ async function writeMeta(cache,rows){await cache.put(META,new Response(JSON.stri
 async function cleanSnapshots(rows){const used=new Set(rows.map(r=>r.snapshot));for(const name of await caches.keys())if(name.startsWith(CACHE+'-snapshot-')&&!used.has(name))await caches.delete(name);}
 async function get(url){const response=await fetch(url,{credentials:'omit',cache:'no-cache'});if(!response.ok||response.type==='opaque'||response.redirected)throw Error('资源未能完整下载：'+new URL(url).pathname);return response;}
 async function handle(data){const cache=await caches.open(CACHE),rows=await readMeta(cache);
+ if(data.type==='search-index'){
+  if(!Array.isArray(rows))throw Error('离线书架记录无法读取，请稍后重试');
+  const entries=[],seen=new Set();let unavailable=0;const available=new Set(await caches.keys());
+  for(const row of rows){try{
+   const path=row?.path;if(!publicPath(path))throw Error();
+   const name=row.snapshot||CACHE;if(typeof name!=='string'||(name!==CACHE&&!name.startsWith(CACHE+'-snapshot-'))||!available.has(name))throw Error();
+   const snapshot=await caches.open(name),page=await snapshot.match(new URL(path,BASE).href),index=await snapshot.match(new URL(ROOT+'atelier/data/archive.json',BASE).href);
+   if(!page?.ok||!index?.ok)throw Error();
+   const data=await index.json(),post=Array.isArray(data.posts)&&data.posts.find(p=>p.path===path&&p.published!==false);
+   if(!post||typeof post.title!=='string'||typeof post.text!=='string')throw Error();
+   if(!seen.has(path)){entries.push({url:path,title:post.title,content:post.text,savedAt:row.updated});seen.add(path);}
+  }catch{unavailable++;}}
+  return {version:1,entries,unavailable};
+ }
  if(data.type==='list'){await cleanSnapshots(rows);let bytes=0;const names=new Set(rows.map(r=>r.snapshot||CACHE));for(const name of names){const snapshot=await caches.open(name);for(const key of await snapshot.keys()){if(key.url===META)continue;const r=await snapshot.match(key);bytes+=(await r.arrayBuffer()).byteLength;}}return {rows,bytes};}
  if(data.type==='clear'){await caches.delete(CACHE);await cleanSnapshots([]);return {rows:[]};}
  if(data.type==='remove'){const next=rows.filter(r=>r.path!==data.path);await writeMeta(cache,next);await cleanSnapshots(next);if(!rows.find(r=>r.path===data.path)?.snapshot)await cache.delete(new URL(data.path,BASE).href);return {rows:next};}
  if(data.type!=='save')throw Error('未知离线操作');
- const indexURL=new URL(ROOT+'atelier/data/archive.json',BASE).href,indexResponse=await get(indexURL),index=await indexResponse.clone().json(),post=index.posts.find(p=>p.path===data.path);
- if(!post)throw Error('只能保存档案中的公开文章');if(rows.length>=30&&!rows.some(p=>p.path===post.path))throw Error('离线书架已满（30 篇），请先移除一些文章');
+ const indexURL=new URL(ROOT+'atelier/data/archive.json',BASE).href,indexResponse=await get(indexURL),index=await indexResponse.clone().json(),post=index.posts.find(p=>p.path===data.path&&p.published!==false);
+ if(!post||!publicPath(post.path))throw Error('只能保存档案中的公开文章');if(rows.length>=30&&!rows.some(p=>p.path===post.path))throw Error('离线书架已满（30 篇），请先移除一些文章');
  const articleURL=new URL(post.path,BASE).href,page=await get(articleURL),html=await page.clone().text(),shell=await (await get(new URL(ROOT+'atelier/data/offline-shell.json',BASE).href)).json();
  const urls=new Set(shell.filter(url=>cacheableURL(url,BASE)).map(url=>new URL(url,BASE).href));urls.add(indexURL);
  for(const m of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)){if(cacheableURL(m[1],BASE))urls.add(new URL(m[1],BASE).href);}
@@ -27,7 +42,7 @@ async function handle(data){const cache=await caches.open(CACHE),rows=await read
  try{for(const [url,response] of staged)await snapshot.put(url,response);await writeMeta(cache,next);}catch(error){await caches.delete(snapshotName);throw error;}
  await cleanSnapshots(next);return {rows:next};
 }
-self.addEventListener('message',event=>{const port=event.ports[0];if(!port)return;const operation=serial.then(()=>handle(event.data));serial=operation.catch(()=>{});event.waitUntil(operation.then(result=>port.postMessage({ok:true,...result})).catch(error=>port.postMessage({ok:false,error:error.message||'离线保存未完成'})));});
+self.addEventListener('message',event=>{const port=event.ports[0];if(!port)return;const operation=serial.then(()=>handle(event.data));serial=operation.catch(()=>{});event.waitUntil(operation.then(result=>port.postMessage({ok:true,...result})).catch(error=>port.postMessage({ok:false,error:error.message||'离线保存未完成'})).finally(async()=>{if(['save','remove','clear'].includes(event.data?.type))for(const client of await self.clients.matchAll())client.postMessage({type:'atelier:offline'});}));});
 self.addEventListener('fetch',event=>{const request=event.request,url=new URL(request.url);if(request.method!=='GET'||url.origin!==self.location.origin||url.search||!url.pathname.startsWith(ROOT)||/^\/?(?:api|admin)(?:\/|$)/.test(url.pathname.slice(ROOT.length)))return;
  event.respondWith((async()=>{try{return await fetch(request);}catch(error){
   const cache=await caches.open(CACHE),rows=await readMeta(cache);

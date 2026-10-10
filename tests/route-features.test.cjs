@@ -6,7 +6,7 @@ function page(html='<main></main>'){return new JSDOM(html,{url:'https://ccatelie
 
 test('built route DOM selects only relevant feature imports, independent of URL prefix',async()=>{
  const {initRouteFeatures,routeFeatures}=await import('../source/atelier/js/route-features.js');
- const cases=[['index.html',[]],['atelier/index.html',[]],['notes/index.html',['archive']],['studio/index.html',['studio']],['studio/practice/index.html',[]],['hot100/001/index.html',['reader','notebook','code']],['hot100/031/index.html',['reader','notebook','code']],['2026/09/22/Hello-CC-Atelier/index.html',['reader','notebook']],['projects/index.html',[]],['archives/index.html',[]],['tags/index.html',[]],['lounge/index.html',[]],['admin/index.html',[]],['guestbook/index.html',[]],['404.html',[]]];
+ const cases=[['index.html',[]],['atelier/index.html',[]],['notes/index.html',['archive']],['studio/index.html',['studio']],['studio/practice/index.html',[]],['hot100/001/index.html',['reader','notebook','code','algorithm-demo']],['hot100/031/index.html',['reader','notebook','code']],['2026/09/22/Hello-CC-Atelier/index.html',['reader','notebook']],['projects/index.html',[]],['archives/index.html',[]],['tags/index.html',[]],['lounge/index.html',[]],['admin/index.html',[]],['guestbook/index.html',[]],['404.html',[]]];
  for(const [file,expected] of cases){
   const dom=page(fs.readFileSync(path.join(__dirname,'../public',file),'utf8')),calls=[],initializations=[];
   const loaders=Object.fromEntries(routeFeatures.map(feature=>[feature.id,async()=>{calls.push(feature.id);return {[feature.init](){initializations.push(feature.id);}};}]));

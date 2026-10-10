@@ -26,3 +26,13 @@ test('global dialog and rhythm arbitration boots before asynchronous route featu
  assert.match(main,/if \(document\.querySelector\('\[data-live-open\]'\)\)/);
  assert.match(main,/if \(document\.querySelector\('\[data-practice\]'\)\)/);
 });
+
+
+test('two-sum route audit counts the scoped demo and its core without global loading',()=>{
+ const result=report(path.resolve(__dirname,'../source'));
+ const demo=result.routes.find(row=>row.route==='/hot100/001/');
+ for(const name of ['algorithm-demo.js','algorithm-demo-core.mjs']){
+  assert.ok(demo.files.some(file=>path.basename(file.path)===name),name);
+  assert.ok(!result.initial.files.some(file=>path.basename(file.path)===name),name+' must remain route-scoped');
+ }
+});

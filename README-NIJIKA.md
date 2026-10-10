@@ -13,6 +13,8 @@ npm test
 npm run test:fixtures
 ```
 
+`npm test` 包含从原文原样提取 C++ 代码、以 C++11 和 UBSan 编译运行的验证，需要命令行可用的 `g++`，且支持 `-fsanitize=undefined` 和 `-fno-sanitize-recover=all`。Windows 开发建议在已有且满足这些条件的 WSL 环境中运行。缺少编译器时 Hot100 验证会明确失败，不会跳过或自动安装；网站构建和访客访问本身不需要 C++ 编译器。
+
 访问 `http://localhost:4318/` 可预览静态页面。`npm run build` 生成 `public/`；昵称留言、掌声和访问统计由同域 Cloudflare Worker + D1 提供，完整本地预览使用下方 4319 配置。静态预览会明确提示共享服务未连接。
 
 ### WSL 清理报 EACCES 时

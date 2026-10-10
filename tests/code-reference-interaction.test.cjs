@@ -26,8 +26,23 @@ test('selection works with Shift, touch-friendly endpoint and keyboard click; co
  s.module.initCodeStudio();assert.equal(s.doc.querySelectorAll('#code-studio-dialog').length,1);
  }finally{s.dom.window.close();}
 });
+test('explicit line jumps move keyboard focus without a second scroll; invalid input keeps focus and selection',async()=>{
+ const s=await setup();try{
+ s.open();const input=s.doc.querySelector('.code-line-jump'),jump=[...s.doc.querySelectorAll('.live-dialog-tools button')].find(button=>button.textContent==='跳转');
+ const target=s.row(3),focus=target.focus.bind(target),calls=[];target.focus=options=>{calls.push(options);focus(options);};
+ input.value='3';jump.focus();jump.click();
+ assert.equal(s.doc.activeElement,target,'the next keyboard action starts at the requested line');
+ assert.deepEqual(calls,[{preventScroll:true}]);assert.deepEqual(s.scrolled,[target.parentElement]);
+ assert.equal(target.getAttribute('aria-pressed'),'true');assert.equal(s.doc.querySelectorAll('.line-focused').length,1);
+ for(const value of ['0','-1','4','1.5','','invalid']){
+  input.value=value;jump.focus();jump.click();
+  assert.equal(s.doc.activeElement,jump,'invalid line '+value+' must not steal focus');
+  assert.equal(s.scrolled.length,1);assert.equal(calls.length,1);assert.equal(target.getAttribute('aria-pressed'),'true');
+ }
+ }finally{s.dom.window.close();}
+});
 test('valid links highlight source only; ordinary hash clears them and later code hashes still work',async()=>{
- const s=await setup();try{const hash=await s.core.digestCode('  中\n\n\treturn 1;',crypto);s.window.history.replaceState(null,'',`#cc-code=v1.${hash}.2-3`);await s.controller.locate();assert.equal(s.scrolled.length,1);assert.equal(s.doc.querySelectorAll('.code-reference-line').length,2);assert.equal(s.doc.querySelectorAll('dialog[open]').length,0);
+ const s=await setup();try{const opener=s.doc.querySelector('.code-workbench-open');opener.focus();const hash=await s.core.digestCode('  中\n\n\treturn 1;',crypto);s.window.history.replaceState(null,'',`#cc-code=v1.${hash}.2-3`);await s.controller.locate();assert.equal(s.scrolled.length,1);assert.equal(s.doc.querySelectorAll('.code-reference-line').length,2);assert.equal(s.doc.querySelectorAll('dialog[open]').length,0);assert.equal(s.doc.activeElement,opener,'automatic references do not move keyboard focus');
  s.window.history.replaceState(null,'','#other');await s.controller.locate();assert.equal(s.doc.querySelectorAll('.code-reference-line').length,0);assert.equal(s.scrolled.length,1);
  s.window.location.hash=`cc-code=v1.${hash}.1-1`;await new Promise(resolve=>setTimeout(resolve,20));await settle();assert.equal(s.doc.querySelectorAll('.code-reference-line').length,1);
  }finally{s.dom.window.close();}

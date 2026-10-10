@@ -4,6 +4,7 @@ export const routeFeatures = [
  {id:'reader',selector:'.reading-studio .article-body',label:'阅读工具',load:()=>import('./reader.js'),init:'initReader',status:'.reader-options .reader-options-body',controls:'#reader-find,[data-find-prev],[data-find-next],[data-find-clear],[data-reader-size],[data-reader-size-cycle],[data-reader-leading],[data-reader-width],[data-speech-play],[data-speech-pause],[data-speech-stop],[data-speech-rate]'},
  {id:'notebook',selector:'.article-body',label:'页边札记',load:()=>import('./notebook.js'),init:'initNotebook',status:'.reader-options .reader-options-body',controls:'[data-notebook-open]'},
  {id:'code',selector:'.article-body .code-container',label:'代码工作台',load:()=>import('./code-studio.js'),init:'initCodeStudio',status:'.article-body'},
+ {id:'algorithm-demo',selector:'[data-algorithm-demo]',label:'示例拆解',load:()=>import('./algorithm-demo.js'),init:'initAlgorithmDemo',status:'[data-algorithm-demo] .algorithm-demo-body'},
  {id:'studio',selector:'[data-studio]',label:'节奏实验室',load:()=>import('./studio.js'),init:'initStudio'}
 ];
 const documents = new WeakMap();

@@ -1,5 +1,5 @@
 <section class="reading-page reading-studio content-view">
-  <% const readiness=live_metadata(page).exercise; const readerContent=live_reader_content(page); const articleToc=toc(readerContent,{class:'nav',list_number:false,max_depth:3}); %>
+  <% const readiness=live_metadata(page).exercise; const readerContent=live_reader_content(page); const demoCode=page.series === 'hot100' && Number(page.series_order) === 1 ? /<div class="code-container" data-rel="Cpp"><figure[\s\S]*?<\/figure><\/div>/.exec(readerContent) : null; const demoOffset=demoCode ? demoCode.index+demoCode[0].length : -1; const articleToc=toc(readerContent,{class:'nav',list_number:false,max_depth:3}); %>
   <div class="reading-layout reader-columns<%= articleToc.trim() ? '' : ' reader-no-toc' %>">
   <div class="reader-frontmatter">
     <nav class="reading-nav" aria-label="文章导航"><a href="<%= url_for(page.series === 'hot100' ? 'series/hot100/' : 'notes/') %>">← 返回笔记</a></nav>
@@ -9,7 +9,29 @@
   <aside class="reading-toc chapter-rail" aria-label="文章目录"><details><summary>目录</summary><%- articleToc %></details></aside>
   <% } %>
   <article class="reader-paper" aria-labelledby="article-title">
-  <div class="article-body markdown-body"><%- readerContent %></div>
+  <div class="article-body markdown-body"><%- demoOffset<0 ? readerContent : readerContent.slice(0,demoOffset) %><% if(demoOffset>=0){ %>
+  <link rel="stylesheet" href="<%= url_for('atelier/css/algorithm-demo.css') %>">
+  <details class="algorithm-demo" data-algorithm-demo data-reader-exclude>
+    <summary>示例拆解</summary>
+    <div class="algorithm-demo-body">
+      <p class="algorithm-demo-note">站点辅助演示：用 JavaScript 展示上方代码的状态变化，不是在浏览器里执行 C++。</p>
+      <p>先查再存，避免重复使用当前下标。表内保存下标 + 1，让下标 0 与“未找到”的 0 分开；operator[] 查询缺失键时也会插入 0。</p>
+      <div data-demo-fallback>
+        <p>[3, 2, 4]，target = 6：查询 3 后插入 3 → 0，再存 3 → 1；查询 4 后插入 4 → 0，再存 2 → 2；查询 2 得到 2，返回 [1, 2]。</p>
+        <p>[3, 3]，target = 6：第一次查询插入 3 → 0，再存 3 → 1；第二次查询取到 1，返回 [0, 1]。</p>
+      </div>
+      <div data-demo-controls hidden>
+        <label>示例 <select data-demo-example aria-label="选择两数之和示例"><option value="0">[3, 2, 4] · target = 6</option><option value="1">[3, 3] · target = 6</option></select></label>
+        <p data-demo-state></p>
+        <table class="algorithm-demo-table"><caption>哈希表状态（按键排序展示，不代表桶顺序）</caption><thead><tr><th scope="col">键</th><th scope="col">保存值</th></tr></thead><tbody data-demo-map></tbody></table>
+        <p data-demo-message role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="algorithm-demo-controls"><button type="button" data-demo-prev>上一步</button><span data-demo-position aria-hidden="true"></span><button type="button" data-demo-next>下一步</button></div>
+      </div>
+      <p class="algorithm-demo-note">平均时间 O(n)，空间 O(n)；哈希查找最坏情况不保证常数时间。原题保证唯一解。</p>
+    </div>
+  </details>
+  <%- readerContent.slice(demoOffset) %>
+  <% } %></div>
   <% if (page.tags && page.tags.length) { %><nav class="article-tags" aria-label="文章标签"><% page.tags.each(tag => { %><a href="<%= url_for(tag.path) %>"># <%= tag.name %></a><% }) %></nav><% } %>
   <% if(page.source_url){ %><p class="article-source">原载于 <a href="<%= page.source_url %>" target="_blank" rel="noopener noreferrer">CSDN ↗</a><% if(page.series === 'hot100'){ %> · <a href="<%= url_for('series/hot100/') %>">Hot100 专题</a><% } %></p><% } %>
   <footer class="article-footer"><a href="<%= page.source_url ? "https://creativecommons.org/licenses/by-sa/4.0/deed.zh-hans" : "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" %>" target="_blank" rel="noopener noreferrer"><%= page.source_url ? "CC BY-SA 4.0" : "CC BY-NC-SA 4.0" %></a></footer>
