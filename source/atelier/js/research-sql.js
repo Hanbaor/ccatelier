@@ -84,7 +84,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   function clearPlan(node=panel()) {
     plans.delete(node);
     const details=node.querySelector('[data-sql-plan]');
-    if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); }
+    if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); const planStatus=details.querySelector('[data-sql-plan-status]'); if (planStatus) planStatus.textContent=''; }
   }
   function clearResult(node=panel()) {
     clearPlan(node);
@@ -222,9 +222,10 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   async function loadPlan(node) {
     const details=node.querySelector('[data-sql-plan]'), saved=plans.get(node);
     if (!details?.open || !saved || saved.loading || saved.result || busy) return;
-    const current=++ticket, output=details.querySelector('[data-sql-plan-output]');
+    const current=++ticket, output=details.querySelector('[data-sql-plan-output]'), planStatus=details.querySelector('[data-sql-plan-status]');
     saved.loading=true; planBusy=true; stopButton.hidden=false;
     output.textContent='正在读取 SQLite 执行计划…';
+    if (planStatus) planStatus.textContent='正在读取 SQLite 执行计划。';
     try {
       const result=await runner.run(saved.caseId,saved.sql,saved.datasetId,'explain');
       if (current !== ticket || plans.get(node) !== saved || active !== saved.caseId || datasets.get(active) !== saved.datasetId || editor().value !== saved.sql) return;
@@ -234,9 +235,13 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       const table=makeTable(result.columns,result.rows), wrap=doc.createElement('div'); wrap.className='sql-plan-table'; wrap.append(table);
       const caption=table.createCaption(); caption.textContent='SQLite 原始计划节点';
       output.replaceChildren(label,wrap);
+      if (planStatus) planStatus.textContent=`执行计划已载入，显示 ${result.rows.length} 个节点。${result.truncated ? '计划未完整显示。' : ''}`;
       if (result.truncated) { const note=doc.createElement('p'); note.textContent='计划未完整显示：最多 64 个节点，每段描述最多 512 字符。'; output.append(note); }
     } catch (error) {
-      if (current === ticket && !error.cancelled) output.textContent=`${error.message || '计划读取失败。'} 收起后展开可重试；已有查询结果不变。`;
+      if (current === ticket && !error.cancelled) {
+        output.textContent=`${error.message || '计划读取失败。'} 收起后展开可重试；已有查询结果不变。`;
+        if (planStatus) planStatus.textContent='执行计划读取失败。收起后展开可重试。';
+      }
     } finally {
       saved.loading=false;
       if (current === ticket) { planBusy=false; stopButton.hidden=true; }

@@ -101,7 +101,7 @@ test('all invalidation routes discard old plans and late plan success or failure
    if(action==='dialog')s.doc.dispatchEvent(new s.dom.window.Event('atelier:dialog-open'));
    const status=s.doc.querySelector('[data-sql-status]').textContent;
    rejects?pending.reject(new Error('late failure')):pending.resolve(plan);await flush();
-   assert.equal(old.hidden,true,action);assert.equal(old.open,false,action);assert.equal(old.querySelector('[data-sql-plan-output]').textContent,'',action);
+   assert.equal(old.hidden,true,action);assert.equal(old.open,false,action);assert.equal(old.querySelector('[data-sql-plan-output]').textContent,'',action);assert.equal(old.querySelector('[data-sql-plan-status]').textContent,'',action);
    assert.equal(s.doc.querySelector('[data-sql-status]').textContent,status,action);assert.ok(s.stops>0,action);
    if(action==='run')assert.equal(s.doc.querySelector('[data-sql-run]').disabled,true,'late finally does not clear new run busy');
   }finally{s.close()}
@@ -155,4 +155,24 @@ test('explain rejects incomplete prepared SQL and closes its database on all bou
   }
   assert.throws(()=>explainFixtureQuery({Database},'empty-count','SELECT 1'),mode);assert.equal(closed,true,mode);assert.equal(freed,true,mode);
  }
+});
+
+test('plan live announcements stay short and separate from browsable metadata and table output',async()=>{
+ const s=await setup();try{
+  await completed(s);
+  const details=s.details(),status=details.querySelector('[data-sql-plan-status]'),output=details.querySelector('[data-sql-plan-output]');
+  assert.equal(status.getAttribute('role'),'status');assert.equal(status.getAttribute('aria-live'),'polite');assert.equal(status.getAttribute('aria-atomic'),'true');assert.ok(status.classList.contains('sr-only'));
+  assert.equal(output.closest('[aria-live],[role="status"],[role="alert"]'),null);
+  details.open=true;await flush();assert.equal(status.textContent,'正在读取 SQLite 执行计划。');assert.match(output.textContent,/正在读取/);
+  s.requests.at(-1).reject(new Error('long technical error '.repeat(15)));await flush();
+  assert.equal(details.querySelector('[data-sql-plan-status]'),status,'live node remains stable');
+  assert.equal(status.textContent,'执行计划读取失败。收起后展开可重试。');assert.match(output.textContent,/long technical error/);
+  details.open=false;await flush();details.open=true;await flush();
+  s.requests.at(-1).resolve({...plan,rows:Array.from({length:64},(_,i)=>[i,0,'SCAN '+ 'x'.repeat(507)]),truncated:true});await flush();
+  assert.equal(status.textContent,'执行计划已载入，显示 64 个节点。计划未完整显示。');assert.equal(status.querySelector('table'),null);
+  assert.equal(output.querySelectorAll('tbody tr').length,64);assert.equal(output.querySelector('table').closest('[aria-live],[role="status"],[role="alert"]'),null);
+  details.open=false;await flush();details.open=true;await flush();assert.equal(s.calls.length,3);assert.equal(details.querySelector('[data-sql-plan-status]'),status);
+  const field=s.panel().querySelector('[data-sql-editor]');field.value='SELECT 2';field.dispatchEvent(new s.dom.window.Event('input'));
+  assert.equal(status.textContent,'');assert.equal(output.textContent,'');assert.equal(details.hidden,true);
+ }finally{s.close()}
 });
