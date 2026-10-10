@@ -7,7 +7,7 @@ test('module audit distinguishes static edges from dynamic imports',()=>{
 test('built global graph excludes route/audio/graph modules and retains essential UI',()=>{
  const result=graph(publicDir,['atelier/js/main.js']),names=result.files.map(file=>path.basename(file.path));
  for(const file of ['ui.js','theme.js','navigation-scenes.js','search.js','queue.js','offline.js','route-features.js','rhythm.js','stage-engine.js'])assert.ok(names.includes(file),file);
- for(const file of ['archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js'])assert.ok(!names.includes(file),file);
+ for(const file of ['archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js','search-context.mjs'])assert.ok(!names.includes(file),file);
  assert.ok(result.modules<25);assert.ok(result.bytes<100000);
  const routes=report(publicDir).routes,base=routes.find(row=>row.route==='/');assert.equal(base.bytes,result.bytes);
  const notes=routes.find(row=>row.route==='/notes/');assert.ok(notes.files.some(file=>file.path.endsWith('archive-worker.js')));assert.ok(!notes.files.some(file=>file.path.endsWith('constellation.js')));
@@ -17,7 +17,7 @@ test('offline snapshot manifest retains every dynamic module and their dependenc
  const shell=JSON.parse(fs.readFileSync(path.join(publicDir,'atelier/data/offline-shell.json'),'utf8'));
  const all=fs.readdirSync(path.join(publicDir,'atelier/js')).filter(file=>/\.m?js$/.test(file));
  for(const file of all)assert.ok(shell.includes('/atelier/js/'+file),file+' missing from offline snapshot');
- for(const file of ['main.js','route-features.js','archive.js'])for(const match of fs.readFileSync(path.join(publicDir,'atelier/js',file),'utf8').matchAll(/import\(['"](\.\/[^'"]+)['"]\)/g))assert.ok(fs.existsSync(path.resolve(publicDir,'atelier/js',match[1])),file+': '+match[1]);
+ for(const file of ['main.js','route-features.js','archive.js','search.js'])for(const match of fs.readFileSync(path.join(publicDir,'atelier/js',file),'utf8').matchAll(/import\(['"](\.\/[^'"]+)['"]\)/g))assert.ok(fs.existsSync(path.resolve(publicDir,'atelier/js',match[1])),file+': '+match[1]);
 });
 
 test('global dialog and rhythm arbitration boots before asynchronous route features',()=>{
@@ -36,3 +36,10 @@ test('two-sum route audit counts the scoped demo and its core without global loa
   assert.ok(!result.initial.files.some(file=>path.basename(file.path)===name),name+' must remain route-scoped');
  }
 });
+
+ test('search match context stays lazy within the source first-load budget',()=>{
+ const result=graph(path.resolve(__dirname,'../source'),['atelier/js/main.js']);
+ assert.ok(result.bytes<100000);
+ assert.ok(!result.files.some(file=>file.path.endsWith('/search-context.mjs')));
+ assert.match(fs.readFileSync(path.join(__dirname,'../source/atelier/js/search.js'),'utf8'),/import\('\.\/search-context\.mjs'\)/);
+ });
