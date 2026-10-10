@@ -1,5 +1,6 @@
 'use strict';
 const {escapeHTML}=require('hexo-util');
+const {createHash}=require('node:crypto');
 const {parseDocument}=require('htmlparser2'); // Already used by Hexo's HTML helpers.
 function plain(html){
   // Parse HTML once: decoded text must never be reparsed as markup (or decoded
@@ -27,7 +28,13 @@ function exerciseState(post){
   if(post.series!=='hot100')return null;
   const raw=post._content||post.raw||'',codes=sections(raw,'代码实现'),analyses=sections(raw,'个人解析');
   const codePlaceholder=codes.length===1&&codes[0]===CODE_PLACEHOLDER,analysisPlaceholder=analyses.length===1&&analyses[0]===ANALYSIS_PLACEHOLDER;
-  const hasCode=codes.some(code=>code!==CODE_PLACEHOLDER&&/```[^\n]*\n[\s\S]*?\S[\s\S]*?```/.test(code));
+  // Audited imported stub: addTwoNumbers has an empty body. Match the exact
+  // source and code section, never infer from constructors or Solution classes.
+  // Any code edit or additional section leaves this narrow exception behind;
+  // existing code elsewhere remains unverified, not certified as correct.
+  const knownEmptyImplementation=post.source==='_posts/hot100/028.md'&&codes.length===1&&
+    createHash('sha256').update(codes[0]).digest('hex')==='c9a8527f49228ef959123e7475ae20c4c494359085c48676eaeaf918fa84519d';
+  const hasCode=!knownEmptyImplementation&&codes.some(code=>code!==CODE_PLACEHOLDER&&/```[^\n]*\n[\s\S]*?\S[\s\S]*?```/.test(code));
   return {hasCode,hasAnalysis:analyses.some(analysis=>Boolean(analysis&&analysis!==ANALYSIS_PLACEHOLDER)),codePlaceholder,analysisPlaceholder};
 }
 function problemSummary(post){

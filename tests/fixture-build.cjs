@@ -53,13 +53,13 @@ const rich=JSON.parse(read('atelier/data/archive.json'));
 assert.equal(rich.posts.length,published+9);
 assert.ok(rich.posts.every(p=>p.path.startsWith('/lab/')&&typeof p.text==='string'&&Array.isArray(p.tags)));
 assert.equal(rich.posts.filter(p=>p.kind==='technical').length,8);
-assert.equal(rich.posts.filter(p=>p.exercise?.hasCode).length,30);
+assert.equal(rich.posts.filter(p=>p.exercise?.hasCode).length,29);
 assert.equal(rich.posts.filter(p=>p.exercise?.analysisPlaceholder).length,100);
 assert.ok(rich.posts.filter(p=>p.group==='hot100').every(p=>!p.text.includes('在这里填写你的代码')));
 assert.match(read('notes/index.html'),/href="\/lab\/atelier\/css\/content-catalog.css"/);
 assert.match(read('hot100/031/index.html'),/class="exercise-readiness"/);
 assert.doesNotMatch(read('hot100/031/index.html'),/在这里填写你的代码|在这里补充：/);
-assert.match(read('series/hot100/index.html'),/30 题已有代码/);
+assert.match(read('series/hot100/index.html'),/29 题已有代码/);
 const offlineShell=JSON.parse(read('atelier/data/offline-shell.json'));
 assert.ok(offlineShell.every(p=>p.startsWith('/lab/')));
 for(const file of ['route-features.js','archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','practice.js','livehouse.js']){

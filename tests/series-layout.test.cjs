@@ -4,12 +4,12 @@ const {exerciseState}=require('../tools/content-catalog.cjs');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const posts=fs.readdirSync(path.join(root,'source/_posts/hot100')).filter(n=>n.endsWith('.md')).map(name=>{
  const raw=read('source/_posts/hot100/'+name),front=yaml.load(raw.split('---')[1]);
- return {...front,path:front.permalink,raw};
+ return {...front,path:front.permalink,source:'_posts/hot100/'+name,raw};
 }).sort((a,b)=>a.series_order-b.series_order);
 const intro='<p>完整原题单说明 <a href="https://leetcode.cn/studyplan/top-100-liked/">来源与许可</a></p>';
 function render(prefix){return new JSDOM(ejs.render(read('custom/redefine/nijika/series.ejs'),{
  page:{seriesPosts:posts,introHtml:intro},url_for:p=>prefix+p,
- live_catalog_counts:()=>({withCode:30,analysisPending:100}),
+ live_catalog_counts:()=>({withCode:posts.filter(p=>exerciseState(p).hasCode).length,analysisPending:posts.filter(p=>!exerciseState(p).hasAnalysis).length}),
  live_metadata:p=>({exercise:exerciseState(p)}),nijika_count:n=>String(n).padStart(2,'0'),
  partial:()=>read('custom/redefine/nijika/editorial-arrow.ejs')
 }));}
@@ -20,7 +20,7 @@ for(const prefix of ['/','/lab/']) test(`compact series retains 100 source exerc
  assert.deepEqual([...d.querySelectorAll('.series-track')].map(n=>n.getAttribute('href')),posts.map(p=>prefix+p.path));
  assert.equal(d.querySelectorAll('.series-track').length,100);
  assert.equal(d.querySelector('.series-topline a').getAttribute('href'),prefix+'notes/');
- assert.match(d.querySelector('.series-header').textContent,/100 道题 · 30 题已有代码 · 100 题解析待补/);
+ assert.match(d.querySelector('.series-header').textContent,/100 道题 · 29 题已有代码 · 100 题解析待补/);
  assert.match(d.querySelector('.series-status-note').textContent,/已有代码尚未做正确性校验/);
  assert.equal(d.querySelector('.series-intro .article-body').innerHTML,intro);
  assert.equal(d.querySelector('.series-intro').open,false);

@@ -3,10 +3,10 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {JSDOM}=require('jsdom'),{parse}=require('rrweb-cssom'),{exerciseState}=require('../tools/content-catalog.cjs');
 const root=path.resolve(__dirname,'..'),read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const posts=fs.readdirSync(path.join(root,'source/_posts/hot100')).filter(n=>n.endsWith('.md')).map(name=>{
- const raw=read('source/_posts/hot100/'+name),front=yaml.load(raw.split('---')[1]);return {...front,path:front.permalink,raw};
+ const raw=read('source/_posts/hot100/'+name),front=yaml.load(raw.split('---')[1]);return {...front,path:front.permalink,source:'_posts/hot100/'+name,raw};
 }).sort((a,b)=>a.series_order-b.series_order);
 function markup(prefix='/'){return ejs.render(read('custom/redefine/nijika/series.ejs'),{
- page:{seriesPosts:posts,introHtml:'<p>原题单说明</p>'},url_for:p=>prefix+p,live_catalog_counts:()=>({withCode:30,analysisPending:100}),live_metadata:p=>({exercise:exerciseState(p)}),nijika_count:n=>String(n).padStart(2,'0'),partial:()=>read('custom/redefine/nijika/editorial-arrow.ejs')
+ page:{seriesPosts:posts,introHtml:'<p>原题单说明</p>'},url_for:p=>prefix+p,live_catalog_counts:()=>({withCode:posts.filter(p=>exerciseState(p).hasCode).length,analysisPending:posts.filter(p=>!exerciseState(p).hasAnalysis).length}),live_metadata:p=>({exercise:exerciseState(p)}),nijika_count:n=>String(n).padStart(2,'0'),partial:()=>read('custom/redefine/nijika/editorial-arrow.ejs')
 });}
 async function fixture(prefix='/',query=''){
  const dom=new JSDOM(markup(prefix),{url:'https://example.test'+prefix+'series/hot100/'+query,pretendToBeVisual:true});
@@ -26,10 +26,10 @@ function matchingTopics(f){
 for(const prefix of ['/','/lab/'])test(`real no-JS index preserves all records, source metadata, anchors and facts (${prefix})`,()=>{
  const dom=new JSDOM(markup(prefix));try{
   const d=dom.window.document,rows=[...d.querySelectorAll('.series-track')];assert.equal(rows.length,100);assert.ok(rows.every(n=>!n.hidden));assert.ok(d.querySelector('[data-series-controls]').hidden);
-  assert.equal(rows.filter(n=>n.dataset.seriesHasCode==='true').length,30);
+  assert.equal(rows.filter(n=>n.dataset.seriesHasCode==='true').length,29);
   rows.forEach((n,i)=>{assert.equal(n.dataset.seriesHasCode,String(exerciseState(posts[i]).hasCode));assert.equal(n.dataset.seriesDifficulty,posts[i].difficulty);assert.equal(n.dataset.seriesTopic,posts[i].topic);assert.equal(n.getAttribute('href'),prefix+posts[i].path);});
   assert.equal(d.querySelectorAll('.series-track-state').length,100);assert.ok(rows.every(n=>n.textContent.includes('解析待补')));
-  assert.match(d.querySelector('.series-header').textContent,/100 道题 · 30 题已有代码 · 100 题解析待补/);assert.match(d.querySelector('.series-status-note').textContent,/尚未做正确性校验/);
+  assert.match(d.querySelector('.series-header').textContent,/100 道题 · 29 题已有代码 · 100 题解析待补/);assert.match(d.querySelector('.series-status-note').textContent,/尚未做正确性校验/);
   assert.equal(d.querySelector('.series-topic-disclosure').open,false);assert.equal(d.querySelector('.series-intro').open,false);assert.equal(d.querySelector('.series-intro .article-body').textContent,'原题单说明');
  }finally{dom.window.close();}
 });
@@ -38,7 +38,7 @@ test('real DOM search handles exact normalized sequence, Chinese titles/topics, 
   assert.equal(f.visible().length,100);assert.equal(f.$('[data-series-count]').textContent,'显示 100 / 100 题');
   for(const q of ['1','001','＃００１',' １ ']){f.input(q);assert.deepEqual(f.visible().map(n=>+n.dataset.seriesOrder),[1]);}
   f.input('哈希 两数');assert.deepEqual(f.visible().map(n=>+n.dataset.seriesOrder),[1]);
-  f.input('');f.change('[data-series-code]',true);assert.equal(f.visible().length,30);assert.ok(f.visible().every(n=>n.textContent.includes('已有代码')));
+  f.input('');f.change('[data-series-code]',true);assert.equal(f.visible().length,29);assert.ok(f.visible().every(n=>n.textContent.includes('已有代码')));
   for(const level of ['简单','中等','困难']){f.change('select[data-series-difficulty]',level);assert.deepEqual(f.visible().map(n=>+n.dataset.seriesOrder),posts.filter(p=>exerciseState(p).hasCode&&p.difficulty===level).map(p=>p.series_order));matchingTopics(f);}
   assert.match(f.$('.series-status-note').textContent,/未做正确性校验/);assert.equal(f.all('.series-track-state').filter(n=>n.textContent.includes('解析待补')).length,100);
   f.$('[data-series-clear]').click();assert.equal(f.visible().length,100);matchingTopics(f);

@@ -10,10 +10,10 @@ test('metadata distinguishes technical writing from actual exercise code and emp
  assert.equal(index.length,109);assert.equal(index.filter(p=>p.kind==='technical').length,8);
  assert.equal(index.filter(p=>p.group==='writing').length,9);
  const exercises=index.filter(p=>p.group==='hot100');assert.equal(exercises.length,100);
- assert.equal(exercises.filter(p=>p.exercise.hasCode).length,30);
+ assert.equal(exercises.filter(p=>p.exercise.hasCode).length,29);
  assert.equal(exercises.filter(p=>p.exercise.hasAnalysis).length,0);
  for(const p of exercises){
-  assert.deepEqual(p.exercise,exerciseState({series:'hot100',raw:raw(p.order)}));
+  assert.deepEqual(p.exercise,exerciseState({series:'hot100',source:'_posts/hot100/'+String(p.order).padStart(3,'0')+'.md',raw:raw(p.order)}));
   assert.ok(p.excerpt.length>5,p.path);assert.doesNotMatch(p.excerpt,/项目 内容|在这里填写|在这里补充/);
   assert.doesNotMatch(p.text,/在这里填写你的代码|在这里补充：/);
   assert.ok(p.topics.includes(p.tags[0]));assert.ok(['简单','中等','困难'].includes(p.difficulty));
@@ -57,7 +57,9 @@ test('all 100 generated exercise articles have one honest readiness note and ret
    assert.doesNotMatch(body.textContent,/在这里填写你的代码|在这里补充：/);
    assert.ok(body.querySelector('h2[id="题目要求"]'));
    assert.equal(Boolean(body.querySelector('h2[id="代码实现"]')),n<=30);
-   if(n<=30){assert.match(readiness[0].textContent,/代码未校验/);assert.match(body.textContent,/class Solution/);}
+   if(n<=30)assert.match(body.textContent,/class Solution/);
+   const state=exerciseState({series:'hot100',source:'_posts/hot100/'+String(n).padStart(3,'0')+'.md',raw:raw(n)});
+   if(state.hasCode)assert.match(readiness[0].textContent,/代码未校验/);
    else assert.match(readiness[0].textContent,/代码待补/);
    assert.equal(body.querySelector('h2[id="个人解析"]'),null);
    assert.equal(d.querySelector('.chapter-library'),null);
@@ -85,9 +87,9 @@ test('static Notes matches the writing-first default and the series exposes sour
  }finally{dom.window.close();}
  const series=new JSDOM(read('series/hot100/index.html'));
  try{
-  const d=series.window.document;assert.match(d.querySelector('.series-header').textContent,/100 道题 · 30 题已有代码 · 100 题解析待补/);
+  const d=series.window.document;assert.match(d.querySelector('.series-header').textContent,/100 道题 · 29 题已有代码 · 100 题解析待补/);
   const states=[...d.querySelectorAll('.series-track-state')].map(n=>n.textContent);
-  assert.equal(states.length,100);assert.equal(states.filter(s=>s.includes('已有代码')).length,30);
+  assert.equal(states.length,100);assert.equal(states.filter(s=>s.includes('已有代码')).length,29);
   assert.equal(states.filter(s=>s.includes('解析待补')).length,100);
   assert.match(d.querySelector('.series-intro summary').textContent,/导入时/);
   assert.equal(d.querySelectorAll('.series-track>.editorial-arrow').length,100);
