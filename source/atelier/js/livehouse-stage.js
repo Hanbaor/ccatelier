@@ -2,10 +2,14 @@ import {STAGE_LIMITS,stageResolution,stagePadLayout,stageEllipseLayout,strikeEnv
 
 /** Optional decoration only. Native buttons remain the entire input surface. */
 export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dialog.open,isMotion=()=>true,loadThree=()=>import('../vendor/three/0.186.0/livehouse-three.js')}){
- if(!kit||!isCurrent()||signal?.aborted||typeof window.WebGL2RenderingContext!=='function')return null;
+ const state=value=>{if(isCurrent()&&!signal?.aborted)dialog.dataset.liveStageState=value;};
+ if(!isCurrent()||signal?.aborted)return null;
+ if(!kit){state('init-failed');return null;}
+ state('loading');
+ if(typeof window.WebGL2RenderingContext!=='function'){state('unsupported');return null;}
  const canvas=document.createElement('canvas');canvas.className='livehouse-stage';canvas.setAttribute('aria-hidden','true');canvas.dataset.liveStage='';
- let context;try{context=canvas.getContext('webgl2',{alpha:true,antialias:true,powerPreference:'low-power',failIfMajorPerformanceCaveat:true});}catch{return null;}
- if(!context)return null;
+ let context;try{context=canvas.getContext('webgl2',{alpha:true,antialias:true,powerPreference:'low-power',failIfMajorPerformanceCaveat:true});}catch{state('context-unavailable');return null;}
+ if(!context){state('context-unavailable');return null;}
  let renderer=null,scene=null,camera=null,observer=null,disposed=false,lost=false,visible=!document.hidden,motion=isMotion(),frame=0,last=0,until=0,layoutUntil=0,light=null,target=.5,pointer=.5;
  let width=1,height=1,bufferWidth=0,bufferHeight=0,models=new Map(),geometries=new Set(),materials=new Set(),textures=new Set(),releases=[];
  const active=()=>!disposed&&!lost&&visible&&isCurrent();
@@ -21,7 +25,7 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
  listen(signal||canvas,'abort',dispose,{once:true});
  let T;
  try{T=await loadThree();if(!isCurrent()||signal?.aborted||disposed){dispose();return null;}visible=!document.hidden;motion=isMotion();}
- catch{dispose();return null;}
+ catch{state('module-load-failed');dispose();return null;}
  const geometry=value=>{geometries.add(value);return value;},material=value=>{materials.add(value);return value;};
  function texture(paint,size=128){
   const surface=document.createElement('canvas');surface.width=surface.height=size;const drawing=surface.getContext('2d');if(!drawing)return null;paint(drawing,size);
@@ -102,27 +106,27 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
    if(!active()||!renderer)return false;
    try{
     for(const [type,item] of models){const hit=motion?strikeEnvelope(now-item.at,item.velocity):{head:0,tilt:0};item.body.rotation.z=type==='hat'?hit.tilt:0;if(type!=='hat')item.skin.position.y=.007-hit.head*Math.min(.026,1.8/item.radius);}
-    pointer+=(target-pointer)*.2;light.position.x=-250+(pointer-.5)*90;renderer.render(scene,camera);kit.classList.add('livehouse-3d-ready');return true;
-   }catch{dispose();return false;}
+    pointer+=(target-pointer)*.2;light.position.x=-250+(pointer-.5)*90;renderer.render(scene,camera);kit.classList.add('livehouse-3d-ready');state('ready');return true;
+   }catch{state('fallback');dispose();return false;}
   }
   function tick(now){
    frame=0;if(!animated())return;
-   if(now-last>=1000/STAGE_LIMITS.fps){last=now;try{if(now<=layoutUntil)measure();}catch{dispose();return;}if(!draw(now))return;}
+   if(now-last>=1000/STAGE_LIMITS.fps){last=now;try{if(now<=layoutUntil)measure();}catch{state('fallback');dispose();return;}if(!draw(now))return;}
    if(now<until)frame=requestAnimationFrame(tick);else {models.forEach(item=>item.at=-Infinity);draw(now);}
   }
   function request(duration=STAGE_LIMITS.settleMs){
    if(!animated())return;until=Math.max(until,performance.now()+duration);if(!frame)frame=requestAnimationFrame(tick);
   }
-  function resize(){if(!active())return;try{measure();draw();}catch{dispose();}}
+  function resize(){if(!active())return;try{measure();draw();}catch{state('fallback');dispose();}}
   function reset(){models.forEach(item=>item.at=-Infinity);target=pointer=.5;}
-  listen(canvas,'webglcontextlost',event=>{event.preventDefault();lost=true;cancelFrame();reset();fallback();});
+  listen(canvas,'webglcontextlost',event=>{event.preventDefault();lost=true;cancelFrame();reset();fallback();state('fallback');});
   listen(canvas,'webglcontextrestored',()=>{if(disposed)return;lost=false;reset();if(active())resize();});
   // Follow the existing CSS hover transition without changing its hit target.
   for(const pad of pads.values())for(const event of ['pointerenter','pointerleave','focus','blur'])listen(pad,event,()=>{if(!active())return;layoutUntil=performance.now()+240;request(250);});
   for(const pad of pads.values())listen(pad,'transitionend',event=>{if(event.propertyName==='transform')resize();});
   listen(dialog.querySelector('[data-live-recorder]')||kit,'toggle',resize);
   if(typeof ResizeObserver==='function'){observer=new ResizeObserver(resize);observer.observe(kit);observer.observe(dialog.querySelector('.livehouse-room')||dialog);}
-  kit.prepend(canvas);resize();if(disposed)return null;
+  kit.prepend(canvas);if(!visible)state('waiting-visible');resize();if(disposed)return null;
   return {
    strike(type,velocity=.7){if(!animated())return;const item=models.get(type==='crash'?'hat':type);if(!item)return;item.at=performance.now();item.velocity=velocity;request();},
    pointer(value){if(!animated())return;target=Math.max(0,Math.min(1,Number(value)||0));request(250);},
@@ -132,5 +136,5 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
    clear(){cancelFrame();reset();if(active())draw();},
    dispose,
   };
- }catch{dispose();return null;}
+ }catch{state('init-failed');dispose();return null;}
 }

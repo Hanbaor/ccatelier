@@ -78,13 +78,15 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
  }
  function wake(){cancelAnimationFrame(raf);raf=0;last=0;if(dialog.open&&!document.hidden)raf=requestAnimationFrame(draw);}
  function resize(){const rect=dialog.getBoundingClientRect();width=rect.width;height=Math.max(rect.height,660);const scale=Math.min(1.5,1440/Math.max(width,1));canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);ctx?.setTransform(scale,0,0,scale,0,0);stage?.resize();wake();}
- function cleanup(){stageGeneration++;stageAbort?.abort();stageAbort=null;stage?.dispose();stage=null;recorder.cancel('录制或回放已取消；已完成的节奏保留。');stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
+ function cleanup(){dialog.dataset.liveStageState='closed';stageGeneration++;stageAbort?.abort();stageAbort=null;stage?.dispose();stage=null;recorder.cancel('录制或回放已取消；已完成的节奏保留。');stopShow('静音待场');silence();cancelAnimationFrame(raf);raf=0;document.body.classList.remove('livehouse-opened');dialog.classList.remove('livehouse-playing');opener?.focus({preventScroll:true});}
  async function enhanceStage(){
   const token=++stageGeneration;stageAbort=new AbortController();const signal=stageAbort.signal;
-  try{const module=await loadStage();if(signal.aborted||token!==stageGeneration||!dialog.open)return;
+  const current=()=>!signal.aborted&&token===stageGeneration&&dialog.open;
+  dialog.dataset.liveStageState='loading';let loaded=false;
+  try{const module=await loadStage();if(!current())return;loaded=true;
    const created=await module.createLiveStage({dialog,kit:$('.livehouse-kit',dialog),pads,signal,isCurrent:()=>token===stageGeneration&&dialog.open,isMotion:animated});
-   if(signal.aborted||token!==stageGeneration||!dialog.open){created?.dispose();return;}stage=created;stage?.setVisible(!document.hidden);stage?.setMotion(animated());
-  }catch{/* Optional decoration never prevents opening or playing the HTML kit. */}
+   if(signal.aborted||token!==stageGeneration||!dialog.open){created?.dispose();return;}stage=created;if(!stage&&dialog.dataset.liveStageState==='loading')dialog.dataset.liveStageState='fallback';stage?.setVisible(!document.hidden);stage?.setMotion(animated());
+  }catch{if(current())dialog.dataset.liveStageState=loaded?'init-failed':'module-load-failed';/* Native controls remain available. */}
  }
  const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){if(playing){stopShow('演出已停止，舞台留给你的节奏');silence();}clearVisuals();}});
  showButton.addEventListener('click',toggleShow);soundButton.addEventListener('click',toggleSound);$('[data-live-close]',dialog).addEventListener('click',()=>dialog.close());

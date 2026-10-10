@@ -27,16 +27,16 @@ async function fixture(t,{available=true,motion=true,load,hidden=false}={}){
  return result;
 }
 test('3D layer is inert, aligns to all native targets and renders only on demand',async t=>{
- const f=await fixture(t),stage=await f.create(),canvas=f.kit.querySelector('canvas');assert.ok(stage);assert.equal(canvas.getAttribute('aria-hidden'),'true');assert.equal(canvas.hasAttribute('tabindex'),false);assert.equal(f.pads.size,4);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);assert.equal(f.frames.size,0);assert.equal(f.renderers[0].renders,1);
+ const f=await fixture(t),stage=await f.create(),canvas=f.kit.querySelector('canvas');assert.ok(stage);assert.equal(f.dialog.dataset.liveStageState,'ready');assert.equal(canvas.getAttribute('aria-hidden'),'true');assert.equal(canvas.hasAttribute('tabindex'),false);assert.equal(f.pads.size,4);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);assert.equal(f.frames.size,0);assert.equal(f.renderers[0].renders,1);
  const root=f.renderers[0].scene.getObjectByName('live-kick');assert.equal(root.position.x,369);assert.equal(root.position.y,-201);assert.equal(root.scale.x,111);
  stage.strike('kick');assert.equal(f.frames.size,1);f.frame(40);assert.equal(f.renderers[0].renders,2);for(let i=0;i<25;i++)f.frame();assert.equal(f.frames.size,0);
  const geometries=new Set();f.renderers[0].scene.traverse(object=>{if(object.geometry)geometries.add(object.geometry);});let disposed=0;geometries.forEach(object=>object.addEventListener('dispose',()=>disposed++));stage.dispose();assert.equal(f.frames.size,0);assert.equal(f.renderers[0].disposals,1);assert.equal(disposed,geometries.size);assert.equal(canvas.isConnected,false);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.ok(f.observers.every(observer=>observer.disconnected));stage.dispose();assert.equal(f.renderers[0].disposals,1);
 });
 test('no WebGL, rejected imports and a renderer failure preserve the HTML fallback',async t=>{
- const f=await fixture(t,{available:false});assert.equal(await f.create(),null);assert.equal(f.loads,0);assert.equal(f.kit.querySelector('canvas'),null);assert.equal(f.pads.get('kick').textContent,'A');
+ const f=await fixture(t,{available:false});assert.equal(await f.create(),null);assert.equal(f.loads,0);assert.equal(f.dialog.dataset.liveStageState,'context-unavailable');assert.equal(f.kit.querySelector('canvas'),null);assert.equal(f.pads.get('kick').textContent,'A');
 });
 test('renderer import rejection releases its probed context without hiding skins',async t=>{
- const f=await fixture(t,{load:()=>Promise.reject(Error('offline'))});assert.equal(await f.create(),null);assert.equal(f.context.losses,1);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.frames.size,0);
+ const f=await fixture(t,{load:()=>Promise.reject(Error('offline'))});assert.equal(await f.create(),null);assert.equal(f.context.losses,1);assert.equal(f.dialog.dataset.liveStageState,'module-load-failed');assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.frames.size,0);
 });
 test('close while the renderer is loading cannot mount a late canvas',async t=>{
  const pending=deferred(),f=await fixture(t,{load:()=>pending.promise}),ready=f.create();await new Promise(resolve=>setImmediate(resolve));f.dialog.open=false;f.abort.abort();assert.equal(f.context.losses,1);pending.resolve(f.three);assert.equal(await ready,null);assert.equal(f.renderers.length,0);assert.equal(f.frames.size,0);assert.equal(f.kit.querySelector('canvas'),null);
@@ -45,10 +45,10 @@ test('reduced motion and backgrounding produce no ongoing GPU frame loop',async 
  const f=await fixture(t,{motion:false}),stage=await f.create();assert.equal(f.renderers[0].renders,1);stage.strike('snare');stage.pointer(.8);assert.equal(f.frames.size,0);f.setMotion(true);stage.strike('hat');assert.equal(f.frames.size,1);f.setHidden(true);assert.equal(f.frames.size,0);const count=f.renderers[0].renders;stage.strike('kick');stage.resize();assert.equal(f.renderers[0].renders,count);f.setHidden(false);assert.equal(f.frames.size,0);assert.equal(f.renderers[0].renders,count+1);f.setMotion(false);assert.equal(f.frames.size,0);
 });
 test('a renderer that arrives after backgrounding waits for visibility before its first draw',async t=>{
- const pending=deferred(),f=await fixture(t,{load:()=>pending.promise}),ready=f.create();await new Promise(resolve=>setImmediate(resolve));f.setHidden(true);pending.resolve(f.three);const stage=await ready;assert.ok(stage);assert.equal(f.renderers[0].renders,0);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.frames.size,0);f.setHidden(false);assert.equal(f.renderers[0].renders,1);
+ const pending=deferred(),f=await fixture(t,{load:()=>pending.promise}),ready=f.create();await new Promise(resolve=>setImmediate(resolve));f.setHidden(true);pending.resolve(f.three);const stage=await ready;assert.ok(stage);assert.equal(f.renderers[0].renders,0);assert.equal(f.dialog.dataset.liveStageState,'waiting-visible');assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.frames.size,0);f.setHidden(false);assert.equal(f.renderers[0].renders,1);
 });
 test('context loss immediately returns skins; restore redraws only an active stage',async t=>{
- const f=await fixture(t),stage=await f.create(),canvas=f.kit.querySelector('canvas');stage.strike('tom');const lost=new f.window.Event('webglcontextlost',{cancelable:true});canvas.dispatchEvent(lost);assert.equal(lost.defaultPrevented,true);assert.equal(f.frames.size,0);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);stage.strike('tom');assert.equal(f.frames.size,0);canvas.dispatchEvent(new f.window.Event('webglcontextrestored'));assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);assert.equal(f.frames.size,0);f.setHidden(true);canvas.dispatchEvent(new f.window.Event('webglcontextlost',{cancelable:true}));canvas.dispatchEvent(new f.window.Event('webglcontextrestored'));assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);f.setHidden(false);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);
+ const f=await fixture(t),stage=await f.create(),canvas=f.kit.querySelector('canvas');stage.strike('tom');const lost=new f.window.Event('webglcontextlost',{cancelable:true});canvas.dispatchEvent(lost);assert.equal(lost.defaultPrevented,true);assert.equal(f.dialog.dataset.liveStageState,'fallback');assert.equal(f.frames.size,0);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);stage.strike('tom');assert.equal(f.frames.size,0);canvas.dispatchEvent(new f.window.Event('webglcontextrestored'));assert.equal(f.dialog.dataset.liveStageState,'ready');assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);assert.equal(f.frames.size,0);f.setHidden(true);canvas.dispatchEvent(new f.window.Event('webglcontextlost',{cancelable:true}));canvas.dispatchEvent(new f.window.Event('webglcontextrestored'));assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);f.setHidden(false);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),true);
 });
 test('a render failure disposes GPU work and leaves native pads operative',async t=>{
  const f=await fixture(t),stage=await f.create();f.renderers[0].fail=true;stage.strike('snare');f.frame();assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.frames.size,0);assert.equal(f.renderers[0].disposals,1);assert.equal(f.kit.querySelector('canvas'),null);let clicks=0;f.pads.get('snare').addEventListener('click',()=>clicks++);f.pads.get('snare').click();assert.equal(clicks,1);
@@ -72,4 +72,15 @@ test('a layout failure during hover releases the stage instead of leaving invisi
  f.kit.getBoundingClientRect=()=>{throw Error('detached layout');};
  assert.doesNotThrow(()=>f.frame());assert.equal(f.frames.size,0);assert.equal(f.kit.classList.contains('livehouse-3d-ready'),false);assert.equal(f.renderers[0].disposals,1);assert.equal(f.kit.querySelector('canvas'),null);
  let clicks=0;f.pads.get('hat').addEventListener('click',()=>clicks++);f.pads.get('hat').click();assert.equal(clicks,1);stage.dispose();
+});
+
+test('lifecycle states name only existing initialization branches and never expose error details',async t=>{
+ const f=await fixture(t);delete f.window.WebGL2RenderingContext;assert.equal(await f.create(),null);assert.equal(f.dialog.dataset.liveStageState,'unsupported');assert.equal(f.loads,0);
+ f.window.WebGL2RenderingContext=function(){};f.window.HTMLCanvasElement.prototype.getContext=()=>{throw Error('private driver detail');};assert.equal(await f.create(),null);assert.equal(f.dialog.dataset.liveStageState,'context-unavailable');assert.doesNotMatch(f.dialog.outerHTML,/private driver/);
+});
+test('a stale failed import cannot overwrite the state of a newer stage',async t=>{
+ const pending=deferred(),f=await fixture(t,{load:()=>pending.promise}),ready=f.create();await new Promise(resolve=>setImmediate(resolve));assert.equal(f.dialog.dataset.liveStageState,'loading');f.abort.abort();f.dialog.dataset.liveStageState='ready';pending.reject(Error('old import'));assert.equal(await ready,null);assert.equal(f.dialog.dataset.liveStageState,'ready');
+});
+test('renderer initialization failure is distinguishable from a module load failure',async t=>{
+ const f=await fixture(t,{load:three=>({...three,WebGLRenderer:class{constructor(){throw Error('private init detail');}}})});assert.equal(await f.create(),null);assert.equal(f.dialog.dataset.liveStageState,'init-failed');assert.doesNotMatch(f.dialog.outerHTML,/private init/);
 });

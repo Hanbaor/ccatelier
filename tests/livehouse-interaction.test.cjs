@@ -152,11 +152,11 @@ test('livehouse opens silently, lazily loads its scene, and never autoplays on p
 
 test('optional 3D module waits for explicit open and import failure never blocks the room',async t=>{
  let loads=0;const f=await livehouse(t,{loadStage:()=>{loads++;return Promise.reject(Error('offline'));}});
- assert.equal(loads,0);f.open();assert.equal(loads,1);await settle();assert.equal(f.dialog.open,true);f.find('[data-live-pad="kick"]').click();assert.match(f.status.textContent,/1 拍/);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);f.close();assert.equal(f.frames.size,0);
+ assert.equal(loads,0);f.open();assert.equal(f.dialog.dataset.liveStageState,'loading');assert.equal(loads,1);await settle();assert.equal(f.dialog.dataset.liveStageState,'module-load-failed');assert.equal(f.dialog.open,true);f.find('[data-live-pad="kick"]').click();assert.match(f.status.textContent,/1 拍/);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);f.close();assert.equal(f.frames.size,0);
 });
 
 test('a 3D module resolving after close cannot create a renderer',async t=>{
- let resolve,created=0;const f=await livehouse(t,{loadStage:()=>new Promise(yes=>resolve=yes)});f.open();f.close();resolve({createLiveStage(){created++;}});await settle();assert.equal(created,0);assert.equal(f.frames.size,0);assert.equal(f.dialog.open,false);
+ let resolve,created=0;const f=await livehouse(t,{loadStage:()=>new Promise(yes=>resolve=yes)});f.open();f.close();resolve({createLiveStage(){created++;}});await settle();assert.equal(created,0);assert.equal(f.frames.size,0);assert.equal(f.dialog.open,false);assert.equal(f.dialog.dataset.liveStageState,'closed');
 });
 
 test('pending 3D creation is aborted on close and cannot replace a newer open',async t=>{
@@ -479,4 +479,11 @@ test('pointer contact records immediately, synthesized release click is ignored,
  const down=new f.window.MouseEvent('pointerdown',{button:0,bubbles:true,cancelable:true});pad.dispatchEvent(down);assert.equal(down.defaultPrevented,true);assert.equal(f.document.activeElement,pad);f.advance(180);pad.dispatchEvent(new f.window.MouseEvent('click',{detail:1,bubbles:true}));assert.equal(r.strip.querySelectorAll('.has-hit').length,1);
  f.find('[data-live-pad="snare"]').click();assert.equal(r.strip.querySelectorAll('.has-hit').length,2);assert.equal(f.key(pad,'Enter',{repeat:true}).defaultPrevented,true);f.advance(3820);
  let id;f.document.addEventListener('atelier:recording-ready',e=>{id=e.detail.id;e.preventDefault();});r.send.dataset.practiceUrl='/';r.send.click();assert.equal(new URL(f.window.location.href).searchParams.get('recording'),id);const saved=JSON.parse(f.window.localStorage.getItem('cc-live-take-v1:'+id));assert.deepEqual(saved.bars[0].hits.map(h=>[h.step,h.type]),[[0,'kick'],[1,'snare']]);
+});
+
+test('stage initializer failure is labeled without breaking native input or leaking its error',async t=>{
+ const f=await livehouse(t,{loadStage:async()=>({createLiveStage(){throw Error('private init detail');}})});f.open();await settle();assert.equal(f.dialog.dataset.liveStageState,'init-failed');assert.doesNotMatch(f.dialog.outerHTML,/private init/);f.find('[data-live-pad="kick"]').click();assert.match(f.status.textContent,/1 拍/);
+});
+test('an old adapter rejection cannot overwrite a newer open stage status',async t=>{
+ const pending=[];const f=await livehouse(t,{loadStage:()=>new Promise((resolve,reject)=>pending.push({resolve,reject}))});f.open();f.close();f.open();pending[1].resolve({createLiveStage(){return null;}});await settle();assert.equal(f.dialog.dataset.liveStageState,'fallback');pending[0].reject(Error('old import'));await settle();assert.equal(f.dialog.dataset.liveStageState,'fallback');
 });

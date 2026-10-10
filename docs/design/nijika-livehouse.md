@@ -57,3 +57,9 @@ Three.js 固定为 `0.186.0`（MIT），官方来源为 [r186](https://github.co
 - 发布前必须在获准且可访问的预览完成桌面 / 390px 的鼓面与目标对齐、录音条展开 / 收起、触控 / 键盘、关闭重开、减少动态、WebGL / 模块失败回退及视觉质量检查。未过此门槛不可称为视觉验收完成。
 
 实现参照：[WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html)、[按需渲染](https://threejs.org/manual/pages/rendering-on-demand.html)、[资源清理](https://threejs.org/manual/pages/cleanup.html)。
+
+### 应用初始化状态
+
+现场 dialog 的 `data-live-stage-state` 仅反映已有应用分支：`loading`、`ready`、`unsupported`（已有 WebGL2 接口检查未通过）、`context-unavailable`（原有上下文创建未成功）、`module-load-failed`、`init-failed`、`waiting-visible`、`fallback`（运行期间恢复 CSS 鼓组）及 `closed`。这些状态不表示设备型号、驱动信息或失败根因；不新增硬件探测，不记录原始异常、堆栈或用户内容。关闭重开后，过期异步结果不得覆盖新状态；状态本身不改变声音、录音、输入和回退策略。
+
+生命周期补充验证：58 项现场重点测试通过，包括接口缺失、上下文返回空或抛错、模块失败、初始化失败、后台延后首绘、上下文丢失/恢复，以及旧加载成功/失败不覆盖新状态。真实预览观察仍需单独完成。

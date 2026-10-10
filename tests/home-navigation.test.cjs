@@ -46,10 +46,10 @@ for (const prefix of ['/', '/lab/']) {
         assert.ok(fs.existsSync(path.join(root, 'source', img.getAttribute('src').slice(prefix.length))));
       }
       const art = studio.querySelector('img');
-      assert.match(art.getAttribute('src'), /\/v3\/hero\.webp$/);
-      assert.equal(art.width, 1916);
-      assert.equal(art.height, 821);
-      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v3/hero-960.webp 960w, ${prefix}atelier/images/v3/hero.webp 1916w`);
+      assert.match(art.getAttribute('src'), /\/v4\/practice-room\.webp$/);
+      assert.equal(art.width, 1536);
+      assert.equal(art.height, 1024);
+      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v4/practice-room-960.webp 960w, ${prefix}atelier/images/v4/practice-room.webp 1536w`);
     } finally { dom.window.close(); }
   });
 
@@ -85,7 +85,7 @@ test('navigation styles parse and retain mobile, focus and theme-aware safeguard
     assert.match(hub, /\.hub-v3 a:focus-visible\s*\{outline:2px solid var\(--yellow\)/);
     assert.match(hub, /\.hub-v3 a\[data-reveal\]:focus-visible \{clip-path:none;opacity:1;transform:none\}/);
     assert.match(hub, /@media\(max-width:600px\)[\s\S]*\.hub-studio \{margin:0 0 32px\}/);
-    assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.52;object-position:75% center\}/);
+    assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.52;object-position:52% 35%\}/);
     assert.match(hub, /\.hub-secondary>a[^}]*min-height:44px[^}]*color:var\(--text\)/);
     assert.match(rooms, /\.life-paths \{display:flex;flex-wrap:wrap/);
     assert.match(rooms, /\.atelier-room a:focus-visible/);

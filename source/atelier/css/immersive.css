@@ -65,7 +65,7 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 .hub-writing {grid-column:1/8}
 .hub-writing>img {object-position:43% center;aspect-ratio:1.52}
 .hub-studio {grid-column:8/-1;margin-top:62px}
-.hub-studio .hub-card>img {aspect-ratio:1.18;object-position:75% center}
+.hub-studio .hub-card>img {aspect-ratio:1.18;object-position:52% 35%}
 .hub-research {grid-column:1/7;margin-top:10px}
 .hub-research>img {aspect-ratio:1.65;object-position:57% center}
 .hub-projects {grid-column:7/-1;margin-top:80px}
@@ -213,7 +213,7 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .hub-grid {display:block}
   .hub-studio {margin:0 0 32px}
   .hub-studio .hub-card {margin-bottom:0}
-  .hub-studio .hub-card>img {aspect-ratio:1.52;object-position:75% center}
+  .hub-studio .hub-card>img {aspect-ratio:1.52;object-position:52% 35%}
   .hub-card {margin:0 0 29px}
   .hub-card>img {aspect-ratio:1.5}
   .hub-writing>img {object-position:43% center}
