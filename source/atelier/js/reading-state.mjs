@@ -1,11 +1,30 @@
 export function safePath(path) {
   return typeof path==='string' && path.length<500 && /^\/(?!\/)/.test(path) && !/[\\?#\u0000-\u0020]/.test(path) && !path.split('/').includes('..') && !/%2e|%2f|%5c/i.test(path);
 }
-export function readShelf(raw) {
+export function readShelfState(raw) {
+  if(raw===null)return {status:'missing',items:[]};
   try {
-    const data=JSON.parse(raw);if(!Array.isArray(data))return [];
-    return data.filter(p=>p && safePath(p.path) && typeof p.title==='string').slice(0,100).map(p=>({path:p.path,title:p.title.slice(0,180),...(Number.isFinite(p.progress)?{progress:Math.min(1,Math.max(0,p.progress))}:{})}));
-  } catch {return [];}
+    const data=JSON.parse(raw);if(!Array.isArray(data))return {status:'unsupported',items:[]};
+    return {status:'legacy',items:data.filter(p=>p && safePath(p.path) && typeof p.title==='string').slice(0,100).map(p=>({path:p.path,title:p.title.slice(0,180),...(Number.isFinite(p.progress)?{progress:Math.min(1,Math.max(0,p.progress))}:{})}))};
+  } catch {return {status:'malformed',items:[]};}
+}
+export function readShelf(raw) {return readShelfState(raw).items;}
+export function createShelfStore(storage) {
+  const pending=new Map();
+  function read(key) {
+    let raw;try{raw=localStorage.getItem('cc-'+key);}catch{return {status:'unavailable',items:[]};}
+    const state=readShelfState(raw),memory=pending.get(key);
+    // A quota fallback is usable only while its verified durable source is unchanged.
+    if(memory?.base===raw)state.items=memory.items;else pending.delete(key);
+    return {...state,raw};
+  }
+  return {read,update(key,change) {
+    const state=read(key);
+    if(!['missing','legacy'].includes(state.status))return {ok:false,status:state.status};
+    const items=change(state.items),persisted=storage.set('cc-'+key,JSON.stringify(items));
+    if(persisted)pending.delete(key);else pending.set(key,{base:state.raw,items});
+    return {ok:true,persisted,items};
+  }};
 }
 export function remember(list,item,limit=60) {return [item,...list.filter(p=>p.path!==item.path)].slice(0,limit);}
 export function readTimer(raw) {

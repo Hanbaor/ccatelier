@@ -24,13 +24,15 @@ function fixture(width,theme){
  return new JSDOM(`${styles}<body class="nijika ${theme}"><main class="atelier-room room-lounge">${collection}</main><section class="guestbook-compose">${privacy}</section></body>`);
 }
 function mountShelf(dom,saved,recent){
- const document=dom.window.document,lists={saved,recent};
+ const document=dom.window.document,lists={saved,recent},errors=[];
+ dom.window.addEventListener('error',event=>errors.push(event.error));
  const code=read('source/atelier/js/after-hours.js').split('function discovery() {')[1].split('\nfunction passport()')[0];
  vm.runInNewContext('function discovery() {'+code+'\ndiscovery();',{
   document,$:selector=>document.querySelector(selector),$$:selector=>[...document.querySelectorAll(selector)],
-  loadList:key=>lists[key],saveList:(key,list)=>{lists[key]=list;}
+  loadList:key=>lists[key],shelves:{update(key,change){assert.ok(Object.hasOwn(lists,key));lists[key]=change(lists[key]);return {ok:true,persisted:true,items:lists[key]};}},
+  shelfFailure:()=>assert.fail('Unexpected shelf transaction failure'),toast:()=>assert.fail('Unexpected persistence warning')
  });
- return selector=>dom.window.getComputedStyle(document.querySelector(selector));
+ return selector=>{assert.deepEqual(errors,[],'Shelf event handlers must not throw');return dom.window.getComputedStyle(document.querySelector(selector));};
 }
 for(const width of [1440,768,398,360])for(const theme of ['light','dark']){
  test(`secondary-room spacing preserves empty and populated shelves at ${width}px ${theme}`,()=>{
