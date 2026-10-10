@@ -54,7 +54,7 @@ test('source admin interface is lazy while its route report includes shared depe
  assert.match(fs.readFileSync(path.join(source,'atelier/js/community.js'),'utf8'),/import\('\.\/community-moderation\.js'\)/);
 });
 
-test('offline manifest generator automatically covers the new lazy admin module without a site build',()=>{
+test('offline manifest generator automatically covers lazy comment and admin modules without a site build',()=>{
  const generators=new Map(),previous=globalThis.hexo;
  try {
   globalThis.hexo={extend:{generator:{register:(name,fn)=>generators.set(name,fn)},helper:{register(){}}}};
@@ -62,7 +62,23 @@ test('offline manifest generator automatically covers the new lazy admin module 
   for(const root of ['/','/preview/']){
    const result=generators.get('live-archive').call({config:{root},base_dir:path.resolve(__dirname,'..')},{posts:{sort:()=>({toArray:()=>[]})},data:{}});
    const shell=JSON.parse(result.find(file=>file.path==='atelier/data/offline-shell.json').data);
-   for(const file of ['community.js','community-moderation.js','ui.js','theme.js'])assert.ok(shell.includes(root+'atelier/js/'+file),file);
+   for(const file of ['community.js','community-moderation.js','community-comments.js','ui.js','theme.js'])assert.ok(shell.includes(root+'atelier/js/'+file),file);
   }
  }finally{if(previous===undefined)delete globalThis.hexo;else globalThis.hexo=previous;}
+});
+
+test('source comments stay lazy and appear in each actual comment route graph',()=>{
+ const source=path.resolve(__dirname,'../source'),result=report(source);
+ assert.ok(result.initial.bytes<100000);
+ assert.ok(!result.initial.files.some(file=>file.path.endsWith('/community-comments.js')));
+ for(const route of ['/guestbook/','/2026/09/22/Hello-CC-Atelier/','/hot100/001/']){
+  const row=result.routes.find(row=>row.route===route);
+  assert.equal(row.files.filter(file=>file.path.endsWith('/community-comments.js')).length,1);
+  assert.equal(row.files.filter(file=>file.path.endsWith('/community.js')).length,1);
+  const dom=new (require('jsdom').JSDOM)(fs.readFileSync(path.join(publicDir,route,'index.html'),'utf8'));
+  try{assert.ok(dom.window.document.querySelector('[data-comments]'),route);}finally{dom.window.close();}
+ }
+ const guestbook=result.routes.find(row=>row.route==='/guestbook/');
+ assert.equal(guestbook.bytes-result.initial.bytes,fs.statSync(path.join(source,'atelier/js/community-comments.js')).size);
+ assert.match(fs.readFileSync(path.join(source,'atelier/js/community.js'),'utf8'),/import\('\.\/community-comments\.js'\)/);
 });

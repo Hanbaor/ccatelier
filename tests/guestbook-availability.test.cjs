@@ -8,7 +8,7 @@ const ready=()=>json({items:[],total:0,next:null});
 const closed=()=>json({code:'not_configured'},503);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function setup(load,pagePath='/guestbook/'){
- const dom=new JSDOM(`<body data-section="guestbook">${markup('guestbook')}</body>`,{url:'https://ccatelier.test'+pagePath});
+ const dom=new JSDOM(`<body data-section="guestbook">${markup('guestbook')}</body>`,{pretendToBeVisual:true,url:'https://ccatelier.test'+pagePath});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,location:dom.window.location,FormData:dom.window.FormData,matchMedia:()=>({matches:false,addEventListener(){}})});
  let posts=0;
  globalThis.fetch=async(url,options)=>{
@@ -16,7 +16,7 @@ async function setup(load,pagePath='/guestbook/'){
   if(url==='/api/comments'){posts++;throw new Error('This test must never submit');}
   return json({site:{views:0,visitors:0,applause:0},page:{views:0,applause:0},reacted:false});
  };
- (await import('../source/atelier/js/community.js')).initCommunity();await tick();
+ await (await import('../source/atelier/js/community.js')).initCommunity();await tick();
  const doc=dom.window.document;
  return {dom,doc,connection:doc.querySelector('[data-comment-connection]'),status:doc.querySelector('[data-comment-status]'),form:doc.querySelector('form'),button:doc.querySelector('[type=submit]'),posts:()=>posts};
 }

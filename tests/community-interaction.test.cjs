@@ -6,7 +6,7 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 const receipt=(status='pending')=>json({id,status},202);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function setup(deliver,loadComments=()=>json({items:[],total:0,next:null})) {
-  const dom=new JSDOM(`<body data-section="guestbook"><section data-comments><span data-comment-total></span><form><fieldset data-form-guard disabled><input name="nickname" value="听众"><textarea name="message">尚未投递的留言</textarea><input name="stamp" value="star"><input name="website" value=""><span data-comment-length></span><button type="submit">投递留言</button><p class="comment-status" role="status"></p></fieldset></form><div data-comment-list><p class="community-empty">正在打开留言簿……</p></div><button data-comment-more hidden>更多</button></section></body>`,{url:'https://ccatelier.test/guestbook/'});
+  const dom=new JSDOM(`<body data-section="guestbook"><section data-comments><span data-comment-total></span><form><fieldset data-form-guard disabled><input name="nickname" value="听众"><textarea name="message">尚未投递的留言</textarea><input name="stamp" value="star"><input name="website" value=""><span data-comment-length></span><button type="submit">投递留言</button><p class="comment-status" role="status"></p></fieldset></form><div data-comment-list><p class="community-empty">正在打开留言簿……</p></div><button data-comment-more hidden>更多</button></section></body>`,{pretendToBeVisual:true,url:'https://ccatelier.test/guestbook/'});
   Object.assign(globalThis,{window:dom.window,document:dom.window.document,location:dom.window.location,FormData:dom.window.FormData,matchMedia:()=>({matches:false,addEventListener(){}})});
   const bodies=[];
   globalThis.fetch=async(url,options)=>{
@@ -14,7 +14,7 @@ async function setup(deliver,loadComments=()=>json({items:[],total:0,next:null})
     if(url.startsWith('/api/comments?'))return loadComments();
     return json({site:{views:0,visitors:0,applause:0},page:{views:0,applause:0},reacted:false});
   };
-  const api=await import('../source/atelier/js/community.js');api.initCommunity();await tick();
+  const api=await import('../source/atelier/js/community.js');await api.initCommunity();await tick();
   const form=document.querySelector('form'),input=form.elements.message,status=document.querySelector('.comment-status'),button=form.querySelector('[type=submit]');
   return {dom,bodies,form,input,status,button,api,submit:()=>form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})),close:()=>dom.window.close()};
 }
@@ -72,11 +72,11 @@ test('even whitespace edits made during delivery are not erased',async()=>{
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
 const visitData=(applause=0,reacted=false)=>({site:{views:27,visitors:12,applause},page:{views:7,applause},reacted});
 async function setupApplause(deliver,visit=()=>json(visitData()),duplicate=false) {
-  const dom=new JSDOM(`<body data-section="article"><span data-stat="views">—</span><span data-stat="pageViews">—</span><span data-stats-context></span><details open><summary>工具</summary><button data-applause aria-pressed="false"><span data-applause-count>0</span></button></details><p data-article-tool-status></p></body>`,{url:'https://ccatelier.test/notes/'});
+  const dom=new JSDOM(`<body data-section="article"><span data-stat="views">—</span><span data-stat="pageViews">—</span><span data-stats-context></span><details open><summary>工具</summary><button data-applause aria-pressed="false"><span data-applause-count>0</span></button></details><p data-article-tool-status></p></body>`,{pretendToBeVisual:true,url:'https://ccatelier.test/notes/'});
   Object.assign(globalThis,{window:dom.window,document:dom.window.document,location:dom.window.location,matchMedia:()=>({matches:false,addEventListener(){}})});
   const calls=[];globalThis.fetch=async(url,options)=>{if(url==='/api/visit')return visit();assert.equal(url,'/api/reaction');calls.push(JSON.parse(options.body));return deliver(calls.length);};
   if(duplicate){const button=document.querySelector('[data-applause]');button.after(button.cloneNode(true));}
-  const api=await import('../source/atelier/js/community.js');api.initCommunity();await tick();
+  const api=await import('../source/atelier/js/community.js');await api.initCommunity();await tick();
   const doc=dom.window.document,button=doc.querySelector('[data-applause]'),status=doc.querySelector('[data-article-tool-status]');
   return {dom,doc,button,status,calls,count:button.querySelector('span'),close:()=>dom.window.close()};
 }
