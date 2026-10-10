@@ -77,9 +77,14 @@
 .studio-share-dialog textarea:focus-visible,.studio-share-dialog button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
 
 /* A received rhythm is visible before the hero, without moving the reader. */
-.studio-editorial .studio-share-arrival{display:flex;align-items:center;justify-content:space-between;gap:8px 24px;padding:6px 0;margin:0 0 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink);font:13px/1.8 var(--sans)}
+.studio-editorial .studio-share-arrival{display:flex;align-items:center;justify-content:space-between;gap:8px 24px;padding:6px 0;margin:0 0 20px;color:var(--ink);font:13px/1.8 var(--sans)}
 .studio-editorial .studio-share-arrival[hidden]{display:none}
 .studio-editorial .studio-share-arrival p{margin:0;min-width:0;overflow-wrap:anywhere}
 .studio-editorial .studio-share-arrival a{display:inline-flex;align-items:center;min-height:44px;flex-shrink:0;font-size:13px;color:var(--studio-gold);text-underline-offset:4px}
 .studio-editorial .studio-share-arrival a:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
 @media(max-width:600px){.studio-editorial .studio-share-arrival{flex-wrap:wrap;gap:0 16px}.studio-editorial .studio-share-arrival p{flex:1 1 220px}}
+
+/* Portable note export shares the existing file controls. */
+.studio-editorial .studio-export{min-width:0}
+.studio-editorial .studio-export .studio-midi-note{margin:0;max-width:none;font-size:13px;line-height:1.8;overflow-wrap:anywhere}
+.studio-editorial [data-midi-export]:focus-visible{outline:2px solid var(--ink);outline-offset:4px}

@@ -6,6 +6,7 @@ import {vault} from './vault.js';
 import {makeDialog} from './live-dialog.js';
 import {PlaybackController} from './playback.mjs';
 import {createShareURL,decodeShare} from './studio-share.mjs';
+import {encodeMidi} from './studio-midi.mjs';
 export function initStudio(){
  const host=$('[data-studio]');if(!host||host.dataset.studioReady)return;host.dataset.studioReady='true';
  let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
@@ -89,6 +90,7 @@ export function initStudio(){
  window.addEventListener('pagehide',()=>{shareActive=false;shareGeneration++;if(share.dialog.open)share.dialog.close();});
  window.addEventListener('pageshow',()=>{shareActive=true;});
  const saved=makeDialog('studio-projects','你的录音带'),savedList=element('div');saved.dialog.append(savedList);$('[data-studio-load]').addEventListener('click',async()=>{savedList.replaceChildren();saved.open();try{const projects=(await vault.all('projects')).sort((a,b)=>b.updated-a.updated);if(!projects.length)savedList.append(element('p','live-status','还没有保存的录音带。'));for(const p of projects){const row=element('div','queue-row');row.append(element('span','','▣'),element('span','',p.name));const buttons=element('div');buttons.append(action('载入',()=>{try{const value=validateProject(p.project);stop();project=value;saveHistory();render();saved.dialog.close();}catch(error){toast(error.message);}}),action('删除',async()=>{try{await vault.remove('projects',p.id);row.remove();}catch(error){toast(error.message);}}));row.append(buttons);savedList.append(row);}}catch(error){savedList.append(element('p','live-status',error.message));}});
+ $('[data-midi-export]').addEventListener('click',()=>{try{const loops=Number($('[data-export-loops]').value);download('cc-rhythm.mid',encodeMidi(project,loops),'audio/midi');status.textContent='MIDI 已生成：'+loops+' 轮 · 通道 10 · 遵循当前静音 / 独奏。';}catch(error){status.textContent=error.message;}});
  $('[data-wav-export]').addEventListener('click',async e=>{const button=e.currentTarget;button.disabled=true;status.textContent='正在离线渲染音频…';try{const buffer=await renderWav(structuredClone(project),Number($('[data-export-loops]').value));download('cc-rhythm.wav',buffer,'audio/wav');status.textContent='WAV 已导出：44.1 kHz / 16 bit / 立体声。';}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
  function resize(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx?.setTransform(d,0,0,d,0,0);drawScope();}
  function drawScope(){const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;if(!ctx)return;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#bbae7822';ctx.lineWidth=1;for(let x=0;x<w;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}for(let y=0;y<h;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
