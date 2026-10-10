@@ -1,6 +1,6 @@
 ---
 title: 项目
-description: CC Atelier 的实现记录：Hexo 静态路由、可分享的全文检索、主动离线快照，以及浏览器状态与共享后端的边界。
+description: CC Atelier、EduRAG 与 Transformer 课程实践：个人网站工程、课程材料检索问答和德英翻译实验。
 layout: page
 nijika: projects
 ---

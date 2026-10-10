@@ -13,7 +13,7 @@ const sourceRevision = '0f0ca188521f991b726eb132b3b131921c63c253';
 const sourcePrefix = `https://github.com/Hanbaor/ccatelier/blob/${sourceRevision}/`;
 function projects() {return new JSDOM(built('projects/index.html'), {url:`https://ccatelier.test${prefix}projects/`});}
 
-test('projects presents one illustrated work and keeps technical evidence behind a native disclosure', () => {
+test('projects presents an illustrated main work and coursework with technical evidence behind a native disclosure', () => {
   const dom = projects();
   try {
     const doc = dom.window.document, room = doc.querySelector('.project-case');
@@ -21,7 +21,7 @@ test('projects presents one illustrated work and keeps technical evidence behind
     assert.equal(room.querySelectorAll('h1').length, 1);
     assert.equal(room.querySelector('h1').textContent, 'CC Atelier');
     assert.ok(room.querySelector('.project-summary .project-description'));
-    assert.equal(room.querySelectorAll(':scope > section').length, 1);
+    assert.equal(room.querySelectorAll(':scope > section').length, 2);
     const implementation = room.querySelector(':scope > details.project-implementation');
     assert.ok(implementation);
     assert.equal(implementation.open, false);
@@ -30,7 +30,7 @@ test('projects presents one illustrated work and keeps technical evidence behind
     assert.equal(room.querySelectorAll('.project-layers > li').length, 3);
     assert.equal(room.querySelectorAll('.project-decision-list > li').length, 3);
     assert.equal(room.querySelectorAll('img').length, 1);
-    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 9, 'link arrows use the existing font-independent SVG');
+    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 11, 'link arrows use the existing font-independent SVG');
     assert.doesNotMatch(room.textContent, /↗/);
     assert.ok(room.querySelector('img[src$="/atelier/images/v3/projects.webp"]'));
     assert.match(room.querySelector('img').alt, /主题插画/);
@@ -91,7 +91,7 @@ test('projects alone loads its stylesheet and has route-specific descriptive met
   try {
     const doc = dom.window.document;
     assert.equal(doc.querySelectorAll(`link[href="${prefix}atelier/css/projects.css"]`).length, 1);
-    assert.match(doc.querySelector('meta[name="description"]').content, /Hexo 静态路由.*全文检索.*离线快照/);
+    assert.match(doc.querySelector('meta[name="description"]').content, /CC Atelier.*EduRAG.*Transformer.*课程实践.*检索问答.*德英翻译/);
     assert.equal(doc.querySelector('meta[property="og:description"]').content, doc.querySelector('meta[name="description"]').content);
     for (const route of ['notes','research','about','studio/practice']) {
       assert.doesNotMatch(built(route+'/index.html'), /atelier\/css\/projects\.css/);
