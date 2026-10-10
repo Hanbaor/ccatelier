@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('forty-five visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,45);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,45);
+test('forty-six visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,46);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,46);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -101,6 +101,22 @@ test('three reviewed informational images add alt only and leave visible prose a
   }
  }
 });
+test('permutation prompt fills only its reviewed image alt and preserves captions, author text and neighboring images',async()=>{
+ const entry=allowlist.find(entry=>entry.filename==='be60532e3a158247397d.png');
+ const alt='全排列题面：输入自然数N（1≤N≤9），从小到大输出1到N的所有排列，每行一个。输入2时依次输出12、21；输入3时依次输出123、132、213、231、312、321。';
+ assert.equal(entry.sourceId,'124338541');assert.equal(entry.source,'_posts/csdn/124338541.md');
+ assert.equal(entry.oldAlt,null);assert.equal(entry.caption,undefined);assert.equal(entry.alt,alt);
+ assert.equal(entry.sha256,'ee6459596e748b0b92c1737c590e64644a651e2fefb6eaefb045529de90418b1');
+ const enhance=createArticleImageAltEnhancer({sourceDir});
+ for(const caption of ['', '<figcaption>作者的题目解释</figcaption>']) {
+  for(const target of [input(entry),`<img src="${image(entry)}" alt="">`]) {
+   const raw=`<p>先来看题：</p><figure class="image-caption">${target}${caption}</figure><p>全排列的问题是最经典的dfs问题。</p><img src="/atelier/images/posts/unreviewed.png" alt=""><img src="${image(entry)}" alt="作者补充的题面说明">`;
+   const output=await enhance(raw,identity(entry));
+   assert.equal(output,raw.replace(target,`<img src="${image(entry)}" alt="${escapeAttribute(alt)}">`));
+   assert.equal(await enhance(output,identity(entry)),output);
+  }
+ }
+});
 test('geometry and alt filters commute without losing attributes, changing source bytes or visible content',async()=>{
  for(const root of ['/','/lab/']) {
   const geometry=createArticleImageEnhancer({sourceDir,root}),alts=createArticleImageAltEnhancer({sourceDir,root});
@@ -169,7 +185,7 @@ test('only exact Redefine machine captions reuse the hash-verified description',
   assert.equal(await createArticleImageAltEnhancer({sourceDir:'/nonexistent'})(raw,identity(entry)),raw);
  }
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-five descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-six descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.

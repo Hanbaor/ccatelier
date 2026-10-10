@@ -58,6 +58,13 @@ for(const [route,type] of routes)for(const width of [393,1180])for(const theme o
    for(const selector of ['.help-links>a','.help-links>button']){
     assert.equal(style(selector).whiteSpace,'normal');assert.equal(style(selector).maxWidth,'100%');
    }
+   for(const entry of doc.querySelectorAll('.help-links>a,.help-links>button')){
+    const computed=dom.window.getComputedStyle(entry);
+    assert.equal(computed.textAlign,'start','links and native buttons share logical-start alignment');
+    assert.equal(computed.display,'flex');assert.equal(computed.justifyContent,'flex-start');
+    assert.equal(computed.alignItems,'center');assert.equal(computed.width,'100%');
+    assert.equal(computed.minHeight,'44px','the full row remains a touch target');
+   }
    assert.equal(doc.querySelectorAll('.help-links>a').length,5);assert.equal(doc.querySelectorAll('.help-links>button').length,2);
    assert.equal(doc.querySelector('.close-button').dataset.close,'help-dialog');
    // JSDOM does not resolve inherited CSS variables. Check the actual final body
