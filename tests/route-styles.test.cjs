@@ -3,16 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const ejs = require('ejs');
+const {pageMetadata} = require('../tools/site-metadata.cjs');
 const root = path.resolve(__dirname, '..');
 const head = fs.readFileSync(path.join(root, 'custom/redefine/nijika/head.ejs'), 'utf8');
 const shared = ['fonts','redefine','atelier','content','effects','stage','backstage','after-hours','archive','stage-engine','live-art','daylight','refinement','editorial','rooms-v2','immersive','navigation-scenes'];
 function styles(page = {}, type = 'generated', prefix = '/') {
-  const html = ejs.render(head, {
-    page, config: {title:'CC Atelier', description:'Test'}, theme: {nijika:{cover:'/cover.webp'}},
+  const context = {
+    page, config: {title:'CC Atelier', description:'Test', url:'https://example.test'+prefix, root:prefix}, theme: {nijika:{cover:'/cover.webp'}},
     is_post: () => type === 'post', is_page: () => type === 'page', is_home: () => type === 'home',
+    is_category: () => false, is_tag: () => false, is_archive: () => false,
     url_for: value => prefix + value.replace(/^\//,''), full_url_for: value => 'https://example.test' + prefix + value,
     nijika_list_title: () => 'Archive', nijika_art_srcset: () => '', open_graph: () => '', export_config: () => ''
-  });
+  };
+  context.nijika_page_metadata = () => pageMetadata(context);
+  const html = ejs.render(head, context);
   return [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(match => match[1]);
 }
 const cases = [

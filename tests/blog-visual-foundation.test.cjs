@@ -26,7 +26,7 @@ test('reading pages install no cursor listeners, particles, light controls or GP
   assert.deepEqual(calls,['.reading-page'],`${module} returns before any DOM or event setup`);
  }
  const effects=read('source/atelier/css/effects.css');
- assert.match(effects,/body\[data-cursor=true\]:not\(:has\(\.reading-page\)\)/);
+ assert.match(effects,/body\[data-cursor=true\]:is\(\.on-cover,\[data-section="studio"\]\):not\(:has\(\.reading-page\)\)/);
  assert.match(effects,/body:has\(\.reading-page\) :is\(\.cursor-ring,\.click-effects\) \{display:none\}/);
 });
 test('common chrome is opaque and quiet while the illustrated cover retains its own contrast layer',()=>{

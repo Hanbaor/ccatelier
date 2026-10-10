@@ -22,10 +22,10 @@ export function startFeature(feature,{root=document,load=feature.load}={}) {
  const doc=root.ownerDocument||root,win=doc.defaultView,host=root.querySelector(feature.selector);
  const place=(feature.status&&root.querySelector(feature.status))||host;
  const notice=doc.createElement('p');notice.className='sr-only';notice.dataset.featureStatus=feature.id;notice.dataset.readerExclude='';notice.setAttribute('role','status');notice.textContent=feature.label+'正在加载…';place.prepend(notice);
- let state='loading',intent=null,gesture=false,selection=false,initializing=false;
+ let state='loading',intent=null,gesture=false,selection=false,initializing=false,codeReferenceAllowed=true;
  const values=new Map(),composing=new Set(),cleanups=[];
  function listen(target,type,handler,capture=false){target.addEventListener(type,handler,capture);cleanups.push(()=>target.removeEventListener(type,handler,capture));}
- function cancelIntent(){intent=null;gesture=false;selection=false;}
+ function cancelIntent(){intent=null;gesture=false;selection=false;codeReferenceAllowed=false;}
  function capture(event){
   if(state==='ready')return;
   const target=event.target.closest?.(feature.controls||'[data-no-route-control]');
@@ -48,12 +48,24 @@ export function startFeature(feature,{root=document,load=feature.load}={}) {
  for(const type of ['click','keydown','input','change','compositionstart','compositionend'])listen(doc,type,capture,true);
  if(feature.id==='notebook')listen(doc,'selectionchange',()=>{selection=true;});
  listen(win,'pagehide',cancelIntent);listen(doc,'atelier:dialog-open',cancelIntent);listen(doc,'visibilitychange',()=>{if(doc.hidden)cancelIntent();});
- function cleanup(){cleanups.splice(0).forEach(fn=>fn());}
+ const codeCleanups=[];
+ function clearCodeGuards(){codeCleanups.splice(0).forEach(fn=>fn());}
+ function guardCodeReference(){
+  if(feature.id!=='code')return;clearCodeGuards();
+  function on(target,type,fn,capture=false){target.addEventListener(type,fn,capture);codeCleanups.push(()=>target.removeEventListener(type,fn,capture));}
+  for(const type of ['pointerdown','touchstart','wheel','keydown'])on(doc,type,()=>{codeReferenceAllowed=false;},true);
+  on(win,'scroll',()=>{codeReferenceAllowed=false;});
+  on(win,'popstate',()=>{codeReferenceAllowed=false;});
+  on(win,'hashchange',()=>{codeReferenceAllowed=true;});
+  on(win,'pagehide',()=>{codeReferenceAllowed=false;clearCodeGuards();});
+ }
+ function cleanup(){clearCodeGuards();cleanups.splice(0).forEach(fn=>fn());}
  const record={ready:null};
  function run(){
+  guardCodeReference();
   state='loading';notice.replaceChildren(doc.createTextNode(feature.label+'正在加载…'));notice.setAttribute('aria-busy','true');
   record.ready=Promise.resolve().then(load).then(module=>{
-   initializing=true;return module[feature.init]();
+   initializing=true;return feature.id==='code'?module[feature.init]({initialReference:codeReferenceAllowed}):module[feature.init]();
   }).then(()=>{
    state='ready';notice.removeAttribute('aria-busy');cleanup();
    for(const [target,{value,type}] of values){if(target.isConnected){target.value=value;if(!composing.has(target))target.dispatchEvent(new win.Event(type,{bubbles:true}));}}
@@ -66,6 +78,7 @@ export function startFeature(feature,{root=document,load=feature.load}={}) {
    if(gesture){notice.className='live-status';notice.textContent=feature.label+'已就绪，请再次按下播放或演奏快捷键。';}else notice.remove();
    return {id:feature.id,status:'ready'};
   }).catch(()=>{
+   clearCodeGuards();
    state='failed';intent=null;gesture=false;selection=false;notice.className='live-status';notice.removeAttribute('aria-busy');notice.replaceChildren(doc.createTextNode(feature.label+'暂未载入，正文和导航仍可使用。 '));
    const retry=doc.createElement('button');retry.type='button';retry.textContent=initializing?'刷新页面':'重新加载';retry.addEventListener('click',()=>{if(initializing)win.location.reload();else run();});notice.append(retry);
    return {id:feature.id,status:'failed'};

@@ -6,6 +6,8 @@ import {element,action,root} from './archive-store.js';
 // Audio uniforms come only from actual Web Audio playback; ambient motion is separate.
 export function initStageEngine(){
   if(document.querySelector('.reading-page')) return;
+  // Match the visible stage scenes in immersive.css; reading routes need no GPU or controls.
+  if(!document.body.matches('.on-cover,[data-section="studio"]')) return;
  const lightButton=action('◒',()=>{},'icon-button lighting-open');lightButton.setAttribute('aria-label','打开舞台调光台');$('.utility-controls')?.prepend(lightButton);
  const canvas=element('canvas','stage-field');canvas.setAttribute('aria-hidden','true');document.body.prepend(canvas);
  const fallback=element('div','stage-field-fallback');fallback.setAttribute('aria-hidden','true');document.body.prepend(fallback);
@@ -25,13 +27,14 @@ export function initStageEngine(){
  if(gl)try{program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error();gl.useProgram(program);const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);const position=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);for(const name of ['resolution','pointer','ripple','time','intensity','dust','beat','spectrum','rippleAge','quiet','tint'])uniforms[name]=gl.getUniformLocation(program,name);fallback.hidden=true;document.body.classList.add('has-stage-engine');}catch{gl=null;}
  if(!gl)canvas.hidden=true;
  const magnets=$$('.admission-ticket,.studio-play,[data-magnetic]').map(el=>({el,x:0,y:0,tx:0,ty:0}));
- for(const m of magnets){m.el.addEventListener('pointermove',e=>{if(!motion.enabled||e.pointerType!=='mouse')return;const r=m.el.getBoundingClientRect();m.tx=(e.clientX-r.left-r.width/2)*.06;m.ty=(e.clientY-r.top-r.height/2)*.09;});m.el.addEventListener('pointerleave',()=>{m.tx=0;m.ty=0;});}
+ for(const m of magnets){m.el.addEventListener('pointermove',e=>{if(!motion.enabled||e.pointerType!=='mouse')return;const r=m.el.getBoundingClientRect();m.tx=(e.clientX-r.left-r.width/2)*.06;m.ty=(e.clientY-r.top-r.height/2)*.09;if(!frame)wake();});m.el.addEventListener('pointerleave',()=>{m.tx=0;m.ty=0;if(!frame)wake();});}
  function draw(now){frame=0;const dt=Math.min(40,now-last||16);last=now;if(motion.enabled)elapsed+=dt*(.25+settings.speed*.8)/1000;px+=(tx-px)*.06;py+=(ty-py)*.06;beat*=Math.exp(-dt/180);spectrum*=Math.exp(-dt/180);
   if(gl){const colors={amber:[1,.76,.34],rose:[1,.45,.35],moon:[.48,.65,1]},tint=colors[document.body.dataset.stageLight]||colors.amber;const quiet=$('.article-body')?.12:document.body.classList.contains('light')?.4:1;
    gl.uniform2f(uniforms.resolution,canvas.width,canvas.height);gl.uniform2f(uniforms.pointer,px,1-py);gl.uniform2f(uniforms.ripple,ripple.x,1-ripple.y);gl.uniform1f(uniforms.time,elapsed);gl.uniform1f(uniforms.intensity,settings.intensity);gl.uniform1f(uniforms.dust,motion.enabled?settings.dust:0);gl.uniform1f(uniforms.beat,motion.enabled?beat:0);gl.uniform1f(uniforms.spectrum,motion.enabled?spectrum:0);gl.uniform1f(uniforms.rippleAge,motion.enabled?(now-ripple.at)/1000:5);gl.uniform1f(uniforms.quiet,quiet);gl.uniform3fv(uniforms.tint,tint);gl.drawArrays(gl.TRIANGLES,0,6);
   }
-  if(motion.enabled)for(const m of magnets){m.x+=(m.tx-m.x)*.14;m.y+=(m.ty-m.y)*.14;m.el.style.translate=m.x.toFixed(2)+'px '+m.y.toFixed(2)+'px';}
-  if(motion.enabled&&!document.hidden&&settings.intensity>0)frame=requestAnimationFrame(draw);
+  let magnetsMoving=false;
+  if(motion.enabled)for(const m of magnets){m.x+=(m.tx-m.x)*.14;m.y+=(m.ty-m.y)*.14;if(Math.abs(m.tx-m.x)<.01&&Math.abs(m.ty-m.y)<.01){m.x=m.tx;m.y=m.ty;}else magnetsMoving=true;m.el.style.translate=m.x.toFixed(2)+'px '+m.y.toFixed(2)+'px';}
+  if(motion.enabled&&!document.hidden&&((gl&&settings.intensity>0)||magnetsMoving))frame=requestAnimationFrame(draw);
  }
  function resize(){if(gl){const scale=Math.min(1,960/innerWidth);canvas.width=Math.round(innerWidth*scale);canvas.height=Math.round(innerHeight*scale);gl.viewport(0,0,canvas.width,canvas.height);}wake();}
  function wake(){cancelAnimationFrame(frame);frame=0;last=0;if(!document.hidden)frame=requestAnimationFrame(draw);}
@@ -39,7 +42,7 @@ export function initStageEngine(){
  window.addEventListener('pointerdown',e=>{if(!motion.enabled||e.target.closest('.article-body,input,textarea'))return;ripple={x:e.clientX/innerWidth,y:e.clientY/innerHeight,at:performance.now()};},{passive:true});
  document.addEventListener('atelier:beat',e=>{beat=Math.max(beat,Number(e.detail?.energy)||0);});document.addEventListener('atelier:spectrum',e=>{spectrum=Math.max(0,Math.min(1,Number(e.detail?.energy)||0));});document.addEventListener('atelier:audio-stop',()=>{spectrum=0;beat=0;});
  document.addEventListener('visibilitychange',wake);document.addEventListener('atelier:motion',()=>{for(const m of magnets){m.x=m.y=m.tx=m.ty=0;m.el.style.translate='';}wake();});window.addEventListener('resize',resize,{passive:true});window.addEventListener('pagehide',()=>{cancelAnimationFrame(frame);frame=0;});window.addEventListener('pageshow',wake);
- canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);gl=null;canvas.hidden=true;fallback.hidden=false;});
+ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;gl=null;canvas.hidden=true;fallback.hidden=false;document.body.classList.remove('has-stage-engine');wake();});
  const desk=makeDialog('lighting-dialog','舞台调光台'),intro=element('p','live-status','把灯光调到舒服的位置。鼓点和音频会带动光场，阅读时灯光自动收敛。'),presets=element('div','light-presets');
  for(const [key,label] of [['amber','暖金 / NIJIKA'],['rose','朱红 / ENCORE'],['moon','月蓝 / AFTER HOURS']]){const b=action(label,()=>{document.body.dataset.stageLight=key;storage.set('cc-light',key);sync();wake();});b.dataset.lightPreset=key;presets.append(b);}
  desk.dialog.append(intro,presets);

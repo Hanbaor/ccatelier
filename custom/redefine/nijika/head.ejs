@@ -1,12 +1,14 @@
+<% const metadata=nijika_page_metadata(); %>
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#ffffff"><meta name="color-scheme" content="light dark">
   <script>try{const light=localStorage.getItem('cc-theme')!=='dark';document.documentElement.classList.toggle('dark',!light);document.documentElement.style.colorScheme=light?'light':'dark';document.querySelector('meta[name="theme-color"]').content=light?'#ffffff':'#111114'}catch{}</script>
-  <title><%= page.nijika === 'cover' ? config.title : (page.title || nijika_list_title()) + ' · ' + config.title %></title>
-  <meta name="description" content="<%= page.description || config.description %>">
-  <link rel="canonical" href="<%= full_url_for(page.path || '') %>">
+  <title><%= metadata.documentTitle %></title>
+  <meta name="description" content="<%= metadata.description %>">
+  <meta property="og:description" content="<%= metadata.description %>">
+  <link rel="canonical" href="<%= metadata.url %>">
   <link rel="alternate" type="application/atom+xml" title="CC Atelier" href="<%= url_for('atom.xml') %>">
-  <%- open_graph({title:page.title || config.title, description:page.description || config.description, image:theme.nijika.cover, twitter_card:'summary_large_image'}) %>
+  <%- open_graph({title:metadata.title, description:metadata.description, url:metadata.url, image:theme.nijika.cover, twitter_card:'summary_large_image'}).replace(/<meta (?:name="description"|property="og:description")[^>]*>\n?/g,'') %>
   <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
   <% if (page.nijika === 'cover') { %><link rel="preload" as="image" media="(min-width:601px)" href="<%= url_for('atelier/images/v3/hero.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="100vw"><link rel="preload" as="image" media="(max-width:600px)" href="<%= url_for('atelier/images/v3/about.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/about.webp') %>" imagesizes="100vw"><% } %>
   <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.ttf') %>" type="font/ttf" crossorigin>

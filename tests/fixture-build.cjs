@@ -31,6 +31,19 @@ assert.equal(index.length,published+9);
 assert.ok(index.every(item=>item.url.startsWith('/lab/')));
 assert.ok(index.every(item=>!item.url.includes('//')), 'custom permalinks must not become protocol-relative search URLs');
 assert.match(read('tags/排版/index.html'),/验证文章/);
+// Paginated legacy indexes must label the current page, never call its length the total.
+for(const route of ['archives/index.html','archives/page/2/index.html','tags/排版/index.html','categories/验证分类/index.html']) {
+ const dom=new (require('jsdom').JSDOM)(read(route)),doc=dom.window.document;
+ const rows=[...doc.querySelectorAll('.post-row')];
+ assert.equal(doc.querySelector('.archive-count').textContent,'本页 '+rows.length+' 篇');
+ assert.equal(doc.querySelector('.archive-return').getAttribute('href'),'/lab/notes/');
+ assert.ok(rows.length>0);
+ assert.ok(rows.every(row=>row.getAttribute('href').startsWith('/lab/')));
+ for(const link of doc.querySelectorAll('.pagination a'))assert.ok(link.getAttribute('href').startsWith('/lab/'));
+ if(route==='archives/index.html')assert.ok(doc.querySelector('.pagination .next'));
+ dom.window.close();
+}
+
 assert.match(read('verification-page/index.html'),/css\/build\/tailwind.css/);
 assert.match(read('hot100/001/index.html'), /href="\/lab\/series\/hot100\/">返回目录/);
 const discovery=JSON.parse(read('atelier/data/discovery.json'));

@@ -119,6 +119,45 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 .chapter-rail summary>span,.reader-encore>.eyebrow {display:none}
 .encore-heading .after-eyebrow {display:none}
 
+/* Legacy reading entrances share the quiet blog rhythm, without changing posts. */
+.archive-page {width:min(960px,calc(100% - 2 * var(--page-gutter)));max-width:none;min-height:0;margin-inline:auto;padding:var(--page-start) 0 var(--page-end)}
+.archive-page .archive-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+.archive-page .archive-heading>div {min-width:0}
+.archive-page .archive-heading h1 {font:500 clamp(32px,3.6vw,44px)/1.25 var(--chinese);letter-spacing:-.035em;margin:0;overflow-wrap:anywhere}
+.archive-page .archive-count {margin:8px 0 0;font:13px/1.7 var(--chinese);color:var(--muted)}
+.archive-page .archive-return {display:inline-flex;align-items:center;min-height:44px;font:13px var(--chinese);color:var(--text);white-space:nowrap}
+.archive-page .taxonomy-nav {display:flex;flex-wrap:wrap;gap:8px 24px;margin:20px 0 28px;padding:0;border:0}
+.archive-page .taxonomy-nav>a {min-height:44px;padding:8px 0;font-size:14px;color:var(--text);border:0}
+.archive-page .taxonomy-nav>[aria-current=page] {font-weight:600;color:var(--ink)}
+.archive-page .post-list {display:flex;flex-direction:column;gap:28px;margin:0}
+.archive-page .post-row {display:grid;grid-template-columns:110px minmax(0,1fr);gap:24px;align-items:baseline;min-height:44px;padding:4px 0;border:0;background:none}
+.archive-page .post-row:last-child {border:0}
+.archive-page .post-row time {grid-column:auto;font:12px/1.8 var(--sans);color:var(--muted)}
+.archive-page .post-row h2 {margin:0;font:500 21px/1.55 var(--chinese);letter-spacing:-.02em;color:var(--ink);overflow-wrap:anywhere}
+.archive-page .post-row>span {display:none}
+.archive-page .post-row:hover h2 {text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1px}
+.archive-page .taxonomy-list,.archive-page .tag-cloud {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 40px}
+.archive-page .taxonomy-list>a,.archive-page .tag-cloud>a {display:flex;align-items:baseline;gap:16px;min-height:48px;padding:10px 0;border:0;border-radius:0;background:none}
+.archive-page .taxonomy-list>a>span,.archive-page .tag-cloud>a>span {font:400 18px/1.6 var(--chinese);color:var(--ink);overflow-wrap:anywhere;min-width:0}
+.archive-page .taxonomy-list small,.archive-page .tag-cloud small {flex:none;font:12px/1.8 var(--chinese);color:var(--muted)}
+.archive-page .taxonomy-list>a:hover>span,.archive-page .tag-cloud>a:hover>span {text-decoration:underline;text-underline-offset:5px}
+.archive-page .pagination {gap:8px;margin:36px 0 0;border:0}
+.archive-page .pagination>a,.archive-page .pagination>span {min-width:44px;min-height:44px;font-size:13px;color:var(--text);border:0}
+.archive-page .pagination .current {background:var(--surface);color:var(--ink);font-weight:600;border-radius:3px}
+.archive-page a:focus-visible {outline:2px solid var(--yellow);outline-offset:4px}
+@media(max-width:600px) {
+  .archive-page .archive-heading {gap:16px}
+  .archive-page .archive-heading h1 {font-size:clamp(28px,7.8vw,36px)}
+  .archive-page .archive-count {font-size:12px;margin-top:6px}
+  .archive-page .taxonomy-nav {margin:16px 0 24px}
+  .archive-page .post-list {gap:26px}
+  .archive-page .post-row {grid-template-columns:minmax(0,1fr);gap:5px;padding:3px 0}
+  .archive-page .post-row time {grid-column:auto;font-size:12px}
+  .archive-page .post-row h2 {font-size:20px}
+  .archive-page .taxonomy-list,.archive-page .tag-cloud {grid-template-columns:minmax(0,1fr);gap:4px}
+  .archive-page .pagination {gap:4px}
+}
+
 /* One deliberate menu, without the second set of ticket labels. */
 .nijika .menu-v3 {width:min(1040px,calc(100vw - 44px));height:auto;max-height:calc(100dvh - 44px);padding:30px 36px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;overflow:auto}
 .menu-v3::backdrop {background:#07121aaf;backdrop-filter:blur(8px)}

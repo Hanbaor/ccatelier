@@ -1,6 +1,8 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const {pageMetadata}=require('../tools/site-metadata.cjs');
+hexo.extend.helper.register('nijika_page_metadata',function(){return pageMetadata(this);});
 let searchPatched = false;
 let indexPatched = false;
 

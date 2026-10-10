@@ -1,6 +1,7 @@
 import {$, motion} from './ui.js';
 export function initEffects() {
   if(document.querySelector('.reading-page')) return;
+  if(!document.body.matches('.on-cover,[data-section="studio"]')) return;
   const ring=$('.cursor-ring'),layer=$('.click-effects');
   const fine=matchMedia('(hover: hover) and (pointer: fine)');
   let frame=0,x=0,y=0;
@@ -16,6 +17,7 @@ export function initEffects() {
     if(!motion.enabled||event.button!==0||event.target.closest('input,textarea,[contenteditable=true],dialog'))return;
     if(layer.childElementCount>=12)return;
     if(event.pointerType==='mouse')ring.classList.add('is-pressed');
+    if(document.body.classList.contains('has-stage-engine'))return;
     const effect=document.createElement('span');effect.className='beat-click';effect.style.left=event.clientX+'px';effect.style.top=event.clientY+'px';
     [24,116,205,298].forEach(angle=>{const spark=document.createElement('i');spark.style.setProperty('--angle',angle+'deg');effect.append(spark);});
     layer.append(effect);setTimeout(()=>effect.remove(),550);

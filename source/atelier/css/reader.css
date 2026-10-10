@@ -19,3 +19,16 @@
 .chapter-rail::-webkit-scrollbar-thumb,.chapter-rail details>ol::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
 .chapter-rail summary::after{margin-left:auto}
 .chapter-rail summary:focus-visible,.reader-options>summary:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+
+/* References appear only after an explicit selection or a verified deep link. */
+.code-studio [hidden],.code-reference-status[hidden]{display:none!important}
+.code-studio .code-lines>div.line-focused{background:#e8eaed;color:#18212c}
+.code-studio .code-lines>div.line-focused>button,.code-studio .code-lines>div.line-focused>code{color:#18212c}
+.reading-studio .article-body .code .line.code-reference-line,.reading-studio .article-body .code .line.code-reference-line *{background:#e8eaed!important;color:#18212c!important}
+.code-reference-status{font:14px/1.7 var(--sans);color:var(--text);margin:12px 0}
+.code-studio .code-lines>div>button{min-height:32px;min-width:32px}
+.code-studio .code-lines>div>button:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+.code-studio .live-dialog-tools{flex-wrap:wrap}
+
+/* Line numbers make even an empty referenced line visible without changing code. */
+.reading-studio .article-body .gutter .line.code-reference-gutter{background:#e8eaed!important;color:#18212c!important;box-shadow:2px 0 #e8eaed,-2px 0 #e8eaed}
