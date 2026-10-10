@@ -156,3 +156,110 @@ test('multiple applause controls share the pending and confirmed state',async()=
     r.resolve(json({applause:1,reacted:true}));await tick();assert.ok(buttons.every(button=>!button.disabled&&button.getAttribute('aria-pressed')==='true'&&button.querySelector('span').textContent==='1'));buttons[1].click();assert.equal(s.calls.length,1);
   }finally{s.close();}
 });
+
+
+test('only a confirmed conflict rotates the nonce on the next explicit submit, retaining the form',async()=>{
+  const s=await setup((body,n)=>n===1?json({code:'submission_conflict',message:'请重新提交留言。'},409):receipt());
+  try{
+    s.submit();await tick();assert.equal(s.bodies.length,1);assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.button.disabled,false);
+    await tick();assert.equal(s.bodies.length,1,'never resend automatically');
+    s.submit();await tick();assert.equal(s.bodies.length,2);assert.notEqual(s.bodies[0].submissionId,s.bodies[1].submissionId);assert.equal(s.input.value,'');
+  }finally{s.close();}
+});
+
+for(const [name,failure] of [
+  ['lost response',()=>{throw new TypeError('Response lost after commit');}],
+  ['timeout',()=>{throw new DOMException('Timeout','AbortError');}],
+  ['5xx conflict-shaped response',()=>json({code:'submission_conflict',message:'Unavailable'},503)],
+  ['general 409',()=>json({code:'other_conflict',message:'Conflict'},409)],
+  ['409 without code',()=>json({message:'Conflict'},409)],
+  ['bad JSON',()=>new Response('{bad',{status:409,headers:{'Content-Type':'application/json'}})],
+  ['wrong media type',()=>new Response(JSON.stringify({code:'submission_conflict'}),{status:409,headers:{'Content-Type':'text/html'}})],
+  ['JSON array',()=>json([{code:'submission_conflict'}],409)],
+  ['JSON null',()=>json(null,409)],
+  ['non-string code',()=>json({code:['submission_conflict']},409)]
+])test(`uncertain or unrelated failure retains nonce: ${name}`,async()=>{
+  const s=await setup((body,n)=>n===1?failure():receipt());
+  try{s.submit();await tick();assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,1);s.submit();await tick();assert.equal(s.bodies.length,2);assert.equal(s.bodies[0].submissionId,s.bodies[1].submissionId);assert.equal(s.input.value,'');}finally{s.close();}
+});
+
+test('communityAPI preserves status and only bounded JSON error codes',async()=>{
+  const s=await setup(()=>receipt());try{
+    for(const [code,expected] of [['submission_conflict','submission_conflict'],['x'.repeat(65),undefined],['bad-code',undefined],[123,undefined]]){
+      globalThis.fetch=async()=>json({code,message:'Conflict'},409);
+      await assert.rejects(()=>s.api.communityAPI('comments',{}),error=>error.status===409&&error.code===expected);
+    }
+  }finally{s.close();}
+});
+
+test('a delayed conflict preserves edits and only the next explicit submit sends the newer draft',async()=>{
+  const r=deferred(),s=await setup((body,n)=>n===1?r.promise:receipt());
+  try{s.submit();s.input.value='请求中编辑的新草稿';r.resolve(json({code:'submission_conflict'},409));await tick();assert.equal(s.bodies.length,1);assert.equal(s.input.value,'请求中编辑的新草稿');s.submit();await tick();assert.equal(s.bodies[1].message,'请求中编辑的新草稿');assert.notEqual(s.bodies[0].submissionId,s.bodies[1].submissionId);}finally{s.close();}
+});
+
+for(const leave of ['pathname','pagehide','detached','closed'])test(`a late conflict after ${leave} does not update the old comment view`,async()=>{
+  const r=deferred(),s=await setup(()=>r.promise);
+  try{
+    s.submit();const previous=s.status.textContent;
+    if(leave==='pathname')s.dom.window.history.pushState({},'','/other/');
+    if(leave==='pagehide')s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(leave==='detached')s.form.closest('[data-comments]').remove();
+    if(leave==='closed')s.close();
+    r.resolve(json({code:'submission_conflict',message:'Conflict'},409));await tick();assert.equal(s.status.textContent,previous);assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+
+test('a conflict from before page-cache navigation cannot rotate the returned view nonce',async()=>{
+  const r=deferred(),s=await setup((body,n)=>n===1?r.promise:receipt());
+  try{s.submit();s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));r.resolve(json({code:'submission_conflict'},409));await tick();s.submit();await tick();assert.equal(s.bodies.length,2);assert.equal(s.bodies[0].submissionId,s.bodies[1].submissionId);}finally{s.close();}
+});
+
+
+for(const leave of ['pathname','pagehide','detached','closed'])test(`a late success after ${leave} does not clear the old comment draft`,async()=>{
+  const r=deferred(),s=await setup(()=>r.promise);
+  try{
+    s.submit();const previous=s.status.textContent;
+    if(leave==='pathname')s.dom.window.history.pushState({},'','/other/');
+    if(leave==='pagehide')s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(leave==='detached')s.form.closest('[data-comments]').remove();
+    if(leave==='closed')s.close();
+    r.resolve(receipt());await tick();assert.equal(s.status.textContent,previous);assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+
+
+for(const order of ['response while away','response after return'])for(const edited of [false,true])test(`interrupted comment restores honest feedback: ${order}, ${edited?'edited':'unchanged'} draft`,async()=>{
+  const first=deferred(),second=deferred(),s=await setup((body,n)=>n===1?first.promise:second.promise);
+  try{
+    s.submit();const original=s.input.value;
+    s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(edited)s.input.value='返回时的新草稿';
+    if(order==='response while away'){
+      first.resolve(receipt());await tick();assert.equal(s.status.textContent,'正在投递……');
+      s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));
+    }else{
+      s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));
+      assert.equal(s.button.disabled,true);s.submit();assert.equal(s.bodies.length,1,'return must not unlock an active request');
+      first.resolve(receipt());await tick();
+    }
+    assert.equal(s.button.disabled,false);assert.match(s.status.textContent,/结果尚未确认/);assert.match(s.status.textContent,/内容仍在.*手动重试/);assert.doesNotMatch(s.status.textContent,/正在投递|已收到/);
+    assert.equal(s.input.value,edited?'返回时的新草稿':original);assert.equal(s.bodies.length,1,'recovery never submits');
+    s.submit();assert.equal(s.bodies.length,2);assert.equal(s.button.disabled,true);
+    if(edited){assert.notEqual(s.bodies[1].submissionId,s.bodies[0].submissionId);assert.equal(s.bodies[1].message,'返回时的新草稿');}
+    else assert.equal(s.bodies[1].submissionId,s.bodies[0].submissionId,'recovery itself never rotates nonce');
+    await tick();assert.equal(s.button.disabled,true,'old finally cannot unlock the next attempt');
+    second.resolve(receipt());await tick();assert.equal(s.button.disabled,false);assert.equal(s.input.value,'');
+  }finally{s.close();}
+});
+
+for(const invalidView of ['different route','detached','hidden'])test(`page-cache recovery does not update an invalid comment view: ${invalidView}`,async()=>{
+  const r=deferred(),s=await setup(()=>r.promise);
+  try{
+    s.submit();s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(invalidView==='different route')s.dom.window.history.pushState({},'','/elsewhere/');
+    if(invalidView==='detached')s.form.closest('[data-comments]').remove();
+    if(invalidView==='hidden')s.form.closest('[data-comments]').hidden=true;
+    r.resolve(receipt());await tick();s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));
+    assert.equal(s.status.textContent,'正在投递……');assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});

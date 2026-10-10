@@ -29,7 +29,7 @@ export async function communityAPI(route,body) {
     let data;
     try { data=await response.json(); } catch { if(comments||feedback)throw protocolFailure();data={message:'留言和统计服务暂未连接。'}; }
     if((comments||feedback)&&response.ok&&(!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type')||'')||!(comments?validComments(data,body!==undefined,response.status):validFeedback(data,endpoint,response.status))))throw protocolFailure();
-    if(!response.ok){const error=new Error(typeof data?.message==='string'?data.message:'请求没有成功，请稍后重试。');error.status=response.status;throw error;}
+    if(!response.ok){const error=new Error(typeof data?.message==='string'?data.message:'请求没有成功，请稍后重试。');error.status=response.status;if(/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type')||'')&&record(data)&&typeof data.code==='string'&&/^[a-z_]{1,64}$/.test(data.code))error.code=data.code;throw error;}
     return data;
   }catch(error){
     if(error.name==='AbortError')throw new Error('连接有点慢，请稍后再试。');
@@ -50,7 +50,17 @@ function friendlyFailure(container,message,retry) {
 }
 function initComments(root) {
   const form=$('form',root),list=$('[data-comment-list]',root),more=$('[data-comment-more]',root),status=$('.comment-status',root),submit=$('button[type=submit]',form);
-  const page=location.pathname;let next=null,loading=false,submissionId=crypto.randomUUID(),draft='';
+  const page=location.pathname,doc=root.ownerDocument,view=doc.defaultView;
+  let next=null,loading=false,submissionId=crypto.randomUUID(),draft='',navigationEpoch=0,active=true,inFlight=null,recoveryNeeded=false;
+  const visibleView=()=>active&&root.isConnected&&!root.closest('[hidden]')&&view?.document===doc&&view.location.pathname===page;
+  function restoreInterruptedStatus(){
+    if(recoveryNeeded&&!inFlight&&visibleView()){
+      status.textContent='投递结果尚未确认。内容仍在当前表单中，可手动重试。';
+      recoveryNeeded=false;
+    }
+  }
+  view.addEventListener('pagehide',()=>{active=false;navigationEpoch++;if(inFlight)recoveryNeeded=true;});
+  view.addEventListener('pageshow',()=>{active=true;restoreInterruptedStatus();});
   const input=$('[name=message]',form);input.addEventListener('input',()=>{$('[data-comment-length]',form).textContent=[...input.value.trim()].length+' / 1200';});
   async function load(append=false) {
     if(loading)return;loading=true;more.disabled=true;list.setAttribute('aria-busy','true');
@@ -64,15 +74,19 @@ function initComments(root) {
   }
   more.addEventListener('click',()=>load(true));
   form.addEventListener('submit',async event=>{
-    event.preventDefault();if(submit.disabled)return;
+    event.preventDefault();if(submit.disabled||inFlight)return;
     const readDraft=()=>{const data=new FormData(form);return {page,nickname:String(data.get('nickname')).trim(),message:String(data.get('message')).trim(),stamp:data.get('stamp'),website:data.get('website')};};
     const snapshot=JSON.stringify([...new FormData(form)]);
     const body=readDraft();
     if([...body.nickname].length>24||[...body.message].length>1200){status.textContent='昵称最多 24 个字，留言最多 1200 个字。';return;}
     const current=JSON.stringify(body);if(current!==draft){submissionId=crypto.randomUUID();draft=current;}
+    const sentId=submissionId,epoch=navigationEpoch,attempt={};
+    inFlight=attempt;recoveryNeeded=false;
+    const currentView=()=>inFlight===attempt&&navigationEpoch===epoch&&visibleView();
     submit.disabled=true;status.textContent='正在投递……';
     try{
-      const receipt=await communityAPI('comments',{...body,submissionId});
+      const receipt=await communityAPI('comments',{...body,submissionId:sentId});
+      if(!currentView())return;
       if(receipt.status==='rejected'){status.textContent='这条留言已被收起，未公开。内容仍在当前表单中。';return;}
       status.textContent=receipt.status==='approved'?'这条留言已公开。':'已收到，审核后会出现在这里。谢谢你留下回声。';
       // Typing remains possible during delivery. Never erase a newer draft.
@@ -80,7 +94,17 @@ function initComments(root) {
       else status.textContent+=' 当前修改的草稿已保留，尚未投递。';
       draft='';
     }
-    catch(error){status.textContent=error.message+' 内容仍在当前表单中，可再次投递。';}finally{submit.disabled=false;}
+    catch(error){
+      if(!currentView())return;
+      // A confirmed conflict permits a new explicit submission, never an automatic
+      // resend. Uncertain outcomes retain the nonce so retries cannot double-write.
+      if(error.status===409&&error.code==='submission_conflict'&&submissionId===sentId&&draft===current&&JSON.stringify(readDraft())===current)draft='';
+      status.textContent=error.message+' 内容仍在当前表单中，可再次投递。';
+    }finally{
+      // Navigation never unlocks a still-running request. Only its own completion
+      // can release the form, then restore honest feedback in the returned view.
+      if(inFlight===attempt){inFlight=null;submit.disabled=false;restoreInterruptedStatus();}
+    }
   });
   $('fieldset[data-form-guard]',form).disabled=false;
   load();

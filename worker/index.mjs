@@ -155,14 +155,29 @@ async function handle(request,env) {
   }
   const nickname=textField(body.nickname,1,24,'昵称'),message=textField(body.message,1,1200,'留言');
   if(body.website||!STAMPS.has(body.stamp)||!UUID.test(body.submissionId||''))fail(400,'validation','请检查留言内容。');
-  const existing=await env.DB.prepare('SELECT id,status FROM comments WHERE visitor_id=? AND submission_id=?').bind(visitor.id,body.submissionId).first();
-  if(existing)return json({id:existing.id,status:existing.status},202,headers);
+  // A lost first response also loses the visitor cookie. The page nonce plus an
+  // exact payload match can retrieve the minimal current receipt across visitors.
+  // This does not transfer ownership or grant any moderation permission.
+  const lookup=()=>env.DB.prepare('SELECT id,status,nickname,message,stamp FROM comments WHERE page=? AND submission_id=? ORDER BY created_at ASC,id ASC LIMIT 1').bind(page,body.submissionId).first();
+  const receipt=stored=>{
+    if(stored.nickname!==nickname||stored.message!==message||stored.stamp!==body.stamp)fail(409,'submission_conflict','这次提交标识已被使用，请重新提交留言。');
+    return json({id:stored.id,status:stored.status},202,headers);
+  };
+  const existing=await lookup();
+  if(existing)return receipt(existing);
   await rateLimit(request,env,'comment',3,600);
   const id=crypto.randomUUID();
-  await env.DB.prepare('INSERT OR IGNORE INTO comments(id,page,visitor_id,submission_id,nickname,message,stamp,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,page,visitor.id,body.submissionId,nickname,message,body.stamp,Date.now()).run();
-  // Re-read the key in case an identical retry raced the initial insert.
-  const stored=await env.DB.prepare('SELECT id,status FROM comments WHERE visitor_id=? AND submission_id=?').bind(visitor.id,body.submissionId).first();
-  return json({id:stored.id,status:stored.status},202,headers);
+  // Keep the existence check and insert in one SQLite statement. All writers must
+  // use this protocol; it cannot deduplicate historical rows or old Worker writes.
+  await env.DB.prepare('INSERT OR IGNORE INTO comments(id,page,visitor_id,submission_id,nickname,message,stamp,created_at) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM comments WHERE page=? AND submission_id=?)').bind(id,page,visitor.id,body.submissionId,nickname,message,body.stamp,Date.now(),page,body.submissionId).run();
+  // A racing request can win with another payload. Recheck before acknowledging.
+  const stored=await lookup();
+  if(stored)return receipt(stored);
+  // Only a confirmed legacy cross-page key collision is safe to retry with a new
+  // nonce. A missing receipt alone cannot establish whether this write committed.
+  const legacy=await env.DB.prepare('SELECT page FROM comments WHERE visitor_id=? AND submission_id=?').bind(visitor.id,body.submissionId).first();
+  if(legacy&&legacy.page!==page)fail(409,'submission_conflict','这次提交标识已被使用，请重新提交留言。');
+  fail(503,'service_unavailable','未能确认投递结果，请稍后重试。');
 }
 
 export default {
