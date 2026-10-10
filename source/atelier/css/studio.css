@@ -117,3 +117,8 @@
  .studio-editorial .studio-key i,.studio-editorial .studio-key i.soft,.light .studio-editorial .studio-key i.soft{forced-color-adjust:none;background:ButtonFace}
  .studio-editorial .track-steps button.playing::after{forced-color-adjust:none;background:Highlight}
 }
+
+.studio-import-dialog{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-width:calc(100vw - 32px);font:13px/1.8 var(--sans)}
+.studio-import-dialog p{font-size:13px;overflow-wrap:anywhere}
+.studio-import-dialog>button{min-height:44px;padding:8px 18px;margin:12px 8px 0 0;font-size:13px}
+.studio-import-dialog button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}

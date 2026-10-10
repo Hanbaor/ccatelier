@@ -10,6 +10,13 @@ import {encodeMidi} from './studio-midi.mjs';
 export function initStudio(){
  const host=$('[data-studio]');if(!host||host.dataset.studioReady)return;host.dataset.studioReady='true';
  let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
+ let importGeneration=0,importActive=true,importGate=null,settleImport=null;
+ const importInput=$('[data-project-import]'),exportLoops=$('[data-export-loops]'),historyLoops=new WeakMap();
+ historyLoops.set(history.items[history.position],exportLoops.value);
+ function invalidateImport(){importGeneration++;if(settleImport)settleImport(false);}
+ function restoreLoops(){exportLoops.value=historyLoops.get(history.items[history.position])||exportLoops.value;}
+ host.addEventListener('input',e=>{if(e.target!==importInput)invalidateImport();},{capture:true});
+ exportLoops.addEventListener('change',()=>{invalidateImport();historyLoops.set(history.items[history.position],exportLoops.value);});
  const status=$('[data-studio-status]'),grid=$('[data-sequencer]'),play=$('[data-studio-play]'),canvas=$('[data-audio-scope]'),ctx=canvas.getContext('2d');
  grid.addEventListener('focusin',e=>{const button=e.target.closest('[data-studio-step]');if(!button||!grid.contains(button))return;stepFocus={track:Number(button.dataset.studioTrack),step:Number(button.dataset.studioStep)};$$('[data-studio-step]',grid).forEach(b=>{b.tabIndex=b===button?0:-1;});});
  const arrival=$('[data-share-arrival]',host),arrivalMessage=$('[data-share-arrival-message]',host);
@@ -17,15 +24,18 @@ export function initStudio(){
  function showShareArrival(message){if(arrival){arrivalMessage.textContent=message;arrival.hidden=false;}}
  host.addEventListener('input',clearShareArrival,{capture:true});
  const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();});
- function saveHistory(){clearShareArrival();if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
+ function saveHistory(forceLoops=false){invalidateImport();clearShareArrival();if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();const before=history.items[history.position];history.push(project);
+  // A different recording length is still an undoable import when notes match.
+  if(forceLoops===true&&history.items[history.position]===before){history.items=history.items.slice(0,history.position+1);history.items.push(structuredClone(project));if(history.items.length>80)history.items.shift();history.position=history.items.length-1;}
+  historyLoops.set(history.items[history.position],exportLoops.value);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
  const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
  function paintPosition(){const step=active>=0&&active<project.steps?active:-1;$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));}
  function render(){
-  clearShareArrival();updateOverview();paintPosition();$('[data-studio-preset]').value='';setStarterStatus('当前编排：「'+project.name+'」。按下播放试听。');
+  invalidateImport();clearShareArrival();updateOverview();paintPosition();$('[data-studio-preset]').value='';setStarterStatus('当前编排：「'+project.name+'」。按下播放试听。');
   const restoreStepFocus=grid.contains(document.activeElement)&&document.activeElement.hasAttribute('data-studio-step');stepFocus.step=Math.min(stepFocus.step,project.steps-1);
-  $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
+  $('[data-project-name]').value=project.name;$('[data-bpm]').value=Number(project.bpm.toFixed(3));$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
   grid.style.setProperty('--steps',project.steps);grid.style.minWidth=project.steps===32?'var(--studio-long-sequence-width,1280px)':'';grid.replaceChildren();
   project.tracks.forEach((track,t)=>{
    const row=element('div','studio-track'),name=element('div','track-name'),pad=action(String(t+1).padStart(2,'0'),()=>audition(t));pad.setAttribute('aria-label','敲击'+trackNames[track.type]);const switches=element('div');
@@ -43,7 +53,7 @@ export function initStudio(){
  }
  function paintStep(b,track,s){const v=track.steps[s];b.classList.toggle('on',v===1);b.classList.toggle('soft',v>0&&v<1);b.setAttribute('aria-pressed',String(v>0));b.setAttribute('aria-label',trackNames[track.type]+' 第'+(s+1)+'步：'+(v===1?'强拍':v?'轻拍':'空拍'));b.title=(s+1)+' / '+(v===1?'强拍':v?'轻拍':'空拍');}
  async function audition(index){document.dispatchEvent(new CustomEvent('atelier:studio-start'));try{await engine.audition(project.tracks[index]);auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}catch(error){status.textContent=error.message;}}
- play.addEventListener('click',toggle);$('[data-studio-stop]').addEventListener('click',stop);
+ play.addEventListener('click',toggle);$('[data-studio-stop]').addEventListener('click',()=>{invalidateImport();stop();});
  $('[data-bpm]').addEventListener('change',e=>{const value=Number(e.target.value);project.bpm=Number.isFinite(value)?Math.max(60,Math.min(180,Math.round(value))):112;e.target.value=project.bpm;saveHistory();});
  $('[data-swing]').addEventListener('input',e=>{project.swing=Number(e.target.value)/100;$('[data-swing-output]').textContent=e.target.value+'%';engine.update(project);});$('[data-swing]').addEventListener('change',saveHistory);
  $('[data-master]').addEventListener('input',e=>{project.master=Number(e.target.value)/100;engine.update(project);});$('[data-master]').addEventListener('change',saveHistory);
@@ -62,11 +72,52 @@ export function initStudio(){
   button.disabled=false;button.addEventListener('click',()=>loadStarter(button.dataset.studioStarter));
  }
 
- $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();status.textContent='已撤销；当前编排：「'+project.name+'」。';setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();status.textContent='已重做；当前编排：「'+project.name+'」。';setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
+ $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();restoreLoops();render();status.textContent='已撤销；当前编排：「'+project.name+'」。';setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();restoreLoops();render();status.textContent='已重做；当前编排：「'+project.name+'」。';setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
  let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
  document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
  $('[data-project-export]').addEventListener('click',()=>download('cc-rhythm-project.json',JSON.stringify(validateProject(project),null,2)));
- $('[data-project-import]').addEventListener('change',async e=>{try{const imported=validateProject(await readImport(e.target.files[0]));stop();project=imported;saveHistory();render();status.textContent='项目已导入。';}catch(error){status.textContent=error.message;}e.target.value='';});
+ function confirmMidiImport(){
+  if(!importGate){
+   importGate=makeDialog('studio-midi-import','导入 MIDI 鼓点');importGate.dialog.classList.add('studio-import-dialog');
+   const note=element('p','','保留敲击力度与节奏；音长和释放力度按鼓点触发处理。');note.id='studio-midi-import-note';importGate.dialog.setAttribute('aria-describedby',note.id);
+   const accept=action('导入',()=>settleImport?.(true)),cancel=action('取消',()=>settleImport?.(false));accept.dataset.importConfirm='';cancel.dataset.importCancel='';
+   importGate.dialog.append(note,accept,cancel);
+   importGate.dialog.addEventListener('cancel',e=>{e.preventDefault();settleImport?.(false);});
+   importGate.dialog.addEventListener('close',()=>{if(!importGate.dialog.open)settleImport?.(false);});
+  }
+  return new Promise(resolve=>{
+   settleImport=accepted=>{settleImport=null;if(importGate.dialog.open)importGate.dialog.close();if(importActive&&!document.hidden&&!$('dialog[open]'))importInput.focus({preventScroll:true});resolve(accepted);};
+   importGate.open();$('[data-import-cancel]',importGate.dialog).focus();
+  });
+ }
+ importInput.addEventListener('change',async()=>{
+  const file=importInput.files?.[0];importInput.value='';invalidateImport();if(!file)return;
+  const generation=importGeneration,snapshot=JSON.stringify(project),loopsBefore=exportLoops.value;
+  const current=()=>generation===importGeneration&&importActive&&!document.hidden&&JSON.stringify(project)===snapshot&&exportLoops.value===loopsBefore;
+  try{
+   // Sniff only four bytes before imposing the separate MIDI and JSON limits.
+   const header=new Uint8Array(await file.slice(0,4).arrayBuffer());if(!current())return;
+   const isMidi=header.length===4&&header.every((v,i)=>v===[77,84,104,100][i]);let midi=null,imported;
+   if(isMidi){
+    if(file.size>256*1024)throw Error('MIDI 文件须不超过 256 KiB');
+    const bytes=await file.arrayBuffer();if(!current())return;
+    const {parseDrumMidi}=await import('./studio-midi-import.mjs');if(!current())return;
+    midi=parseDrumMidi(bytes);imported=validateProject(midi.project);
+    if(![1,2,4].includes(midi.loops))throw Error('MIDI 重复轮数无效');
+    if(midi.requiresGateConfirmation&&!(await confirmMidiImport()))return;
+   }else imported=validateProject(await readImport(file));
+   if(!current())return;
+   historyLoops.set(history.items[history.position],loopsBefore);
+   stop();project=imported;if(midi)exportLoops.value=String(midi.loops);saveHistory(Boolean(midi&&loopsBefore!==exportLoops.value));render();
+   status.textContent=midi?'已导入 '+project.steps+' 步鼓点 · '+Number(project.bpm.toFixed(3))+' BPM；'+(midi.loops>1?'重复 '+midi.loops+' 轮已折叠。':'')+'可撤销。'+midi.summary.filter(line=>line.includes('未声明')).join('；'):'项目已导入；可撤销。';
+  }catch(error){if(current())status.textContent='未导入：'+error.message;}
+ });
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)invalidateImport();});
+ window.addEventListener('pagehide',()=>{importActive=false;invalidateImport();});
+ window.addEventListener('pageshow',()=>{importActive=true;});
+ window.addEventListener('hashchange',invalidateImport);
+ for(const event of ['atelier:studio-start','atelier:livehouse-open','atelier:practice-start'])document.addEventListener(event,invalidateImport);
+ document.addEventListener('atelier:dialog-open',e=>{if(e.detail?.id!=='studio-midi-import')invalidateImport();});
  $('[data-studio-save]').addEventListener('click',async()=>{try{await vault.put('projects',{id:crypto.randomUUID(),name:project.name,updated:Date.now(),project:validateProject(project)});status.textContent='已保存到本机资料库。';}catch(error){status.textContent=error.message+'，可以导出 JSON 备份。';}});
  const shareButton=$('[data-studio-share]'),share=makeDialog('studio-share','分享当前节奏');
  share.dialog.classList.add('studio-share-dialog');

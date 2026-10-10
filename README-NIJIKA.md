@@ -47,7 +47,7 @@ node tests/fixture-build.cjs
 | 公共导航与样式加载 | `custom/redefine/nijika/header.ejs`、`footer.ejs`、`head.ejs` |
 | 阅读与栏目样式 | `source/atelier/css/reader.css`、`content.css`、`projects.css`、`personal-pages.css`；其余按页面查 `head.ejs` |
 | 浏览器入口与按需交互 | `source/atelier/js/main.js`、`route-features.js`；具体功能在同目录模块中 |
-| 音乐工作室 / 分享 / MIDI | `source/atelier/js/studio.js`、`studio-core.mjs`、`studio-share.mjs`、`studio-midi.mjs`；声音渲染在 `audio-engine.js` |
+| 音乐工作室 / 分享 / MIDI | `source/atelier/js/studio.js`、`studio-core.mjs`、`studio-share.mjs`、`studio-midi.mjs`、`studio-midi-import.mjs`；声音渲染在 `audio-engine.js` |
 | Hot100 筛选与状态 | `custom/redefine/nijika/series.ejs`、`source/atelier/js/series-filter.js`、`tools/content-catalog.cjs` |
 | SQL 教学实验 | `custom/redefine/nijika/research.ejs`、`source/atelier/js/research-sql.js` 及同目录 `research-sql-*` 模块 |
 | 本地字体交付 | `source/atelier/css/fonts.css`、`source/atelier/fonts/`、`tools/local-font-woff2.py` |
@@ -76,15 +76,18 @@ node tests/fixture-build.cjs
 
 ## 当前功能的维护边界
 
-### 音乐工作室：分享与导出
+### 音乐工作室：分享、导入与导出
 
 `/studio/` 的六轨音序器支持 16 / 32 步。分享链接把当前编排与曲名写入 URL 的 `#rhythm=v1.` 片段，不包含本机资料库中的其他项目，也不创建云端项目。接收方打开后只载入编排，需手动播放；可撤销回到载入前状态，不自动保存到本机资料库。打开分享弹窗不会写剪贴板，需点击“复制链接”；失败时选中链接供 Ctrl+C / ⌘C 手动复制。无效、损坏或不支持的版本不会替换当前编排。
 
-- MIDI：导出标准 MIDI 文件（Format 0，单鼓轨、通道 10），支持当前 16 / 32 步及 1 / 2 / 4 轮，保留 BPM、swing 对应的音符时序和力度，遵循静音 / 独奏。用于 DAW 中继续编辑，接收端需配置 GM 鼓组音源；不包含本站合成音色、尾音、效果或混音参数，不能据此还原本站声音。
+- MIDI 导出：导出标准 MIDI 文件（Format 0，单鼓轨、通道 10），支持当前 16 / 32 步及 1 / 2 / 4 轮，保留 BPM、swing 对应的音符时序和力度，遵循静音 / 独奏。用于 DAW 中继续编辑，接收端需配置 GM 鼓组音源；不包含本站合成音色、尾音、效果或混音参数，不能据此还原本站声音。
 - WAV：将当前编排渲染成可直接播放的 44.1 kHz / 16 bit 立体声音频，使用所选轮数，适合试听与分享成品声音。
-- JSON：保存当前项目的可编辑编排及合成、混音参数，供本站重新导入与备份；不是音频，也不是整个本机资料库的备份。
+- JSON：保存当前项目的完整可编辑编排及合成、混音参数，供本站重新导入与备份；不是音频，也不是整个本机资料库的备份。JSON 与 MIDI 共用“导入 JSON / MIDI”入口，在本地读取，按文件内容识别。
+- MIDI 导入范围：仅接受 SMF 0 / 1、PPQ 时间、固定 60–180 BPM 与 4/4 拍，以及通道 10 的底鼓、军鼓、踩镲、拍手、通鼓和边击。完整时长须可表示为 16 / 32 步 × 1 / 2 / 4 轮，重复部分的落点和力度须一致，保留尾部休止；不裁曲、不吸附、不静默丢弃其他轨道或演奏事件，超出范围整份拒绝。
+- MIDI 恢复边界：只恢复文件中的鼓点时序与 MIDI 力度，不能找回原静音 / 独奏状态、被静音的音符、音色与混音、导出前浮点力度，或区分原来的 16 步 × 2 轮与 32 步 × 1 轮；采用可表示完整时长的最短合法循环。未声明速度 / 拍号时按 MIDI 默认 120 BPM / 4/4 解释；没有奇数步鼓点时 swing 设为 0。音长 / 释放力度是唯一允许的有损转换，须明确确认后按本站鼓触发处理。
+- 导入状态：成功后停止播放，不自动播放或保存，可撤销 / 重做项目及 MIDI 导入带来的录制轮数变化。失败或取消不改变当前项目、轮数与播放；读取或确认期间的新文件选择、编辑、播放 / 停止 / 试听或导航会使旧导入失效，旧结果不能覆盖新操作。
 
-修改分享编码、鼓音映射或时间规则后，检查 `tests/studio-share.test.cjs`、`tests/studio-midi.test.cjs`、`tests/studio-core.test.cjs`，并手动验证接收不发声、复制失败回退及音频导出。
+修改分享编码、鼓音映射或时间规则后，检查 `tests/studio-share.test.cjs`、`tests/studio-midi.test.cjs`、`tests/studio-midi-import.test.cjs`、`tests/studio-midi-import-ui.test.cjs`、`tests/studio-core.test.cjs`，并手动验证接收不发声、复制失败回退、导入确认 / 取消与撤销，以及音频导出。
 
 ### Hot100：筛选与内容状态
 
