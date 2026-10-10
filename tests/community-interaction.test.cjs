@@ -12,7 +12,7 @@ async function setup(deliver,loadComments=()=>json({items:[],total:0,next:null})
   globalThis.fetch=async(url,options)=>{
     if(url==='/api/comments'&&options.method==='POST'){const body=JSON.parse(options.body);bodies.push(body);return deliver(body,bodies.length);}
     if(url.startsWith('/api/comments?'))return loadComments();
-    return json({site:{},page:{},reacted:false});
+    return json({site:{views:0,visitors:0,applause:0},page:{views:0,applause:0},reacted:false});
   };
   const api=await import('../source/atelier/js/community.js');api.initCommunity();await tick();
   const form=document.querySelector('form'),input=form.elements.message,status=document.querySelector('.comment-status'),button=form.querySelector('[type=submit]');
@@ -67,4 +67,92 @@ test('comment-list failure has a working retry and clears its busy state',async(
 test('even whitespace edits made during delivery are not erased',async()=>{
   let resolve;const s=await setup(()=>new Promise(r=>{resolve=r;}));
   try{s.submit();s.input.value+='\n';resolve(receipt());await tick();assert.equal(s.input.value,'尚未投递的留言\n');assert.match(s.status.textContent,/草稿已保留/);}finally{s.close();}
+});
+
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
+const visitData=(applause=0,reacted=false)=>({site:{views:27,visitors:12,applause},page:{views:7,applause},reacted});
+async function setupApplause(deliver,visit=()=>json(visitData()),duplicate=false) {
+  const dom=new JSDOM(`<body data-section="article"><span data-stat="views">—</span><span data-stat="pageViews">—</span><span data-stats-context></span><details open><summary>工具</summary><button data-applause aria-pressed="false"><span data-applause-count>0</span></button></details><p data-article-tool-status></p></body>`,{url:'https://ccatelier.test/notes/'});
+  Object.assign(globalThis,{window:dom.window,document:dom.window.document,location:dom.window.location,matchMedia:()=>({matches:false,addEventListener(){}})});
+  const calls=[];globalThis.fetch=async(url,options)=>{if(url==='/api/visit')return visit();assert.equal(url,'/api/reaction');calls.push(JSON.parse(options.body));return deliver(calls.length);};
+  if(duplicate){const button=document.querySelector('[data-applause]');button.after(button.cloneNode(true));}
+  const api=await import('../source/atelier/js/community.js');api.initCommunity();await tick();
+  const doc=dom.window.document,button=doc.querySelector('[data-applause]'),status=doc.querySelector('[data-article-tool-status]');
+  return {dom,doc,button,status,calls,count:button.querySelector('span'),close:()=>dom.window.close()};
+}
+for(const [name,response] of [
+  ['HTML 200',()=>new Response('<html>fallback</html>',{headers:{'Content-Type':'text/html'}})],
+  ['broken JSON',()=>new Response('{bad',{headers:{'Content-Type':'application/json'}})],
+  ['wrong content type',()=>new Response('{"applause":1,"reacted":true}',{headers:{'Content-Type':'text/html'}})],
+  ['wrong HTTP success',()=>json({applause:1,reacted:true},202)],
+  ['null shape',()=>json(null)],['array shape',()=>json([])],['missing count',()=>json({reacted:true})],
+  ['missing reacted',()=>json({applause:1})],['unconfirmed reacted',()=>json({applause:1,reacted:false})],
+  ['string reacted',()=>json({applause:1,reacted:'true'})],
+  ...[-1,1.5,'1',null,Number.MAX_SAFE_INTEGER+1].map(value=>[`invalid count ${value}`,()=>json({applause:value,reacted:true})]),
+  ['HTTP failure',()=>json({message:'稍后重试'},503)],
+  ['network failure',()=>{throw new TypeError('offline');}],
+  ['timeout',()=>{throw new DOMException('Timeout','AbortError');}]
+])test(`applause ${name} remains retryable and never reports success`,async()=>{
+  const s=await setupApplause(n=>n===1?response():json({applause:1,reacted:true}));
+  try{
+    s.button.click();await tick();assert.equal(s.button.getAttribute('aria-pressed'),'false');assert.equal(s.count.textContent,'0');assert.equal(s.button.disabled,false);assert.doesNotMatch(s.status.textContent,/掌声已送达/);assert.match(s.status.textContent,/重试|再试/);
+    s.button.click();await tick();assert.equal(s.calls.length,2);assert.deepEqual(s.calls,[{page:'/notes/'},{page:'/notes/'}]);assert.equal(s.button.getAttribute('aria-pressed'),'true');assert.equal(s.count.textContent,'1');assert.match(s.status.textContent,/掌声已送达/);
+  }finally{s.close();}
+});
+for(const order of ['reaction first','visit first'])test(`applause survives delayed initialization: ${order}`,async()=>{
+  const v=deferred(),r=deferred(),s=await setupApplause(()=>r.promise,()=>v.promise);
+  try{
+    s.button.click();s.button.click();s.button.dispatchEvent(new s.dom.window.Event('click'));assert.equal(s.calls.length,1);assert.equal(s.button.disabled,true);
+    if(order==='reaction first'){r.resolve(json({applause:1,reacted:true}));await tick();v.resolve(json(visitData()));}
+    else{v.resolve(json(visitData()));await tick();r.resolve(json({applause:1,reacted:true}));}
+    await tick();assert.equal(s.button.getAttribute('aria-pressed'),'true');assert.equal(s.count.textContent,'1');assert.equal(s.doc.querySelector('[data-stat="views"]').textContent,'27');assert.equal(s.doc.querySelector('[data-stat="pageViews"]').textContent,'7');assert.match(s.status.textContent,/掌声已送达/);assert.equal(s.button.disabled,false);
+    s.button.click();assert.equal(s.calls.length,1);
+  }finally{s.close();}
+});
+test('failed reaction before delayed visit permits a real retry',async()=>{
+  const v=deferred(),s=await setupApplause(n=>n===1?Promise.reject(new TypeError('offline')):json({applause:1,reacted:true}),()=>v.promise);
+  try{s.button.click();await tick();v.resolve(json(visitData()));await tick();s.button.click();await tick();assert.equal(s.calls.length,2);assert.equal(s.count.textContent,'1');assert.equal(s.button.getAttribute('aria-pressed'),'true');}finally{s.close();}
+});
+test('existing applause prevents sending again',async()=>{
+  const s=await setupApplause(()=>assert.fail('must not send'),()=>json(visitData(3,true)));
+  try{s.button.click();assert.equal(s.count.textContent,'3');assert.equal(s.button.getAttribute('aria-pressed'),'true');assert.equal(s.calls.length,0);}finally{s.close();}
+});
+test('confirmed visit is not undone by a concurrent failed reaction',async()=>{
+  const v=deferred(),r=deferred(),s=await setupApplause(()=>r.promise,()=>v.promise);
+  try{s.button.click();v.resolve(json(visitData(3,true)));await tick();r.reject(new TypeError('offline'));await tick();assert.equal(s.count.textContent,'3');assert.equal(s.button.getAttribute('aria-pressed'),'true');s.button.click();assert.equal(s.calls.length,1);}finally{s.close();}
+});
+test('broken visit data fails closed without undoing confirmed applause',async()=>{
+  const v=deferred(),s=await setupApplause(()=>json({applause:1,reacted:true}),()=>v.promise);
+  try{s.button.click();await tick();v.resolve(json({page:{applause:-1},reacted:false}));await tick();assert.equal(s.count.textContent,'1');assert.equal(s.button.getAttribute('aria-pressed'),'true');assert.match(s.doc.querySelector('[data-stats-context]').textContent,/统计暂未连接/);}finally{s.close();}
+});
+test('closing article tools preserves an in-flight applause receipt when reopened',async()=>{
+  const r=deferred(),s=await setupApplause(()=>r.promise);
+  try{s.button.click();const details=s.doc.querySelector('details');details.open=false;r.resolve(json({applause:1,reacted:true}));await tick();details.open=true;assert.equal(s.count.textContent,'1');assert.equal(s.button.getAttribute('aria-pressed'),'true');s.button.click();assert.equal(s.calls.length,1);}finally{s.close();}
+});
+for(const leave of ['pathname','pagehide','detached','closed'])test(`late responses after ${leave} do not update applause or another page`,async()=>{
+  const v=deferred(),r=deferred(),s=await setupApplause(()=>r.promise,()=>v.promise);
+  try{
+    s.button.click();
+    if(leave==='pathname')s.dom.window.history.pushState({},'','/other/');
+    if(leave==='pagehide')s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(leave==='detached')s.button.remove();
+    if(leave==='closed')s.close();
+    r.resolve(json({applause:1,reacted:true}));v.resolve(json(visitData(2,true)));await tick();
+    assert.equal(s.button.getAttribute('aria-pressed'),'false');assert.equal(s.count.textContent,'0');assert.doesNotMatch(s.status.textContent,/掌声已送达/);assert.equal(s.button.disabled,false);
+  }finally{s.close();}
+});
+test('return from page cache re-enables safe retry after response arrived away',async()=>{
+  const r=deferred(),s=await setupApplause(n=>n===1?r.promise:json({applause:1,reacted:true}));
+  try{s.button.click();s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));r.resolve(json({applause:1,reacted:true}));await tick();s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));s.button.click();await tick();assert.equal(s.calls.length,2);assert.equal(s.count.textContent,'1');assert.equal(s.button.getAttribute('aria-pressed'),'true');}finally{s.close();}
+});
+for(const applause of [0,Number.MAX_SAFE_INTEGER])test(`valid applause boundary ${applause} is accepted`,async()=>{
+  const s=await setupApplause(()=>json({applause,reacted:true}));
+  try{s.button.click();await tick();assert.equal(s.count.textContent,String(applause));assert.equal(s.button.getAttribute('aria-pressed'),'true');assert.match(s.status.textContent,/掌声已送达/);}finally{s.close();}
+});
+test('multiple applause controls share the pending and confirmed state',async()=>{
+  const r=deferred(),s=await setupApplause(()=>r.promise,undefined,true);
+  try{
+    const buttons=[...s.doc.querySelectorAll('[data-applause]')];s.button.click();buttons[1].click();buttons[1].dispatchEvent(new s.dom.window.Event('click'));assert.equal(s.calls.length,1);assert.ok(buttons.every(button=>button.disabled));
+    r.resolve(json({applause:1,reacted:true}));await tick();assert.ok(buttons.every(button=>!button.disabled&&button.getAttribute('aria-pressed')==='true'&&button.querySelector('span').textContent==='1'));buttons[1].click();assert.equal(s.calls.length,1);
+  }finally{s.close();}
 });
