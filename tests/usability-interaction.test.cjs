@@ -18,6 +18,8 @@ function page(route) {
     ResizeObserver: class { observe() {} disconnect() {} },
   });
   window.HTMLCanvasElement.prototype.getContext = () => null;
+  window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  window.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new window.Event('close')); };
   return dom;
 }
 
@@ -38,6 +40,7 @@ test('queue edits retain logical focus and keep archive buttons synchronized wit
     for (const button of buttons) assert.equal(button.getAttribute('aria-pressed'), 'true');
     assert.equal(document.querySelector('.archive-record'), cards[0], 'state updates must not replace archive cards');
 
+    document.querySelector('.queue-open').click();
     const rowFor = item => [...document.querySelectorAll('#queue-dialog .queue-row')].find(row => row.dataset.queuePath === item.path);
     const down = rowFor(items[0]).querySelector('[data-queue-action="down"]');
     down.focus();

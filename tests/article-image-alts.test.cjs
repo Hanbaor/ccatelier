@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('forty-two visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,42);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,42);
+test('forty-five visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,45);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,45);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -83,6 +83,24 @@ test('attribute escaping is safe and existing surrounding markup is byte-preserv
  const expected=original.replace("alt=''",`alt="${entry.alt}"`);
  assert.equal(await enhance(original,identity(entry)),expected);
 });
+test('three reviewed informational images add alt only and leave visible prose and captions unchanged',async()=>{
+ const enhance=createArticleImageAltEnhancer({sourceDir});
+ const expected=[
+  ['131792879','e1df2de5eca5ecc16f09.png','熵公式：H(S)＝−∑（i从1到n）p(xᵢ)log₂(p(xᵢ))。'],
+  ['124460411','ba63f2a7c086e0536048.png','集合{1,2,3,4}与{2,3,4,5}的运算结果：并集{1,2,3,4,5}，交集{2,3,4}，差集{1}，对称差集{1,5}。'],
+  ['149880710','8ee68f08799aa1321e8a.png','10张服饰灰度样例，从左到右标注为：包、凉鞋、套头衫、凉鞋、凉鞋、连衣裙、衬衫、连衣裙、衬衫、套头衫。']
+ ];
+ for(const [sourceId,filename,alt] of expected) {
+  const entry=allowlist.find(entry=>entry.filename===filename);
+  assert.equal(entry.sourceId,sourceId);assert.equal(entry.oldAlt,null);
+  assert.equal(entry.caption,undefined);assert.equal(entry.alt,alt);
+  for(const caption of ['', '<figcaption>作者的解释</figcaption>']) {
+   const raw=`<p>原文保持不变</p><figure class="image-caption">${input(entry)}${caption}</figure>`;
+   const output=await enhance(raw,identity(entry));
+   assert.equal(output,raw.replace(input(entry),`<img src="${image(entry)}" alt="${escapeAttribute(alt)}">`));
+  }
+ }
+});
 test('geometry and alt filters commute without losing attributes, changing source bytes or visible content',async()=>{
  for(const root of ['/','/lab/']) {
   const geometry=createArticleImageEnhancer({sourceDir,root}),alts=createArticleImageAltEnhancer({sourceDir,root});
@@ -151,7 +169,7 @@ test('only exact Redefine machine captions reuse the hash-verified description',
   assert.equal(await createArticleImageAltEnhancer({sourceDir:'/nonexistent'})(raw,identity(entry)),raw);
  }
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-two descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-five descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.
@@ -191,6 +209,8 @@ test('real Hexo loader, Warehouse posts and native cache rendering apply all for
    if(entry.oldAlt!==null) {
     assert.ok(post.content.includes(`<figcaption>${escapeAttribute(entry.caption??entry.alt)}</figcaption>`));
     assert.ok(!post.content.includes(`<figcaption>${escapeAttribute(entry.oldAlt)}</figcaption>`));
+   } else {
+    assert.ok(!post.content.includes(`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`),'alt-only entries must not introduce visible captions');
    }
    assert.ok(Number(attrs.width)>0);assert.ok(Number(attrs.height)>0);
    assert.equal(post._content,frontMatter.parse(fs.readFileSync(post.full_source,'utf8'))._content);

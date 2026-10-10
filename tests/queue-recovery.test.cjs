@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {JSDOM}=require('jsdom');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 async function setup(t,queue=[],loader,historyLoader){
- const dom=new JSDOM('<title>测试文章</title><body data-root="/"><div id="toast"></div></body>',{url:'https://ccatelier.test/notes/'}),{window}=dom;
+ const dom=new JSDOM('<title>测试文章</title><body data-root="/"><div id="toast"></div><button class="queue-open">队列</button><span data-queue-count></span><a data-queue-next></a></body>',{url:'https://ccatelier.test/notes/'}),{window}=dom;
  Object.assign(globalThis,{window,document:window.document,location:window.location,localStorage:window.localStorage,CustomEvent:window.CustomEvent,matchMedia:()=>({matches:false,addEventListener(){}})});
  window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
  window.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new window.Event('close'));};
@@ -83,7 +83,7 @@ test('lazy bookmark migration prevents duplicate clicks, reads current cross-tab
  // Completion must not reopen a dismissed dialog or steal focus.
  const outside=document.createElement('button');document.body.append(outside);outside.focus();
  resolve(await import('../source/atelier/js/queue-legacy.js'));await flush();
- assert.equal(merge.disabled,false);assert.equal(document.activeElement,outside);assert.equal(document.querySelector('#queue-dialog').open,false);
+ assert.equal(merge.disabled,false);assert.equal(document.activeElement,outside);assert.equal(document.querySelector('#queue-dialog').open,false);assert.equal(document.querySelectorAll('.queue-row').length,0);
  assert.deepEqual(JSON.parse(s.storage.get('cc-queue')).queue,[item(1),item(3),item(2)]);
 });
 test('lazy migration loading failure keeps saved data, reports the error, and permits retry',async t=>{
@@ -136,4 +136,33 @@ test('late history loading leaves a closed dialog untouched and can render on re
 test('history load failures display an honest fallback and retry when reopened',async t=>{
  let calls=0;const s=await setup(t,[],undefined,()=>++calls===1?Promise.reject(Error('offline')):import('../source/atelier/js/queue-history.js')),opener=document.createElement('button');opener.className='queue-open';document.body.append(opener);opener.click();await flush();
  const history=document.querySelector('.queue-history');assert.match(history.textContent,/暂时无法加载/);document.querySelector('#queue-dialog').close();opener.click();await flush();assert.equal(history.children.length,14);assert.doesNotMatch(history.textContent,/无法加载/);
+});
+test('closed queues keep counters and next links current without constructing their 200 rows',async t=>{
+ const q=Array.from({length:200},(_,i)=>item(i)),s=await setup(t,q);
+ assert.equal(document.querySelectorAll('.queue-row').length,0,'the closed initial dialog must not construct 200 hidden rows');
+ assert.equal(document.querySelector('[data-queue-count]').textContent,'200');
+ assert.equal(document.querySelector('[data-queue-next]').getAttribute('href'),q[0].path);
+ const {queueAction}=await import('../source/atelier/js/archive-store.js');queueAction({type:'done',path:q[0].path});
+ assert.equal(document.querySelectorAll('.queue-row').length,0);assert.equal(document.querySelector('[data-queue-count]').textContent,'199');assert.equal(document.querySelector('[data-queue-next]').getAttribute('href'),q[1].path);
+ localStorage.setItem('cc-queue',JSON.stringify({version:1,queue:[item(300)]}));s.window.dispatchEvent(new s.window.StorageEvent('storage',{key:'cc-queue'}));
+ assert.equal(document.querySelectorAll('.queue-row').length,0);assert.equal(document.querySelector('[data-queue-count]').textContent,'1');assert.equal(document.querySelector('[data-queue-next]').getAttribute('href'),item(300).path);
+ document.querySelector('.queue-open').click();assert.equal(document.querySelectorAll('.queue-row').length,1);assert.equal(document.querySelector('.queue-row').dataset.queuePath,item(300).path);
+ await flush();
+});
+test('closing a populated queue freezes its hidden list until the latest data is reopened',async t=>{
+ const s=await setup(t,[item(1),item(2)]),opener=document.querySelector('.queue-open'),dialog=document.querySelector('#queue-dialog');
+ opener.click();await flush();const original=[...dialog.querySelectorAll('.queue-row')];assert.equal(original.length,2);dialog.close();opener.focus();
+ const {saveQueue}=await import('../source/atelier/js/archive-store.js');saveQueue([item(3)]);
+ assert.deepEqual([...dialog.querySelectorAll('.queue-row')],original,'hidden existing rows are not rebuilt');assert.equal(document.activeElement,opener);
+ assert.equal(document.querySelector('[data-queue-count]').textContent,'1');assert.equal(document.querySelector('[data-queue-next]').getAttribute('href'),item(3).path);
+ localStorage.clear();s.window.dispatchEvent(new s.window.StorageEvent('storage',{key:null}));
+ assert.deepEqual([...dialog.querySelectorAll('.queue-row')],original);assert.equal(document.querySelector('[data-queue-count]').textContent,'0');assert.equal(document.querySelector('[data-queue-next]').hidden,true);
+ opener.click();assert.equal(dialog.querySelectorAll('.queue-row').length,0);assert.match(dialog.lastElementChild.textContent,/加入队列/);await flush();
+ dialog.close();saveQueue([item(4)]);opener.click();assert.equal(dialog.querySelector('.queue-row').dataset.queuePath,item(4).path);await flush();
+});
+test('closed quota updates retain the storage warning and show temporary data when opened',async t=>{
+ const s=await setup(t,[item(1)]),{queueAction}=await import('../source/atelier/js/archive-store.js');
+ s.window.Storage.prototype.setItem=()=>{throw Error('QuotaExceededError');};queueAction({type:'add',item:item(2)});
+ assert.equal(document.querySelectorAll('.queue-row').length,0);assert.match(s.status.textContent,/仅在当前页面有效/);assert.equal(document.querySelector('[data-queue-count]').textContent,'2');
+ document.querySelector('.queue-open').click();assert.equal(document.querySelectorAll('.queue-row').length,2);assert.match(s.status.textContent,/仅在当前页面有效/);await flush();
 });

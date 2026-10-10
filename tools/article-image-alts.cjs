@@ -50,7 +50,11 @@ const allowlist=Object.freeze([
  ['124338392','c7068c3e28122b3ccc72.png','fb51b9fcbbc7f87796ea89c85309e0d24693e662750361492e190b568d02a3ad','b99a41708010461785712a8fe749beed.png','积木画状态00：前i−1列已铺满，第i列上下两格均未被覆盖。',"积木·状态00"],
  ['124338392','9f5799f2574234db7263.png','d9c9c30fd8d33bf783e03e4f25787908d228dccd39e6c7b1b3eda103b276dacc','ae3d8f8df3774c9782351c24a0bb257b.png','状态00转移到00：在第i列竖放一个I型积木，第i+1列上下两格仍为空。',"状态00 → 00"],
  ['124338392','22e8b1306db0807a0b58.png','6a8960cd59ade6ca034da36a1aad32298510267c36a74bce21926335e7774d87','2a3a90ea512c4ee9a3824b23bb287225.png','状态00转移到10：L型积木铺满第i列，并覆盖第i+1列上格，下格仍为空。',"状态00 → 10"],
- ['124338392','3d222547bd0b8dd376ca.png','bc2ce9bbc0f9eb670ad077baa219bd6b767c4852600ca1f1cd253ede8da3c489','17c5f5284fb643c88aefa0375d4779a8.png','状态00转移到01：L型积木铺满第i列，并覆盖第i+1列下格，上格仍为空。',"状态00 → 01"]
+ ['124338392','3d222547bd0b8dd376ca.png','bc2ce9bbc0f9eb670ad077baa219bd6b767c4852600ca1f1cd253ede8da3c489','17c5f5284fb643c88aefa0375d4779a8.png','状态00转移到01：L型积木铺满第i列，并覆盖第i+1列下格，上格仍为空。',"状态00 → 01"],
+ // Informational originals visually checked; add alt only, without visible captions.
+ ['131792879','e1df2de5eca5ecc16f09.png','521f410a75d93198309c56ece387f24eaef9dda863251cee30fcc89d76368a77',null,'熵公式：H(S)＝−∑（i从1到n）p(xᵢ)log₂(p(xᵢ))。'],
+ ['124460411','ba63f2a7c086e0536048.png','e9d9ea9a86ddc032142565d559c816034f34b1ced65aa81343b812fd51aeed3c',null,'集合{1,2,3,4}与{2,3,4,5}的运算结果：并集{1,2,3,4,5}，交集{2,3,4}，差集{1}，对称差集{1,5}。'],
+ ['149880710','8ee68f08799aa1321e8a.png','844892b6f2de91f6655aff546ebb5519140eb3850a185c92deecc82c6569e717',null,'10张服饰灰度样例，从左到右标注为：包、凉鞋、套头衫、凉鞋、凉鞋、连衣裙、衬衫、连衣裙、衬衫、套头衫。']
 ].map(([sourceId,filename,sha256,oldAlt,alt,caption])=>Object.freeze({sourceId,source:`_posts/csdn/${sourceId}.md`,filename,sha256,oldAlt,alt,caption})));
 
 function entriesForPost(post) {
