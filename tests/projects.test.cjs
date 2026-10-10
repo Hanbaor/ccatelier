@@ -30,7 +30,7 @@ test('projects presents an illustrated main work and coursework with technical e
     assert.equal(room.querySelectorAll('.project-layers > li').length, 3);
     assert.equal(room.querySelectorAll('.project-decision-list > li').length, 3);
     assert.equal(room.querySelectorAll('img').length, 1);
-    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 11, 'link arrows use the existing font-independent SVG');
+    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 12, 'link arrows use the existing font-independent SVG');
     assert.doesNotMatch(room.textContent, /↗/);
     assert.ok(room.querySelector('img[src$="/atelier/images/v3/projects.webp"]'));
     assert.match(room.querySelector('img').alt, /主题插画/);
@@ -62,13 +62,35 @@ test('each engineering decision links a real demo and immutable, locally present
     for (const a of room.querySelectorAll('a[href^="/"]')) {
       const url = new URL(a.href);
       assert.ok(url.pathname.startsWith(prefix));
-      assert.equal(url.hash, '', 'demos do not invent fragment targets');
       const relative = decodeURIComponent(url.pathname.slice(prefix.length));
       assert.ok(fs.existsSync(path.join(output, relative, 'index.html')), relative);
+      if (url.hash) {
+        const target = new JSDOM(built(relative + 'index.html'));
+        try { assert.ok(target.window.document.getElementById(decodeURIComponent(url.hash.slice(1))), 'demos link only to real fragment targets'); }
+        finally { target.window.close(); }
+      }
     }
     const notes = [...room.querySelectorAll('.project-reading a')].map(a=>new URL(a.href).pathname);
-    assert.deepEqual(notes, ['154834561','124387071','124460411'].map(id=>`${prefix}writing/csdn-${id}/`));
+    assert.deepEqual(notes, ['124338541','154834561','124387071','124460411'].map(id=>`${prefix}writing/csdn-${id}/`));
   } finally {dom.window.close();}
+});
+
+test('projects reading entry links directly to the real, initially collapsed permutation trace', () => {
+  const dom = projects();
+  const article = new JSDOM(built('writing/csdn-124338541/index.html'));
+  try {
+    const link = dom.window.document.querySelector('.project-reading-list > a[href$="#permutation-trace"]');
+    assert.ok(link);
+    assert.equal(link.getAttribute('href'), `${prefix}writing/csdn-124338541/#permutation-trace`);
+    assert.equal(link.querySelector('h3').textContent, '数的全排列');
+    assert.equal(link.querySelector('p').textContent, '逐步前进或倒带，查看递归返回与解除标记的过程。');
+    assert.equal(link.querySelectorAll('svg.editorial-arrow').length, 1);
+    assert.equal(link.hasAttribute('onclick'), false);
+    const targets = article.window.document.querySelectorAll('#permutation-trace');
+    assert.equal(targets.length, 1);
+    assert.equal(targets[0].tagName, 'DETAILS');
+    assert.equal(targets[0].open, false);
+  } finally { dom.window.close(); article.window.close(); }
 });
 
 test('shared STL demo query resolves to substantive writing using the real query core', async () => {
@@ -113,6 +135,10 @@ test('the standalone case-study template preserves root prefixes for every inter
         assert.ok((element.getAttribute('href') || element.getAttribute('src')).startsWith(base));
       }
       for (const candidate of doc.querySelector('img').getAttribute('srcset').split(',')) assert.ok(candidate.trim().startsWith(base));
+      const trace = doc.querySelector('.project-reading-list > a[href$="#permutation-trace"]');
+      assert.ok(trace);
+      assert.equal(trace.getAttribute('href'), `${base}writing/csdn-124338541/#permutation-trace`);
+      assert.equal(trace.querySelector('h3').textContent, '数的全排列');
       assert.equal(doc.querySelectorAll('script').length, 0);
     } finally {dom.window.close();}
   }

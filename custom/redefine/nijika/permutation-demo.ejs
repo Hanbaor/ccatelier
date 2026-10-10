@@ -1,0 +1,13 @@
+<details id="permutation-trace" class="permutation-demo" style="scroll-margin-top:6rem" data-permutation-demo data-reader-exclude>
+  <summary>回溯，逐帧看</summary>
+  <div class="permutation-body">
+    <p class="permutation-caption">上方代码的确定性模型，不是在浏览器里执行 C++。</p>
+    <div data-permutation-fallback>
+      <p>n = 3：输出 123 → 返回 dfs(2) → book[3] = 0。有效路径退回 12，a 仍是 123，末位 3 是旧值。</p>
+      <p>继续回退、选入 3：a 是 133，但有效前缀只有 13。输出依次为 123、132、213、231、312、321。</p>
+    </div>
+    <p data-permutation-load-status role="status" hidden></p>
+    <div data-permutation-app hidden></div>
+  </div>
+</details>
+<script type="module" src="<%= url_for('atelier/js/permutation-demo.js') %>"></script>
