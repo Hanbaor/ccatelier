@@ -1,7 +1,21 @@
 'use strict';
-const {stripHTML,unescapeHTML,escapeHTML}=require('hexo-util');
+const {escapeHTML}=require('hexo-util');
 const {parseDocument}=require('htmlparser2'); // Already used by Hexo's HTML helpers.
-const plain=html=>unescapeHTML(stripHTML(String(html||'').replace(/<\/(?:p|h[1-6]|li|tr|pre)>/gi,'$& '))).replace(/\s+/g,' ').trim();
+function plain(html){
+  // Parse HTML once: decoded text must never be reparsed as markup (or decoded
+  // again). This preserves literal code such as <vector> and &amp;#123;.
+  const parts=[];
+  function visit(node){
+    if(node.type==='text'){parts.push(node.data);return;}
+    if(['script','style','template'].includes(node.name))return;
+    const boundary=/^(?:p|h[1-6]|li|tr|td|th|pre|div|br|hr)$/.test(node.name||'');
+    if(boundary)parts.push(' ');
+    for(const child of node.children||[])visit(child);
+    if(boundary)parts.push(' ');
+  }
+  visit(parseDocument(String(html||''),{decodeEntities:true}));
+  return parts.join('').replace(/\s+/g,' ').trim();
+}
 const CODE_PLACEHOLDER='```cpp\n// 在这里填写你的代码\n```';
 const ANALYSIS_PLACEHOLDER='> 在这里补充：解题思路、关键推导、时间复杂度、空间复杂度、易错点与复盘记录。';
 function sections(markdown,title){

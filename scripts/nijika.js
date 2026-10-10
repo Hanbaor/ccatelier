@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {pageMetadata}=require('../tools/site-metadata.cjs');
+const {plain}=require('../tools/content-catalog.cjs');
 hexo.extend.helper.register('nijika_page_metadata',function(){return pageMetadata(this);});
 let searchPatched = false;
 let indexPatched = false;
@@ -28,15 +29,20 @@ hexo.extend.filter.register('before_generate', function () {
   }
   // SearchDB joins root + post.path literally. Hexo 8 custom permalinks can
   // start with '/', producing //post/ on root deployments. Normalize only
-  // those server-generated local paths; keep the upstream content indexing.
+  // those server-generated local paths. For plain-text indexing, retain HTML
+  // until our parser can strip markup and decode entities in one safe pass.
   if (!searchPatched && path.extname(this.config.search.path) === '.json') {
     const generateSearch = hexo.extend.generator.get('json');
     if (generateSearch) {
       hexo.extend.generator.register('json', async function (locals) {
-        const route = await generateSearch.call(this, locals);
+        const plainContent=this.config.search.format==='striptags';
+        const context=Object.create(this);
+        context.config={...this.config,search:{...this.config.search,...(plainContent?{format:'html'}:{})}};
+        const route = await generateSearch.call(context, locals);
         const entries = JSON.parse(route.data);
         for (const entry of entries) {
           if (entry.url?.startsWith('/')) entry.url = entry.url.replace(/\/{2,}/g, '/');
+          if (plainContent&&typeof entry.content==='string') entry.content=plain(entry.content);
         }
         return {...route, data:JSON.stringify(entries)};
       });
