@@ -19,6 +19,10 @@ export function safeResultURL(value, base) {
   try {
     const url = new URL(value, base), origin = new URL(base).origin;
     if (!['http:','https:'].includes(url.protocol) || url.origin !== origin) return null;
+    // A same-origin absolute URL may have a // path. Returning that path alone
+    // would turn it into an external authority when assigned to an anchor.
+    // Check after URL normalization, including backslashes and dot segments.
+    if (url.pathname.startsWith('//')) return null;
     return url.pathname + url.search + url.hash;
   } catch { return null; }
 }
