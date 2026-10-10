@@ -11,7 +11,7 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
  let context;try{context=canvas.getContext('webgl2',{alpha:true,antialias:true,powerPreference:'low-power',failIfMajorPerformanceCaveat:true});}catch{state('context-unavailable');return null;}
  if(!context){state('context-unavailable');return null;}
  let renderer=null,scene=null,camera=null,observer=null,disposed=false,lost=false,visible=!document.hidden,motion=isMotion(),frame=0,last=0,until=0,layoutUntil=0,light=null,target=.5,pointer=.5;
- let width=1,height=1,bufferWidth=0,bufferHeight=0,models=new Map(),geometries=new Set(),materials=new Set(),textures=new Set(),releases=[];
+ let previousLighting='',width=1,height=1,bufferWidth=0,bufferHeight=0,models=new Map(),geometries=new Set(),materials=new Set(),textures=new Set(),releases=[];
  const active=()=>!disposed&&!lost&&visible&&isCurrent();
  const animated=()=>canStageAnimate({open:isCurrent(),visible,motion,disposed,lost});
  const fallback=()=>kit.classList.remove('livehouse-3d-ready');
@@ -82,7 +82,7 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
    models.set(type,{pad,root,body,skin,shade,at:-Infinity,velocity:.7,tilt:0,radius:1});
   }
   function footprint(pad,rect,kitStyle){
-   const fallback=()=>stagePadLayout(rect,pad.getBoundingClientRect());
+   const fallback=()=>{const bounds=pad.getBoundingClientRect(),scale=kit.offsetWidth?rect.width/kit.offsetWidth:1;return stagePadLayout({left:0,top:0},{left:(bounds.left-rect.left)/scale,top:(bounds.top-rect.top)/scale,width:bounds.width/scale,height:bounds.height/scale});};
    if(!window.DOMMatrixReadOnly||!pad.offsetWidth||!pad.offsetHeight)return fallback();
    try{
     const style=window.getComputedStyle(pad),matrix=new window.DOMMatrixReadOnly(style.transform==='none'?undefined:style.transform),w=pad.offsetWidth,h=pad.offsetHeight;
@@ -93,7 +93,7 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
    }catch{return fallback();}
   }
   function measure(){
-   if(!active())return;const rect=kit.getBoundingClientRect();width=Math.max(1,rect.width+STAGE_LIMITS.bleed*2);height=Math.max(1,rect.height+STAGE_LIMITS.bleed*2+42);
+   if(!active())return;const rect=kit.getBoundingClientRect();width=Math.max(1,(kit.offsetWidth||rect.width)+STAGE_LIMITS.bleed*2);height=Math.max(1,(kit.offsetHeight||rect.height)+STAGE_LIMITS.bleed*2+42);
    const pixels=stageResolution(width,height,window.devicePixelRatio||1,window.innerWidth<=760);if(pixels.width!==bufferWidth||pixels.height!==bufferHeight){renderer.setSize(pixels.width,pixels.height,false);bufferWidth=pixels.width;bufferHeight=pixels.height;}canvas.style.width=width+'px';canvas.style.height=height+'px';
    camera.right=width;camera.bottom=-height;camera.updateProjectionMatrix();
    const kitStyle=window.getComputedStyle(kit);
@@ -128,6 +128,7 @@ export async function createLiveStage({dialog,kit,pads,signal,isCurrent=()=>dial
   if(typeof ResizeObserver==='function'){observer=new ResizeObserver(resize);observer.observe(kit);observer.observe(dialog.querySelector('.livehouse-room')||dialog);}
   kit.prepend(canvas);if(!visible)state('waiting-visible');resize();if(disposed)return null;
   return {
+   setTimeline(strikes,lighting){if(!active())return;const key=JSON.stringify(lighting),changed=key!==previousLighting;if(lighting&&changed){previousLighting=key;light.color.setRGB(...lighting.color.map(value=>value/255));light.intensity=1+lighting.level*2.2;}if(!strikes&&!changed)return;const now=performance.now();if(strikes){target=pointer=.5;for(const [type,item] of models){const hit=strikes[type];item.at=motion&&hit?now-hit.elapsed:-Infinity;item.velocity=hit?.velocity||0;}}draw(now);},
    strike(type,velocity=.7){if(!animated())return;const item=models.get(type==='crash'?'hat':type);if(!item)return;item.at=performance.now();item.velocity=velocity;request();},
    pointer(value){if(!animated())return;target=Math.max(0,Math.min(1,Number(value)||0));request(250);},
    setMotion(value){motion=!!value;cancelFrame();reset();resize();},

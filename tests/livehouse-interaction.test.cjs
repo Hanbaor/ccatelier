@@ -64,7 +64,7 @@ async function livehouse(t, {motionEnabled = true, canvasAvailable = true, defer
     exponentialRampToValueAtTime(value, at) { this.value = value; this.changes.push({value, at}); },
     setTargetAtTime(value, at, constant) { this.value = value; this.changes.push({value, at, constant}); },
   });
-  const node = properties => ({connect() {}, disconnect() {}, ...properties});
+  const node = properties => ({connections: [], disconnects: 0, connect(target) {this.connections.push(target);}, disconnect() {this.disconnects++;this.connections=[];}, ...properties});
   class FakeAudioContext {
     constructor() {
       this.state = 'suspended'; this.destination = node(); this.sampleRate = 1000;
@@ -540,4 +540,44 @@ test('an active sound request that stays suspended ends loading with accurate si
 test('a stale false sound result cannot clear a newer loading state',async t=>{
  const f=await livehouse(t,{deferredAudio:true,audioReady:false});f.open();f.sound.click();const stale=f.contexts[0];f.close();f.open();f.sound.click();const fresh=f.contexts[1];stale.resolveResume();await settle();
  assert.equal(f.announcement.textContent,'正在开启声音…');assert.equal(f.sound.disabled,true);assert.equal(fresh.state,'suspended');fresh.resolveResume();await settle();assert.equal(f.announcement.textContent,'声音未开启，可继续静音体验。');assert.equal(f.sound.disabled,false);
+});
+
+test('director is folded and full performance edits, undo and independent save reload never open audio',async t=>{
+ const f=await livehouse(t);f.open();const panel=f.find('[data-live-director]');assert.equal(panel.open,false);
+ const button=text=>[...panel.querySelectorAll('button')].find(b=>b.textContent===text);
+ f.find('[data-director-track="notes"][data-director-bar="8"]').click();
+ f.find('[data-drum="tom"][data-step="0"]').click();assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'true');
+ const shot=panel.querySelector('select[aria-label="景别"]');shot.value='kit';shot.dispatchEvent(new f.window.Event('change'));
+ const color=panel.querySelector('select[aria-label="灯光"]');color.value='rose';color.dispatchEvent(new f.window.Event('change'));
+ button('保存到本机').click();const saved=JSON.parse(f.window.localStorage.getItem('cc-directed-performance-v1'));assert.ok(saved.notes.some(n=>n.instrument==='tom'&&n.beat===32));assert.equal(saved.shots.find(c=>c.beat===32).shot,'kit');assert.equal(saved.lights.find(c=>c.beat===32).color,'rose');
+ button('撤销').click();assert.equal(panel.querySelector('select[aria-label="灯光"]').value,'amber');button('重做').click();assert.equal(panel.querySelector('select[aria-label="灯光"]').value,'rose');
+ button('恢复原创').click();assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'false');button('载入已保存').click();assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'true');assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+test('pause resume and seek preserve a single clock and cancel scheduled audio buses without closing opt-in',async t=>{
+ const f=await livehouse(t);f.open();f.sound.click();await settle();f.show.click();f.advance(1200);const oldBus=f.contexts[0].gains.filter(n=>n.connections.includes(f.contexts[0].gains[0])).at(-1);const pause=f.find('[data-live-pause]');pause.click();assert.equal(oldBus.disconnects,1);const at=f.find('[data-director-seek]').value;assert.equal(f.intervals.size,0);f.advance(3000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);assert.equal(f.contexts[0].state,'running');
+ const scrub=f.find('[data-director-seek]');scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));assert.equal(f.find('.livehouse-timeline').getAttribute('aria-valuenow'),'32');pause.click();assert.equal(f.intervals.size,1);f.advance(500);assert.ok(Number(scrub.value)>32);assert.equal(f.contexts.length,1);f.sound.click();assert.equal(f.contexts[0].state,'closed');f.advance(500);assert.ok(Number(scrub.value)>33);assert.deepEqual(f.errors,[]);
+});
+test('a paused director yields to recording and close cancels all work without erasing saved projects',async t=>{
+ const f=await livehouse(t);f.open();f.find('[data-director-track="notes"][data-director-bar="8"]').click();f.find('[data-live-record]').click();assert.equal(f.intervals.size,1);f.advance(120);assert.match(f.find('[data-live-record-position]').textContent,/预备/);f.close();assert.equal(f.intervals.size,0);assert.equal(f.frames.size,0);f.open();assert.equal(f.find('[data-live-pause]').disabled,true);assert.equal(f.sound.getAttribute('aria-pressed'),'false');assert.deepEqual(f.errors,[]);
+});
+test('director storage failure preserves the active composition and corrupt saved data is never applied',async t=>{
+ const f=await livehouse(t);f.open();const panel=f.find('[data-live-director]'),button=text=>[...panel.querySelectorAll('button')].find(b=>b.textContent===text);f.find('[data-drum="tom"][data-step="0"]').click();f.window.localStorage.setItem('cc-directed-performance-v1','{}');button('载入已保存').click();assert.match(panel.querySelector('[role="status"]').textContent,/当前演出保留/);assert.equal(f.find('[data-drum="tom"][data-step="0"]').getAttribute('aria-pressed'),'true');const proto=Object.getPrototypeOf(f.window.localStorage),previous=proto.setItem;proto.setItem=()=>{throw Error('quota');};try{button('保存到本机').click();assert.match(panel.querySelector('[role="status"]').textContent,/保存不可用/);}finally{proto.setItem=previous;}assert.equal(f.contexts.length,0);
+});
+test('director preview shares a framing transform across native pads and optional skin, without idle frames',async t=>{
+ const f=await livehouse(t);f.open();assert.ok(f.find('[data-live-framing]').contains(f.find('.livehouse-kit')));f.frame();assert.equal(f.frames.size,0);const seek=f.find('[data-director-seek]');seek.value='26';seek.dispatchEvent(new f.window.Event('input'));f.frame();assert.match(f.find('[data-live-framing]').style.transform,/scale\(1.09\)/);assert.equal(f.frames.size,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+test('director grids have four tab stops with arrow/Home/End navigation and retained edit focus',async t=>{
+ const f=await livehouse(t);f.open();const overview=f.find('.director-overview'),grid=f.find('.director-drum-grid');assert.equal(overview.querySelectorAll('button[tabindex="0"]').length,3);assert.equal(grid.querySelectorAll('button[tabindex="0"]').length,1);const first=grid.querySelector('button');first.focus();f.key(first,'End');assert.equal(f.document.activeElement.dataset.step,'15');f.key(f.document.activeElement,'ArrowDown');assert.equal(f.document.activeElement.dataset.drum,'snare');f.document.activeElement.click();assert.equal(f.document.activeElement.dataset.step,'15');assert.equal(grid.querySelectorAll('button[tabindex="0"]').length,1);const bar=overview.querySelector('button');bar.focus();f.key(bar,'End');assert.equal(f.document.activeElement.dataset.directorBar,'15');f.key(f.document.activeElement,'ArrowDown');assert.equal(f.document.activeElement.dataset.directorTrack,'lights');assert.equal(overview.querySelectorAll('button[tabindex="0"]').length,3);const hits=f.status.textContent;f.key(f.document.activeElement,'a');assert.equal(f.status.textContent,hits);
+});
+test('director pointer scrubbing cannot be overwritten by ongoing paint',async t=>{
+ const f=await livehouse(t);f.open();f.show.click();const scrub=f.find('[data-director-seek]');scrub.dispatchEvent(new f.window.Event('pointerdown'));scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'32');scrub.dispatchEvent(new f.window.Event('pointerup'));f.advance(100);assert.ok(Number(scrub.value)>32);
+});
+test('keyboard scrubbing remains stable until key release',async t=>{
+ const f=await livehouse(t);f.open();f.show.click();const scrub=f.find('[data-director-seek]');f.key(scrub,'ArrowRight');scrub.value='16';scrub.dispatchEvent(new f.window.Event('input'));f.advance(1000);assert.equal(scrub.value,'16');scrub.dispatchEvent(new f.window.KeyboardEvent('keyup',{key:'ArrowRight'}));f.advance(50);assert.ok(Number(scrub.value)>16);
+});
+for(const motionEnabled of [true,false])test('late optional renderer immediately receives paused director snapshot, motion '+motionEnabled,async t=>{
+ let resolve;const snapshots=[];const f=await livehouse(t,{motionEnabled,loadStage:()=>new Promise(r=>resolve=r)});f.open();const scrub=f.find('[data-director-seek]');scrub.value='26';scrub.dispatchEvent(new f.window.Event('input'));f.frame();assert.equal(f.frames.size,0);resolve({async createLiveStage(){return {setVisible(){},setMotion(){},setTimeline(strikes,light){snapshots.push({strikes,light});},clear(){},dispose(){},resize(){}};}});await settle();await settle();assert.equal(snapshots.length,1);assert.equal(snapshots[0].light.level,.95);assert.equal(snapshots[0].strikes.kick.elapsed,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+test('a reopened edited opening light reaches the optional renderer without auto-striking beat zero',async t=>{
+ const snapshots=[];const f=await livehouse(t,{loadStage:async()=>({async createLiveStage(){return {setVisible(){},setMotion(){},setTimeline(strikes,light){snapshots.push({strikes,light});},clear(){},dispose(){},resize(){}};}})});f.open();await settle();const color=f.find('select[aria-label="灯光"]');color.value='rose';color.dispatchEvent(new f.window.Event('change'));f.close();snapshots.length=0;f.open();await settle();assert.equal(snapshots.length,1);assert.equal(snapshots[0].strikes,null);assert.deepEqual(snapshots[0].light.color,[210,150,164]);assert.equal(f.contexts.length,0);
 });

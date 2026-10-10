@@ -10,7 +10,7 @@ export class LivehouseAudio {
   if(!this.master){
    const master=ctx.createGain(),limiter=ctx.createDynamicsCompressor(),analyser=ctx.createAnalyser();
    master.gain.value=this.volume*.7;limiter.threshold.value=-15;limiter.knee.value=15;limiter.ratio.value=8;limiter.attack.value=.004;limiter.release.value=.18;analyser.fftSize=256;
-   master.connect(limiter);limiter.connect(analyser);analyser.connect(ctx.destination);this.master=master;this.analyser=analyser;
+   master.connect(limiter);limiter.connect(analyser);analyser.connect(ctx.destination);this.master=master;this.limiter=limiter;this.analyser=analyser;this.createVoiceBus();
   }
   await ctx.resume();
   if(token!==this.generation||ctx!==this.context){if(ctx.state!=='closed')ctx.close().catch(()=>{});return false;}
@@ -21,11 +21,11 @@ export class LivehouseAudio {
   const ctx=this.context;if(!ctx||ctx.state!=='running'||!this.master)return;
   const osc=ctx.createOscillator(),gain=ctx.createGain(),at=ctx.currentTime+Math.max(0,delay);
   osc.type='sine';osc.frequency.value=strong?1400:1000;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.12,at+.002);gain.gain.exponentialRampToValueAtTime(.0001,at+.035);
-  osc.connect(gain);gain.connect(this.master);osc.start(at);osc.stop(at+.04);osc.onended=()=>{osc.disconnect();gain.disconnect();};
+  osc.connect(gain);gain.connect(this.voiceBus||this.master);osc.start(at);osc.stop(at+.04);osc.onended=()=>{osc.disconnect();gain.disconnect();};
  }
  hit(instrument,velocity=1,note=48,delay=0){
   const ctx=this.context;if(!ctx||ctx.state!=='running'||!this.master)return;
-  const at=ctx.currentTime+Math.max(0,delay),destination=this.master.gain?this.master:null;
+  const at=ctx.currentTime+Math.max(0,delay),destination=this.voiceBus||this.master;
   if(instrument==='bass'||instrument==='chord'){
    const bass=instrument==='bass',notes=bass?[note]:[note,note+7,note+12,note+16];
    notes.forEach((pitch,i)=>{
@@ -40,5 +40,7 @@ export class LivehouseAudio {
    synth(ctx,destination,{type,pan:type==='hat'?.3:type==='tom'?-.28:0,tone:instrument==='crash'?.35:type==='tom'?.35:.45,decay:instrument==='crash'?1.2:type==='kick'?.32:type==='hat'?.2:.25,volume:instrument==='crash'?.32:type==='hat'?.3:.65},at,Math.max(0,Math.min(1,velocity)));
   }
  }
- stop(){this.generation++;const ctx=this.context;this.context=null;this.master=null;this.analyser=null;if(ctx&&ctx.state!=='closed')ctx.close().catch(()=>{});}
+ cancelScheduled(){if(!this.context||!this.master)return;if(this.voiceBus)this.voiceBus.disconnect();else {return this.createVoiceBus();}this.createVoiceBus();}
+ createVoiceBus(){this.voiceBus=this.context.createGain();this.voiceBus.gain.value=1;this.voiceBus.connect(this.master);}
+ stop(){this.generation++;const ctx=this.context;this.context=null;this.master=null;this.voiceBus=null;this.analyser=null;if(ctx&&ctx.state!=='closed')ctx.close().catch(()=>{});}
 }

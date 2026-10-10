@@ -84,3 +84,7 @@ test('a stale failed import cannot overwrite the state of a newer stage',async t
 test('renderer initialization failure is distinguishable from a module load failure',async t=>{
  const f=await fixture(t,{load:three=>({...three,WebGLRenderer:class{constructor(){throw Error('private init detail');}}})});assert.equal(await f.create(),null);assert.equal(f.dialog.dataset.liveStageState,'init-failed');assert.doesNotMatch(f.dialog.outerHTML,/private init/);
 });
+test('director snapshot seeks drum mechanics directly and outer framing does not double-scale native alignment',async t=>{
+ const f=await fixture(t),stage=await f.create();const root=f.renderers[0].scene.getObjectByName('live-kick');stage.setTimeline({kick:{elapsed:50,velocity:1}});const skin=root.children[0].children.find(n=>n.geometry?.type==='CircleGeometry');assert.ok(skin.position.y<.007);stage.setTimeline({kick:{elapsed:900,velocity:1}});assert.equal(skin.position.y,.007);assert.equal(f.frames.size,0);
+ Object.defineProperty(f.kit,'offsetWidth',{value:710});Object.defineProperty(f.kit,'offsetHeight',{value:250});f.kit.getBoundingClientRect=()=>({left:100,top:200,width:781,height:275});for(const pad of f.pads.values()){const original=pad.getBoundingClientRect();pad.getBoundingClientRect=()=>({left:100+(original.left-100)*1.1,top:200+(original.top-200)*1.1,width:original.width*1.1,height:original.height*1.1});}stage.resize();assert.ok(Math.abs(root.scale.x-111)<1e-8);assert.ok(Math.abs(root.position.x-369)<1e-8);
+});
