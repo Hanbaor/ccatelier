@@ -32,3 +32,54 @@ test('offline client bounds old-worker and registration stalls and forwards cros
  const saving=client('install'),save=saving.call({type:'save',path:'/a/'});await tick();assert.ok([...saving.timers.values()].some(t=>t.delay===120000));assert.ok(![...saving.timers.values()].some(t=>t.delay===8000));[...saving.timers.values()].find(t=>t.delay===15000).fn();await assert.rejects(save,/启动超时/);assert.equal(saving.listeners.size,0);assert.equal(saving.timers.size,0);
  const stalled=client('stall'),pending=stalled.call({type:'search-index'});await Promise.resolve();const timer=[...stalled.timers.values()].find(t=>t.delay===8000);assert.ok(timer);timer.fn();await assert.rejects(pending,/超时/);stalled.ready();await tick();assert.equal(stalled.posts,0,'late activation must not send an expired request');
 });
+
+async function focusFixture(){
+ const dom=new JSDOM('<body data-root="/" data-search="/search.json"><button class="search-open">搜索</button><dialog id="search-dialog"><button data-close="search-dialog">关闭</button><select id="search-scope"><option value="site">全站</option><option value="offline">本机离线</option></select><p id="search-status"></p><input id="search-input"><div id="search-results"></div></dialog></body>',{url:'https://ccatelier.test/'});
+ const {window}=dom;Object.assign(globalThis,{window,document:window.document,location:window.location,CustomEvent:window.CustomEvent,matchMedia:()=>({matches:false,addEventListener(){}})});
+ window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};window.HTMLDialogElement.prototype.close=function(){this.open=false;};
+ const reads=[];let finishSite;globalThis.fetch=()=>new Promise(resolve=>{finishSite=resolve;});
+ const {initSearch}=await import('../source/atelier/js/search.js');initSearch({loadOffline:()=>new Promise(resolve=>reads.push(resolve)),loadContext:async()=>({searchResultText:item=>({title:[{text:item.title}],excerpt:[]})})});
+ const doc=window.document,scope=doc.querySelector('select'),input=doc.querySelector('input'),box=doc.querySelector('#search-results');
+ const entries=[{title:'A',url:'/a/',content:'needle'},{title:'B',url:'/b/',content:'needle'}];
+ const resolve=(items=entries)=>reads.shift()({version:1,entries:items,unavailable:0});
+ return {dom,window,doc,scope,input,box,entries,resolve,open:()=>doc.querySelector('.search-open').click(),change:mode=>{scope.value=mode;scope.dispatchEvent(new window.Event('change'));},finishSite:()=>finishSite({ok:true,json:async()=>[]})};
+}
+
+for(const event of ['focus','pageshow','offline'])test(`${event} refresh preserves the logical offline result and falls back to search when removed`,async()=>{
+ const f=await focusFixture();try{
+  f.scope.value='offline';f.open();f.resolve();await tick();
+  const refresh=()=>event==='offline'?f.doc.dispatchEvent(new f.window.CustomEvent('atelier:offline')):f.window.dispatchEvent(event==='pageshow'?new f.window.PageTransitionEvent('pageshow',{persisted:true}):new f.window.Event('focus'));
+  f.box.querySelectorAll('a')[1].focus();refresh();
+  assert.equal(f.doc.activeElement,f.box.querySelector('.search-empty'),'loading owns focus while old results are unavailable');
+  refresh();f.resolve([]);f.resolve([f.entries[1],f.entries[0]]);await tick();
+  assert.equal(f.doc.activeElement.getAttribute('href'),'/b/','restore by URL even when results reorder and an older read settles');
+  refresh();f.resolve([f.entries[0]]);await tick();assert.equal(f.doc.activeElement,f.input,'a removed result returns focus to the search field');
+ }finally{f.dom.window.close();}
+});
+
+test('offline refresh never reclaims focus from a control chosen while loading',async()=>{
+ const f=await focusFixture();try{
+  f.scope.value='offline';f.open();f.resolve();await tick();
+  for(const target of [f.input,f.scope,f.doc.querySelector('[data-close]')]){
+   f.box.querySelector('a').focus();f.window.dispatchEvent(new f.window.Event('focus'));target.focus();f.resolve();await tick();assert.equal(f.doc.activeElement,target);
+  }
+ }finally{f.dom.window.close();}
+});
+
+test('a late response for another search scope cannot replace the focused current result',async()=>{
+ const f=await focusFixture();try{
+  f.open();f.change('offline');f.resolve();await tick();const result=f.box.querySelector('a');result.focus();
+  f.finishSite();await tick();assert.equal(f.doc.activeElement,result);assert.equal(result.isConnected,true);
+ }finally{f.dom.window.close();}
+});
+
+
+test('closing during an offline refresh prevents late focus restoration',async()=>{
+ const f=await focusFixture();try{
+  f.scope.value='offline';f.open();f.resolve();await tick();f.box.querySelector('a').focus();
+  f.window.dispatchEvent(new f.window.Event('focus'));f.doc.querySelector('dialog').close();
+  const opener=f.doc.querySelector('.search-open');opener.focus();f.resolve();await tick();
+  assert.equal(f.doc.activeElement,opener);assert.equal(f.doc.querySelector('dialog').open,false);
+  f.open();assert.equal(f.doc.activeElement,f.input);f.resolve();await tick();assert.equal(f.doc.activeElement,f.input);
+ }finally{f.dom.window.close();}
+});

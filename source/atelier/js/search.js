@@ -31,7 +31,25 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
       if(dialog.open)for(const copy of copies)enhance(...copy);
     }).catch(()=>{}).finally(()=>{contextPending=null;});
   }
+  let pendingFocus=null;
   function render() {
+    const active=document.activeElement;
+    const href=box.contains(active)&&active.matches('.search-result')?active.getAttribute('href'):
+      pendingFocus&&active===pendingFocus.placeholder?pendingFocus.href:null;
+    pendingFocus=null;
+    renderResults();
+    if(!href||!dialog.open)return;
+    // Keep keyboard ownership through refreshes without reclaiming focus after
+    // the visitor moves to another control while the index is loading.
+    if(states[current()].pending){
+      const placeholder=$('.search-empty',box);placeholder.tabIndex=-1;
+      placeholder.focus({preventScroll:true});pendingFocus={href,placeholder};
+    }else{
+      const target=$$('.search-result',box).find(link=>link.getAttribute('href')===href)||input;
+      target.focus({preventScroll:true});
+    }
+  }
+  function renderResults() {
     const mode=current(),state=states[mode],{entries,pending,error}=state;
     if(status)status.textContent=mode==='offline'?'仅检索本浏览器已保存的公开文章版本，不含评论与私人札记。'+(state.unavailable?' 有 '+state.unavailable+' 篇副本无法读取。':''):'搜索全站文章与栏目；结果不代表已离线保存。';
     copies=[];box.replaceChildren(); box.setAttribute('aria-busy', String(Boolean(pending)));
@@ -73,7 +91,7 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
         state.entries=result.filter(item=>item&&typeof item.title==='string'&&typeof item.url==='string');
       }
     }catch(error){if(id===state.id)state.error=mode==='offline'?(error.message||'离线副本暂时无法读取。'):'文章索引暂时无法载入。';}
-    finally{clearTimeout(timeout);if(id===state.id){state.pending=false;render();}}
+    finally{clearTimeout(timeout);if(id===state.id){state.pending=false;if(mode===current())render();}}
   }
   function openSearch() {openDialog('search-dialog');input.focus();render();load(current(),current()==='offline');loadPresentation();}
   scope?.addEventListener('change',()=>{render();load(current(),current()==='offline');});
