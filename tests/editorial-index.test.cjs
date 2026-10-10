@@ -102,6 +102,21 @@ function contrastRatio(a,b){
  const luminance=hex=>{let value=hex.replace('#','');if(value.length===3)value=value.split('').map(n=>n+n).join('');const linear=[0,2,4].map(i=>parseInt(value.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return .2126*linear[0]+.7152*linear[1]+.0722*linear[2];};
  const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
+for(const width of [393,1180])for(const theme of ['light','dark'])test(`notes hero navigation stays readable with 44px targets at ${width}px in ${theme}`,()=>{
+ const dom=render('notes'),d=dom.window.document;d.body.className='nijika '+theme;d.body.dataset.section='notes';
+ const sheets=notesSheets(d),links=[...d.querySelectorAll('.notes-editorial-heading nav a')];
+ assert.deepEqual(links.map(a=>a.getAttribute('href')),['#reading-paths','#notes-catalog']);
+ for(const link of links){
+  const size=cascade(sheets,link,'font-size',width);
+  assert.equal(size.value,'13px');assert.equal(size.file,'atelier/css/editorial-index.css');
+  assert.equal(cascade(sheets,link,'min-height',width).value,'44px');
+  assert.equal(cascade(sheets,link,'display',width).value,'inline-flex');
+ }
+ const nav=links[0].parentElement;
+ assert.equal(cascade(sheets,nav,'flex-wrap',width).value,'wrap');
+ assert.equal(cascade(sheets,nav,'gap',width).value,'20px');
+ dom.window.close();
+});
 for(const theme of ['light','dark'])test(`atelier reading-system arrows remain legible on the inverted ${theme} card`,()=>{
  const dom=render('stage'),d=dom.window.document;d.body.className='nijika '+theme;d.body.dataset.section='atelier';const sheets=notesSheets(d,'atelier'),card=d.querySelector('.creation-code-visual'),arrows=card.querySelectorAll('strong>span,i');
  assert.equal(arrows.length,3);

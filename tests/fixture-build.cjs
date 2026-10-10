@@ -67,7 +67,8 @@ for(const file of ['route-features.js','archive.js','constellation.js','reader.j
  assert.ok(fs.existsSync(path.join(sandbox,'public/atelier/js',file)));
 }
 assert.match(read('atelier/js/route-features.js'),/import\('\.\/archive\.js'\)/);
-assert.match(read('atelier/js/main.js'),/from '\.\/route-features\.js'/);
+assert.ok(require('../tools/browser-module-analysis.cjs').analyzeModule(read('atelier/js/main.js')).imports.some(item=>item.kind==='dynamic-import'&&item.path==='./archive.js'),'built main retains route feature loading under /lab/');
+assert.match(fs.readFileSync(path.join(root,'source/atelier/js/main.js'),'utf8'),/from '\.\/route-features\.js'/);
 assert.match(read('live-sw.js'),/ROOT="\/lab\/"/);
 assert.match(read('studio/index.html'),/data-studio/);
 assert.match(read('studio/practice/index.html'),/data-practice/);

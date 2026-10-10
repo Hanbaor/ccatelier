@@ -66,6 +66,14 @@ node tests/fixture-build.cjs
 
 设置 `nijika.cursor: false` 可恢复系统鼠标，`nijika.motion: false` 可关闭默认动效。
 
+### 全站入口的生成期交付
+
+`source/atelier/js/` 继续维护原生 ES 模块。`scripts/main-entry.js` 在 Hexo 的 `before_generate` 中使用已锁定的 esbuild 编译入口，再包装原生 page / asset generator，只替换 `atelier/js/main.js` 的 route 数据；不会写回源码，不新增浏览器运行时或 chunk URL。开发 server 的重新生成走同一流程，编译失败会中止本轮生成，不把不完整入口交给 route。
+
+`tools/build-main-entry.cjs` 自动分析全部模块、动态消费者及 `source/` / `custom/` 内独立模板入口，只合并入口独占的静态依赖。共享状态、`import.meta` 所属模块和嵌套目录模块保留原路径，所有 lazy import 与 Worker URL 不变。无法安全界定的新依赖会明确报错，需要先补分析和回归，不能通过忽略警告继续交付。现有主题 tabs 的根前缀表达式仅在分析阶段识别，输出仍使用原表达式。
+
+`tools/module-graph.cjs` 用编译器解析静态依赖，既能检查源码也能检查压缩产物；源码功能预算继续独立测试（少于 25 个模块、100000 B），生成后初始图另设至多 10 个模块、83000 B 的交付预算。离线清单仍保留原模块 URL，保存时缓存生成后的 main，因此不能把初始请求图缩小当作离线文件数减少。字节统计只表示构建体积，不是实测网络流量、LCP 或运行速度。针对性回归：`node --test tests/main-entry-build.test.cjs`。
+
 ## 当前功能的维护边界
 
 ### 音乐工作室：分享与导出

@@ -10,6 +10,7 @@
 .catalog-v3 .notes-editorial-heading h1 span {display:block;font:400 clamp(21px,2.2vw,29px)/1.5 var(--chinese);letter-spacing:-.03em;margin-top:19px}
 .catalog-v3 .notes-editorial-heading .notes-deck {font:14px/1.9 var(--chinese);color:var(--muted)}
 .notes-editorial-heading nav {display:flex;flex-wrap:wrap;gap:20px;margin-top:18px}
+.catalog-v3 .notes-editorial-heading nav a {font-size:13px}
 .notes-editorial-heading figure {margin:0;position:relative}
 /* HTML height=1024 reserves the intrinsic image ratio, not the displayed height.
    Explicit auto overrides that presentational height; 3:2 keeps face and hands uncropped. */

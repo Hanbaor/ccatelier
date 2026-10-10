@@ -1,10 +1,8 @@
 // Audit built, uncompressed JS file bytes. This is not a network or runtime benchmark.
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
-function staticImports(source){
- // All browser modules in this project use one top-level import per line.
- return [...source.matchAll(/^\s*(?:import|export)\s+(?:[^;\n]*?\s+from\s*)?['"]([^'"]+)['"]/gm)].map(match=>match[1]);
-}
+const {analyzeModule}=require('./browser-module-analysis.cjs');
+function staticImports(source){return analyzeModule(source).imports.filter(item=>item.kind==='import-statement').map(item=>item.path);}
 function graph(directory,entries){
  const seen=new Set();
  function visit(file){if(seen.has(file))return;seen.add(file);for(const specifier of staticImports(fs.readFileSync(file,'utf8'))){if(!specifier.startsWith('.'))throw Error('Unexpected non-local browser import: '+specifier);visit(path.resolve(path.dirname(file),specifier));}}
