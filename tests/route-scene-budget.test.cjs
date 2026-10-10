@@ -6,9 +6,9 @@ const root=path.resolve(__dirname,'..');
 const scenes=['backstage','live-art','rooms-v2'];
 const bytes=file=>fs.statSync(path.join(root,'source/atelier/css',file+'.css')).size;
 const cases=[
-  ['index.html',['live-art'],53303,17],
-  ['atelier/index.html',['backstage'],31498,16],
-  ['notes/index.html',[],63132,15],
+  ['index.html',['live-art'],53611,17],
+  ['atelier/index.html',['backstage'],31806,16],
+  ['notes/index.html',[],63440,15],
   ['projects/index.html',['rooms-v2'],41463,16],
   ['research/index.html',['rooms-v2'],41463,17],
   ['about/index.html',['rooms-v2'],41463,16]

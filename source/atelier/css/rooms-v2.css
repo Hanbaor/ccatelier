@@ -136,7 +136,7 @@
 .guestbook-scene>img {object-position:center}
 .guestbook-scene h1 {left:auto;right:60px;bottom:40px;font-size:clamp(60px,8.2vw,115px)}
 .guestbook-compose {width:min(920px,100%);margin:38px auto 0}
-.guestbook-compose>.guestbook-rules {display:block;border:0;padding:0;margin:0 0 28px;font:12px/1.9 var(--chinese);color:var(--muted)}
+.guestbook-compose>.guestbook-rules {display:block;border:0;padding:0;margin:0 0 28px;font-family:var(--chinese);font-size:13px;line-height:1.9;color:var(--muted)}
 .guestbook-compose>.encore-comments {margin-top:0}
 .room-guestbook .encore-heading {margin-bottom:22px}
 .room-guestbook .encore-heading h2 {font-size:25px;line-height:1.5}
@@ -250,7 +250,7 @@ body.light .atelier-room {--room-panel:#fffaf1ef;--room-shadow:0 24px 70px #554c
   .guestbook-scene>img {object-position:25% center}
   .guestbook-scene h1 {font-size:65px;left:auto;right:23px;bottom:24px}
   .guestbook-compose {margin-top:28px;padding-inline:5px}
-  .guestbook-compose>.guestbook-rules {font-size:11px;margin-bottom:24px;line-height:1.85}
+  .guestbook-compose>.guestbook-rules {font-size:13px;margin-bottom:24px;line-height:1.85}
   .room-guestbook .encore-heading h2 {font-size:22px}
   .room-guestbook .encore-form {padding:22px}
   .room-guestbook .comment-form-top {display:block}
@@ -295,6 +295,9 @@ body.light .atelier-room {--room-panel:#fffaf1ef;--room-shadow:0 24px 70px #554c
   .guestbook-scene h1 {left:auto;right:20px}
   .room-guestbook .encore-form {padding:18px}
 }
+/* Empty shelves follow their copy; populated shelves keep their scroll capacity. */
+.room-lounge [data-reading-list]:has(>.community-empty:only-child) {height:auto}
+.room-lounge [data-reading-list]>.community-empty:only-child {margin:0;padding:16px 10px;overflow-wrap:anywhere}
 @media(hover:hover) {
   body:not(.motion-off) .room-scene:hover>img {transform:scale(1.018)}
 }
