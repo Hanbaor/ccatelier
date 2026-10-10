@@ -27,7 +27,7 @@ test('practice artwork ships real 3:2 WebP sources within the image budget', () 
     ['practice-room.webp', [1536, 1024], 300000],
     ['practice-room-960.webp', [960, 640], 150000],
   ]) {
-    const file = `source/atelier/images/v4/${name}`;
+    const file = `source/atelier/images/v5/${name}`;
     assert.deepEqual(webpDimensions(file), dimensions);
     assert.ok(fs.statSync(path.join(root, file)).size < budget);
   }
@@ -44,8 +44,8 @@ for (const prefix of ['/', '/lab/']) {
       const doc = dom.window.document;
       const art = doc.querySelector('.practice-heading > img');
       assert.equal(doc.querySelectorAll('img').length, 1);
-      assert.equal(art.getAttribute('src'), `${prefix}atelier/images/v4/practice-room.webp`);
-      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v4/practice-room-960.webp 960w, ${prefix}atelier/images/v4/practice-room.webp 1536w`);
+      assert.equal(art.getAttribute('src'), `${prefix}atelier/images/v5/practice-room.webp`);
+      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v5/practice-room-960.webp 960w, ${prefix}atelier/images/v5/practice-room.webp 1536w`);
       assert.equal(art.getAttribute('sizes'), '(max-width:600px) 90px, (max-width:850px) 190px, 240px');
       assert.equal(art.width, 1536);
       assert.equal(art.height, 1024);
@@ -67,8 +67,8 @@ test('art styling preserves the compact rehearsal header and centered face focus
   assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 0%;transform-origin:center top\}/);
 });
 
-// Both source illustrations put the hair ornament at the upper edge. Preserve
-// that edge while the shared aspect ratio removes only lower scene context.
+// Preserve the upper source edge and the rehearsal illustration’s real headroom
+// while the shared aspect ratio removes only lower scene context.
 test('hub leads preserve the upper source edge at desktop, mobile and during hover scaling', () => {
   const hub = read('source/atelier/css/immersive.css');
   assert.match(hub, /\.hub-writing>img \{object-position:43% 0%;transform-origin:center top\}/);

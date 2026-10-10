@@ -46,10 +46,10 @@ for (const prefix of ['/', '/lab/']) {
         assert.ok(fs.existsSync(path.join(root, 'source', img.getAttribute('src').slice(prefix.length))));
       }
       const art = studio.querySelector('img');
-      assert.match(art.getAttribute('src'), /\/v4\/practice-room\.webp$/);
+      assert.match(art.getAttribute('src'), /\/v5\/practice-room\.webp$/);
       assert.equal(art.width, 1536);
       assert.equal(art.height, 1024);
-      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v4/practice-room-960.webp 960w, ${prefix}atelier/images/v4/practice-room.webp 1536w`);
+      assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v5/practice-room-960.webp 960w, ${prefix}atelier/images/v5/practice-room.webp 1536w`);
     } finally { dom.window.close(); }
   });
 
