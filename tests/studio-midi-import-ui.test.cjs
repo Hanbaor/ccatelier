@@ -94,14 +94,21 @@ test('new play, stop or audition intent cancels an older pending import',async t
 
 
 test('tempo display is concise without rounding the project or re-exported MIDI tempo',async t=>{
- const {q,select,preset,encodeMidi,window}=await setup(t),blobs=[],oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL,oldTimeout=globalThis.setTimeout;
+ const {q,select,preset,encodeMidi,window,counts}=await setup(t),blobs=[],oldCreate=URL.createObjectURL,oldRevoke=URL.revokeObjectURL,oldTimeout=globalThis.setTimeout;
  URL.createObjectURL=blob=>{blobs.push(blob);return 'blob:test-tempo';};URL.revokeObjectURL=()=>{};window.HTMLAnchorElement.prototype.click=function(){};
  globalThis.setTimeout=(fn,ms,...args)=>{const timer=oldTimeout(fn,ms,...args);if(ms===30000)timer.unref();return timer;};
  t.after(()=>{URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;globalThis.setTimeout=oldTimeout;});
+ const {AudioEngine}=await import('../source/atelier/js/audio-engine.js'),oldStart=AudioEngine.prototype.start;
+ AudioEngine.prototype.start=async function(){this.playing=true;this.cycle=0;return true;};
+ t.after(()=>{AudioEngine.prototype.start=oldStart;});
  const tempo=bytes=>{const b=Buffer.from(bytes),at=b.indexOf(Buffer.from([0xff,0x51,3]));assert.ok(at>=0);return b.readUIntBE(at+3,3);};
  for(const [bpm,display] of [[86,'86'],[123.456789,'123.457']]){
   const p=preset('halftime');p.bpm=bpm;const original=encodeMidi(p,1),expectedTempo=tempo(original),exactBpm=60000000/expectedTempo;
   select(file(original));await flush();assert.equal(q('[data-bpm]').value,display);
+  assert.ok(q('[data-studio-overview]').textContent.startsWith(display+' BPM · '));
+  assert.ok(q('[data-studio-status]').textContent.includes(' · '+display+' BPM；'));
+  q('[data-studio-play]').click();await flush();assert.equal(q('[data-studio-play]').getAttribute('aria-pressed'),'true');
+  assert.equal(q('[data-studio-time]').textContent,'LOOP 01 · '+display+' BPM');assert.equal(counts().audio,0);
   q('[data-project-export]').click();const saved=JSON.parse(await blobs.at(-1).text());assert.equal(saved.bpm,exactBpm);assert.notEqual(saved.bpm,Number(display));
   q('[data-midi-export]').click();assert.equal(tempo(await blobs.at(-1).arrayBuffer()),expectedTempo);
  }
