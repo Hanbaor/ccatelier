@@ -1,7 +1,11 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {JSDOM}=require('jsdom'),crypto=require('node:crypto').webcrypto;
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
-const settle=async()=>{for(let i=0;i<8;i++)await flush();};
+// Event-loop turns do not guarantee completion of WebCrypto's worker-pool tasks.
+const waitFor=async(predicate,description,{timeout=5000}={})=>{
+ const deadline=performance.now()+timeout;
+ while(!predicate()){assert.ok(performance.now()<deadline,`Timed out waiting for ${description}`);await new Promise(resolve=>setTimeout(resolve,5));}
+};
 const deferred=()=>{let resolve;return{promise:new Promise(yes=>resolve=yes),get resolve(){return resolve}}};
 async function setup({duplicate=false,hash='',digest,initialReference=true}={}){
  const block='<div class="code-container" data-rel="Cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span></pre></td><td class="code"><pre><span class="line">  <b>中</b></span><br><span class="line"></span><br><span class="line">\treturn 1;</span></pre></td></tr></table></div>';
@@ -17,14 +21,26 @@ test('selection works with Shift, touch-friendly endpoint and keyboard click; co
  const s=await setup();try{
  assert.equal(s.doc.querySelectorAll('.code-workbench-open').length,1);s.open();assert.ok(s.copy().hidden);
  s.row(3).click();s.row(1).dispatchEvent(new s.window.MouseEvent('click',{bubbles:true,shiftKey:true}));assert.equal(s.doc.querySelectorAll('.line-focused').length,3);
- s.copy().click();await settle();assert.equal(s.copies.length,1);assert.ok(!s.copies[0].includes('private'));assert.match(s.copies[0],/#cc-code=v1\.[a-f0-9]{64}\.1-3$/);
+ s.copy().click();await waitFor(()=>s.status().textContent==='这段代码的链接已复制。','reference copy to complete');assert.equal(s.copies.length,1);assert.ok(!s.copies[0].includes('private'));assert.match(s.copies[0],/#cc-code=v1\.[a-f0-9]{64}\.1-3$/);
  s.row(3).dispatchEvent(new s.window.KeyboardEvent('keydown',{key:'Enter',shiftKey:true,bubbles:true,cancelable:true}));assert.equal(s.doc.querySelectorAll('.line-focused').length,1);
  s.row(1).click();s.doc.querySelector('[data-code-reference-extend]').click();s.row(2).click();assert.equal(s.doc.querySelectorAll('.line-focused').length,2);
  s.row(2).click();s.row(2).click();assert.ok(s.copy().hidden);assert.equal(s.doc.querySelectorAll('.line-focused').length,0);
- const all=[...s.doc.querySelectorAll('.live-dialog-tools button')].find(button=>button.textContent==='复制全部');const realTimer=globalThis.setTimeout;try{globalThis.setTimeout=(fn,ms,...args)=>ms===2200?0:realTimer(fn,ms,...args);all.click();await settle();}finally{globalThis.setTimeout=realTimer;}assert.equal(s.copies.at(-1),'  中\n\n\treturn 1;');
+ const all=[...s.doc.querySelectorAll('.live-dialog-tools button')].find(button=>button.textContent==='复制全部');const realTimer=globalThis.setTimeout;try{globalThis.setTimeout=(fn,ms,...args)=>ms===2200?0:realTimer(fn,ms,...args);all.click();await waitFor(()=>s.copies.length===2,'whole-code copy to complete');}finally{globalThis.setTimeout=realTimer;}assert.equal(s.copies.at(-1),'  中\n\n\treturn 1;');
  const jump=s.doc.querySelector('.code-line-jump');jump.value='2';[...s.doc.querySelectorAll('.live-dialog-tools button')].find(button=>button.textContent==='跳转').click();assert.equal(s.doc.querySelectorAll('.line-focused').length,1);assert.equal(s.row(2).getAttribute('aria-pressed'),'true');
  s.module.initCodeStudio();assert.equal(s.doc.querySelectorAll('#code-studio-dialog').length,1);
  }finally{s.dom.window.close();}
+});
+test('reference copy waits for a slow digest beyond a fixed number of event-loop turns',async()=>{
+ const pending=deferred();let core,started=false;
+ const s=await setup({digest:async code=>{started=true;await pending.promise;return core.digestCode(code,crypto);}});core=s.core;
+ try{
+ s.open();s.row(1).click();s.copy().click();await waitFor(()=>started,'reference digest to start');
+ for(let i=0;i<8;i++)await flush();
+ assert.equal(s.copies.length,0,'no link may be copied before checksum completion');
+ pending.resolve();await waitFor(()=>s.status().textContent==='这段代码的链接已复制。','slow digest reference copy to complete');
+ const hash=await s.core.digestCode('  中\n\n\treturn 1;',crypto);
+ assert.deepEqual(s.copies,[`https://test.example/prefix/post/#cc-code=v1.${hash}.1-1`]);
+ }finally{pending.resolve();s.dom.window.close();}
 });
 test('explicit line jumps move keyboard focus without a second scroll; invalid input keeps focus and selection',async()=>{
  const s=await setup();try{
@@ -44,13 +60,13 @@ test('explicit line jumps move keyboard focus without a second scroll; invalid i
 test('valid links highlight source only; ordinary hash clears them and later code hashes still work',async()=>{
  const s=await setup();try{const opener=s.doc.querySelector('.code-workbench-open');opener.focus();const hash=await s.core.digestCode('  中\n\n\treturn 1;',crypto);s.window.history.replaceState(null,'',`#cc-code=v1.${hash}.2-3`);await s.controller.locate();assert.equal(s.scrolled.length,1);assert.equal(s.doc.querySelectorAll('.code-reference-line').length,2);assert.equal(s.doc.querySelectorAll('dialog[open]').length,0);assert.equal(s.doc.activeElement,opener,'automatic references do not move keyboard focus');
  s.window.history.replaceState(null,'','#other');await s.controller.locate();assert.equal(s.doc.querySelectorAll('.code-reference-line').length,0);assert.equal(s.scrolled.length,1);
- s.window.location.hash=`cc-code=v1.${hash}.1-1`;await new Promise(resolve=>setTimeout(resolve,20));await settle();assert.equal(s.doc.querySelectorAll('.code-reference-line').length,1);
+ s.window.location.hash=`cc-code=v1.${hash}.1-1`;await waitFor(()=>s.doc.querySelectorAll('.code-reference-line').length===1,'hashchange reference highlighting');assert.equal(s.doc.querySelectorAll('.code-reference-line').length,1);
  }finally{s.dom.window.close();}
 });
 test('duplicates, changed code, invalid hashes and missing Web Crypto never guess a location',async()=>{
  for(const type of ['duplicate','changed','invalid','crypto']){const s=await setup({duplicate:type==='duplicate',digest:type==='crypto'?async()=>{throw Error('当前浏览器不支持代码引用校验。');}:undefined});try{
  const hash=await s.core.digestCode(type==='changed'?'old':'  中\n\n\treturn 1;',crypto);s.window.history.replaceState(null,'',type==='invalid'?'#cc-code=%E0%A4%A':`#cc-code=v1.${hash}.1-2`);await s.controller.locate();assert.equal(s.scrolled.length,0);assert.equal(s.doc.querySelector('.code-reference-status').hidden,false);
- if(type==='duplicate'||type==='crypto'){s.open();s.row(1).click();s.copy().click();await settle();assert.equal(s.copies.length,0);assert.match(s.status().textContent,/无法唯一定位|不支持/);}
+ if(type==='duplicate'||type==='crypto'){s.open();s.row(1).click();s.copy().click();await waitFor(()=>/无法唯一定位|不支持/.test(s.status().textContent),'reference copy rejection');assert.equal(s.copies.length,0);assert.match(s.status().textContent,/无法唯一定位|不支持/);}
  }finally{s.dom.window.close();}}
 });
 test('late digest cannot scroll after newer hash, gesture, dialog, hidden document or pagehide',async()=>{
@@ -78,7 +94,7 @@ test('scroll cancels pending navigation but a later explicit hash works; blank l
  const pending=deferred(),s=await setup({digest:()=>pending.promise});try{
  const before=s.core.extractCode(s.doc.querySelector('.code-container')),hash=await s.core.digestCode(before,crypto);
  s.window.history.replaceState(null,'',`#cc-code=v1.${hash}.1-1`);const task=s.controller.locate();await flush();s.window.dispatchEvent(new s.window.Event('scroll'));pending.resolve(hash);await task;assert.equal(s.scrolled.length,0);
- s.window.location.hash=`cc-code=v1.${hash}.2-2`;await new Promise(resolve=>setTimeout(resolve,20));await settle();assert.equal(s.scrolled.length,1);
+ s.window.location.hash=`cc-code=v1.${hash}.2-2`;await waitFor(()=>s.scrolled.length===1,'later hashchange navigation');assert.equal(s.scrolled.length,1);
  assert.equal(s.doc.querySelector('.code-reference-line').textContent,'');assert.equal(s.doc.querySelector('.code-reference-gutter').textContent,'2');assert.equal(s.core.extractCode(s.doc.querySelector('.code-container')),before);
  s.window.dispatchEvent(new s.window.Event('scroll'));assert.equal(s.doc.querySelectorAll('.code-reference-gutter').length,1,'completed scroll must retain highlight');
  s.window.history.replaceState(null,'','#other');await s.controller.locate();assert.equal(s.doc.querySelectorAll('.code-reference-gutter').length,0);
@@ -90,7 +106,7 @@ test('blank references without usable gutters are rejected rather than invisibly
  const gutter=s.doc.querySelector('.gutter');if(kind==='missing')gutter.remove();else gutter.textContent='1\n2\n3';
  const hash=await s.core.digestCode(s.core.extractCode(s.doc.querySelector('.code-container')),crypto);s.window.history.replaceState(null,'',`#cc-code=v1.${hash}.2-2`);await s.controller.locate();
  assert.equal(s.scrolled.length,0);assert.match(s.doc.querySelector('.code-reference-status').textContent,/空白行暂不支持/);
- s.open();s.row(2).click();s.copy().click();await settle();assert.equal(s.copies.length,0);assert.match(s.status().textContent,/空白行暂不支持/);
+ s.open();s.row(2).click();s.copy().click();await waitFor(()=>/空白行暂不支持/.test(s.status().textContent),'blank-line reference copy rejection');assert.equal(s.copies.length,0);assert.match(s.status().textContent,/空白行暂不支持/);
  }finally{s.dom.window.close();}}
 });
 test('a DOM change during digest cannot highlight different code using an old checksum',async()=>{

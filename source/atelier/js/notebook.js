@@ -14,9 +14,58 @@ export function initNotebook(){
  tools.append(action('导出全部批注',async()=>{try{download('cc-notebook.json',JSON.stringify({version:1,notes:await vault.all('notes')},null,2));}catch(error){status.textContent=error.message;}}),fileLabel);
  file.addEventListener('change',async()=>{try{const data=validateNotebook(await readImport(file.files[0],64),root);await vault.merge('notes',data.notes);status.textContent='已合并 '+data.notes.length+' 条批注。';await render();}catch(error){status.textContent=error.message;}file.value='';});
  dialog.append(status,editor,tools,list);
- async function render(){list.replaceChildren();try{const all=await vault.all('notes'),notes=all.filter(n=>n.path===location.pathname).sort((a,b)=>b.updated-a.updated);if(!notes.length)list.append(element('p','live-status','这篇文章还没有札记。'));
-   for(const n of notes){const row=element('article','notebook-note'),q=element('blockquote','',n.quote),p=element('p','',n.note),buttons=element('div','live-dialog-tools');buttons.append(action('定位原文',()=>{const snapshot=articleText(article),at=locateQuote(snapshot.text,n);if(at<0){status.textContent='原文已变化或有重复段落，无法可靠定位；摘录仍被保留。';return;}const range=textRange(snapshot,at,at+n.quote.length);dialog.close();if(globalThis.CSS?.highlights&&globalThis.Highlight)CSS.highlights.set('notebook',new Highlight(range));else{const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}revealRange(range);}),action('删除',async()=>{try{await vault.remove('notes',n.id);await render();}catch(error){status.textContent=error.message;}}));row.append(q,p,buttons);list.append(row);}
-  }catch(error){status.textContent=error.message+'；当前摘录可以先复制保留。';}}
+ const deleting=new Set(),deletedReads=new Map();let renderVersion=0,focusVersion=0;
+ document.addEventListener('focusin',()=>{focusVersion++;});
+ dialog.addEventListener('close',()=>{focusVersion++;});
+ const noteRow=id=>[...list.children].find(row=>row.dataset.notebookId===id);
+ const emptyMessage=()=>element('p','live-status','这篇文章还没有札记。');
+ async function removeNote(id){
+  if(deleting.has(id))return;
+  const row=noteRow(id);if(!row)return;
+  const ownedFocus=row.contains(document.activeElement),focusAtStart=focusVersion;
+  deleting.add(id);row.querySelector('[data-notebook-delete]').setAttribute('aria-disabled','true');
+  try{
+   await vault.remove('notes',id);
+   // Filter this ID from older snapshots, without discarding independent additions.
+   deletedReads.set(id,renderVersion);
+   const current=noteRow(id);
+   if(current){
+    const rows=[...list.querySelectorAll('.notebook-note')],index=rows.indexOf(current);
+    const restore=ownedFocus&&focusAtStart===focusVersion&&dialog.open&&current.contains(document.activeElement);
+    current.remove();
+    const remaining=[...list.querySelectorAll('.notebook-note')];
+    if(!remaining.length)list.replaceChildren(emptyMessage());
+    if(restore)(remaining[Math.min(index,remaining.length-1)]?.querySelector('button')||dialog.querySelector('.live-dialog-head button')).focus({preventScroll:true});
+   }
+  }catch(error){status.textContent=error.message;}
+  finally{deleting.delete(id);noteRow(id)?.querySelector('[data-notebook-delete]')?.removeAttribute('aria-disabled');}
+ }
+ function createNoteRow(n){
+  const row=element('article','notebook-note'),quote=element('blockquote'),note=element('p'),buttons=element('div','live-dialog-tools');row.dataset.notebookId=n.id;
+  buttons.append(action('定位原文',()=>{const snapshot=articleText(article),at=locateQuote(snapshot.text,row.notebookRecord);if(at<0){status.textContent='原文已变化或有重复段落，无法可靠定位；摘录仍被保留。';return;}const range=textRange(snapshot,at,at+row.notebookRecord.quote.length);dialog.close();if(globalThis.CSS?.highlights&&globalThis.Highlight)CSS.highlights.set('notebook',new Highlight(range));else{const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}revealRange(range);}),action('删除',()=>removeNote(n.id)));
+  buttons.lastElementChild.dataset.notebookDelete='';row.append(quote,note,buttons);return row;
+ }
+ async function render(){
+  const version=++renderVersion;
+  try{
+   const all=await vault.all('notes');if(version!==renderVersion)return;
+   const notes=all.filter(n=>n.path===location.pathname&&!(deletedReads.get(n.id)>=version)).sort((a,b)=>b.updated-a.updated),ids=new Set(notes.map(n=>n.id));
+   // Keep surviving controls in place: a concurrent save/import must not reset focus.
+   for(const row of [...list.children])if(!ids.has(row.dataset.notebookId))row.remove();
+   notes.forEach((n,index)=>{
+    const row=noteRow(n.id)||createNoteRow(n);row.notebookRecord=n;
+    row.querySelector('blockquote').textContent=n.quote;row.querySelector('p').textContent=n.note;
+    const remove=row.querySelector('[data-notebook-delete]');if(deleting.has(n.id))remove.setAttribute('aria-disabled','true');else remove.removeAttribute('aria-disabled');
+    if(list.children[index]!==row){
+     if(row.contains(document.activeElement)){
+      // Move siblings around the focused row; detaching that row would blur it.
+      while(list.children[index]!==row)list.insertBefore(list.children[index],row.nextSibling);
+     }else list.insertBefore(row,list.children[index]||null);
+    }
+   });
+   if(!notes.length)list.replaceChildren(emptyMessage());
+  }catch(error){if(version===renderVersion)status.textContent=error.message+'；当前摘录可以先复制保留。';}
+ }
  const capture=action('＋ 留下札记',()=>{capture.hidden=true;if(!draft)return;quote.textContent=draft.quote;editor.hidden=false;render();open();textarea.focus();},'selection-note');capture.hidden=true;document.body.append(capture);
  // Pointer down on the capture button must not destroy the original selection.
  capture.addEventListener('pointerdown',e=>e.preventDefault());
