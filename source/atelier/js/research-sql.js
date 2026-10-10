@@ -1,4 +1,5 @@
-import {SQL_CASES, getSqlCase, validateQuery, compareResults} from './research-sql-core.mjs';
+import {SQL_CASES, getSqlCase, getSqlDataset, listSqlDatasets, validateQuery, compareResults} from './research-sql-core.mjs';
+import {SQL_SNAPSHOT_LIMIT, createSqlSnapshot, serializeSqlSnapshot, parseSqlSnapshot} from './research-sql-snapshot.mjs';
 
 // The main thread controls the wall-clock deadline. A busy synchronous SQLite
 // worker cannot service its own timer, so timeout means termination, not a message.
@@ -17,7 +18,7 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     clearTimer(pending.timer);
     onState('running');
     pending.timer = setTimer(() => finish(new Error('查询超过 1.5 秒，已停止。可修改后再运行。'), null, true), queryMs);
-    worker.postMessage({type:'run', id:pending.id, caseId:pending.caseId, sql:pending.sql});
+    worker.postMessage({type:'run', id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1});
   }
   function startWorker() {
     if (typeof WorkerClass !== 'function') throw new Error('当前浏览器不支持 Worker；示例数据与参考结果仍可阅读。');
@@ -36,10 +37,10 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     instance.onmessageerror = () => { if (worker === instance) finish(new Error('SQLite 返回结果失败，请重试。'), null, true); };
   }
   return {
-    run(caseId, sql) {
+    run(caseId, sql, datasetId='default') {
       if (pending) finish(abortError(), null, true);
       return new Promise((resolve,reject) => {
-        pending = {id:++serial, caseId, sql, resolve, reject, timer:null};
+        pending = {id:++serial, caseId, sql, datasetId, resolve, reject, timer:null};
         try {
           if (!worker) startWorker();
           if (ready) submit();
@@ -67,7 +68,12 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   }});
   const runButton = host.querySelector('[data-sql-run]'), stopButton = host.querySelector('[data-sql-cancel]');
   const status = host.querySelector('[data-sql-status]'), panels = Array.from(host.querySelectorAll('[data-sql-case]'));
-  let active = SQL_CASES[0].id, ticket = 0, busy = false;
+  let active = SQL_CASES[0].id, ticket = 0, busy = false, importTicket = 0, recovery = null;
+  const datasets = new Map(SQL_CASES.map(item => [item.id,'default']));
+  const datasetSelect = host.querySelector('[data-sql-dataset]');
+  const fileInput = host.querySelector('[data-sql-file]');
+  const restoreButton = host.querySelector('[data-sql-restore-draft]');
+  const fixture = () => getSqlDataset(active,datasets.get(active));
   const panel = () => panels.find(node => node.dataset.sqlCase === active);
   const editor = () => panel().querySelector('[data-sql-editor]');
   function message(text, state='') { status.textContent = text; status.dataset.state = state; }
@@ -80,13 +86,80 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       delete row.dataset.diff; const mark = row.querySelector('[data-sql-row-mark]'); mark.textContent = ''; mark.removeAttribute('aria-label');
     });
   }
-  function cancel(release=false) { ticket++; if (busy || release) runner.stop(); setBusy(false); }
+  function cancel(release=false) { importTicket++; ticket++; if (busy || release) runner.stop(); setBusy(false); }
   function modified() { cancel(); clearResult(); message('查询已修改，重新运行后比较。'); }
   function select(id) {
     getSqlCase(id); cancel(); active = id;
     panels.forEach(node => { node.hidden = node.dataset.sqlCase !== id; });
     host.querySelectorAll('[data-sql-select]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sqlSelect === id)));
-    clearResult(); message('修改候选 SQL，再与预期比较。');
+    renderDataset(); clearResult(); message('修改候选 SQL，再与预期比较。');
+  }
+  function makeTable(columns, rows, withMarks=false) {
+    const table = doc.createElement('table'), head = table.createTHead().insertRow();
+    if (withMarks) { const th = doc.createElement('th'); th.scope='col'; th.className='sql-mark-column'; th.textContent='对照'; head.append(th); }
+    columns.forEach(value => { const th=doc.createElement('th'); th.scope='col'; th.textContent=value; head.append(th); });
+    const body=table.createTBody();
+    rows.forEach(values => {
+      const row=body.insertRow();
+      if (withMarks) { const cell=row.insertCell(); cell.className='sql-mark-column'; cell.dataset.sqlRowMark=''; }
+      values.forEach(value => { row.insertCell().textContent=value === null ? 'NULL' : String(value); });
+    });
+    return table;
+  }
+  function renderDataset() {
+    const data=fixture(), node=panel();
+    if (datasetSelect) {
+      datasetSelect.replaceChildren(...listSqlDatasets(active).map(item => { const option=doc.createElement('option'); option.value=item.id; option.textContent=item.label; return option; }));
+      datasetSelect.value=datasets.get(active);
+    }
+    const tables=data.tables.map(item => {
+      const wrap=doc.createElement('div'); wrap.className='sql-table-wrap';
+      const table=makeTable(item.columns,item.rows); table.dataset.sqlFixture=item.name;
+      const caption=table.createCaption(); caption.textContent=item.name;
+      const count=doc.createElement('span'); count.textContent=`${item.rows.length} rows`; caption.append(count); wrap.append(table); return wrap;
+    });
+    node.querySelector('.sql-fixtures').replaceChildren(...tables);
+    const expected=node.querySelector('[data-sql-expected]');
+    const table=makeTable(data.expected.columns,data.expected.rows,true);
+    const caption=table.createCaption(); caption.className='sr-only'; caption.textContent='当前数据集的预期结果';
+    expected.replaceChildren(table);
+    if (!data.expected.rows.length) { const empty=doc.createElement('p'); empty.className='sql-result-empty'; empty.textContent='0 行'; expected.append(empty); }
+    node.querySelector('.sql-reference-panel .sql-result-heading span').textContent=`${data.expected.rows.length} 行`;
+    node.querySelector('.sql-insight summary').textContent=datasets.get(active)==='default' ? '为什么会不同？' : '原始反例说明';
+  }
+  function captureDrafts() {
+    return {active, drafts:panels.map(node => ({caseId:node.dataset.sqlCase,datasetId:datasets.get(node.dataset.sqlCase),sql:node.querySelector('[data-sql-editor]').value}))};
+  }
+  function restoreDrafts(saved) {
+    saved.drafts.forEach(item => { datasets.set(item.caseId,item.datasetId); panels.find(node => node.dataset.sqlCase===item.caseId).querySelector('[data-sql-editor]').value=item.sql; });
+    select(saved.active); panels.forEach(node => clearResult(node));
+  }
+  async function importFile(file) {
+    const current=++importTicket;
+    if (!file) return;
+    try {
+      if (!Number.isFinite(file.size) || file.size > SQL_SNAPSHOT_LIMIT || file.size < 0) throw new Error('草稿文件最多 32 KiB。');
+      const text = typeof file.text === 'function' ? await file.text() : await new Promise((resolve,reject) => {
+        const reader=new win.FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=()=>reject(new Error('无法读取草稿文件。')); reader.readAsText(file);
+      });
+      if (current !== importTicket) return;
+      const saved=parseSqlSnapshot(text);
+      recovery=captureDrafts();
+      datasets.set(saved.caseId,saved.datasetId); select(saved.caseId); editor().value=saved.sql;
+      if (restoreButton) { restoreButton.hidden=false; restoreButton.textContent='恢复导入前草稿'; }
+      message('已导入，尚未运行。原草稿可恢复。'); editor().focus();
+    } catch (error) { if (current === importTicket) message(error.message || '无法导入草稿。','error'); }
+  }
+  function exportDraft() {
+    let url;
+    try {
+      const text=serializeSqlSnapshot(createSqlSnapshot(active,datasets.get(active),editor().value));
+      url=win.URL.createObjectURL(new win.Blob([text],{type:'application/json;charset=utf-8'}));
+      const link=doc.createElement('a'); link.href=url; link.download=`cc-atelier-${active}-${datasets.get(active)}-v1.json`;
+      doc.body.append(link); link.click(); link.remove();
+      message('已发起下载；草稿仅保存到你选择的本机位置。');
+    } catch (error) { message(error.message || '无法导出草稿。','error'); }
+    finally { if (url) win.setTimeout(()=>win.URL.revokeObjectURL(url),0); }
   }
   function markRow(row, mark, cell) {
     const [symbol,label] = marks[mark] || marks.same;
@@ -113,18 +186,18 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     node.querySelectorAll('[data-sql-expected] tbody tr').forEach((row,index) => markRow(row, comparison.expectedMarks[index] || 'same', row.querySelector('[data-sql-row-mark]')));
   }
   async function run() {
-    const caseId = active, sql = editor().value;
+    const caseId = active, datasetId = datasets.get(active), sql = editor().value;
     cancel(); clearResult();
     try { validateQuery(sql); }
     catch (error) { message(error.message, 'error'); return; }
     const current = ++ticket;
     setBusy(true); message('正在载入或运行 SQLite…');
     try {
-      const result = await runner.run(caseId, sql);
-      if (current !== ticket || caseId !== active) return;
-      const comparison = compareResults(result, getSqlCase(caseId).expected);
+      const result = await runner.run(caseId, sql, datasetId);
+      if (current !== ticket || caseId !== active || datasetId !== datasets.get(active)) return;
+      const comparison = compareResults(result, getSqlDataset(caseId,datasetId).expected);
       renderResult(result, comparison);
-      if (comparison.state === 'match') message('本例结果一致。', 'match');
+      if (comparison.state === 'match') message(datasetId === 'default' ? '本例结果一致。' : '此数据集结果一致，不代表所有数据都成立。', 'match');
       else if (comparison.state === 'order') message('值和重复次数一致，行顺序不同。↕ 标出错位行。', 'different');
       else if (comparison.state === 'limited') message('结果超过 100 行，已截断；不作一致性判断。', 'error');
       else message(`结果不同：+ 多出 ${comparison.extra} 行，− 缺少 ${comparison.missing} 行。`, 'different');
@@ -146,6 +219,16 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     button.hidden = false;
     button.addEventListener('click', () => { editor().value = getSqlCase(active)[button.hasAttribute('data-sql-reset') ? 'candidate' : 'reference']; modified(); editor().focus(); });
   });
+  host.querySelector('[data-sql-draft-tools]')?.removeAttribute('hidden');
+  datasetSelect?.addEventListener('change', () => { getSqlDataset(active,datasetSelect.value); cancel(); datasets.set(active,datasetSelect.value); renderDataset(); clearResult(); message('已切换数据，SQL 保留；运行后比较。'); });
+  host.querySelector('[data-sql-import]')?.addEventListener('click', () => { importTicket++; fileInput.click(); });
+  fileInput?.addEventListener('change', () => { const file=fileInput.files?.[0]; fileInput.value=''; importFile(file); });
+  host.querySelector('[data-sql-export]')?.addEventListener('click', exportDraft);
+  restoreButton?.addEventListener('click', () => {
+    if (!recovery) return;
+    const current=captureDrafts(), previous=recovery; recovery=current; restoreDrafts(previous);
+    restoreButton.textContent='恢复替换前草稿'; message('已恢复草稿，尚未运行；刚才的草稿也可切回。'); editor().focus();
+  });
   runButton.addEventListener('click', run);
   stopButton.addEventListener('click', () => { cancel(); message('已停止，可修改后再运行。'); runButton.focus(); });
   function leave() { const wasBusy = busy; cancel(true); if (wasBusy) message('已停止，可重新运行。'); }
@@ -153,7 +236,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) leave(); });
   doc.addEventListener('atelier:dialog-open', leave);
   host.classList.add('is-enhanced'); select(active);
-  const controller = {run, select, stop:leave}; controllers.set(host,controller); return controller;
+  const controller = {run, select, stop:leave, importFile, exportDraft}; controllers.set(host,controller); return controller;
 }
 
 if (typeof document !== 'undefined') initResearchSql();

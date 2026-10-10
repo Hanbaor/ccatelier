@@ -116,6 +116,8 @@ test('actual SQLite worker can be terminated during an unbounded query and a fre
  const runner=createSqlRunner({WorkerClass:Adapter,queryMs:150});
  try{
   const simple=await runner.run('empty-count','SELECT COUNT(*) AS n FROM artists');assert.deepEqual(simple.rows,[[3]]);
+  const {SQL_CASES,listSqlDatasets,getSqlDataset}=await import('../source/atelier/js/research-sql-core.mjs');
+  for(const fixture of SQL_CASES)for(const dataset of listSqlDatasets(fixture.id)){const selected=getSqlDataset(fixture.id,dataset.id);assert.deepEqual(await runner.run(fixture.id,selected.reference,dataset.id),{...selected.expected,truncated:false});}
   await assert.rejects(runner.run('empty-count','WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n) SELECT SUM(x) FROM n'),/超过/);
   assert.ok(instances[0].terminated);
   const recovered=await runner.run('top-ties','SELECT track, points FROM scores WHERE points=95 ORDER BY track');assert.deepEqual(recovered.rows,[['Blue',95],['Gold',95]]);assert.equal(instances.length,2);

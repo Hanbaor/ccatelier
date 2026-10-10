@@ -21,7 +21,10 @@ function readingTools() {
   const focus=$('[data-focus-reading]');
   function setFocus(value){document.body.classList.toggle('reading-focused',value);focus.setAttribute('aria-pressed',String(value));focus.textContent=value?'退出专注':'专注阅读';}
   focus.addEventListener('click',()=>setFocus(!document.body.classList.contains('reading-focused')));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')setFocus(false);});
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape'||e.defaultPrevented||e.isComposing||e.keyCode===229||$('dialog[open]'))return;
+    setFocus(false);
+  });
   const resume=$('[data-reading-resume]');
   if(old?.progress>.05 && old.progress<.97){resume.hidden=false;resume.textContent=`继续阅读 · ${Math.round(old.progress*100)}% ↓`;resume.addEventListener('click',()=>{window.scrollTo({top:window.scrollY+body.getBoundingClientRect().top+old.progress*Math.max(0,body.scrollHeight-innerHeight*.6),behavior:motion.enabled?'smooth':'instant'});resume.hidden=true;});}
   let dirty=false;

@@ -13,9 +13,10 @@ self.onmessage = async ({data}) => {
   await ready;
   if (!SQL) return;
   try {
-    const fixture = core.getSqlCase(data.caseId);
-    const result = core.runFixtureQuery(SQL, data.caseId, data.sql);
-    const reference = core.runFixtureQuery(SQL, data.caseId, fixture.reference);
+    const datasetId = data.datasetId === undefined ? 'default' : data.datasetId;
+    const fixture = core.getSqlDataset(data.caseId, datasetId, data.caseRevision === undefined ? 1 : data.caseRevision, data.datasetRevision === undefined ? 1 : data.datasetRevision);
+    const result = core.runFixtureQuery(SQL, data.caseId, data.sql, datasetId);
+    const reference = core.runFixtureQuery(SQL, data.caseId, fixture.reference, datasetId);
     if (core.compareResults(reference, fixture.expected).state !== 'match') throw new Error('参考结果校验失败，请刷新页面。');
     self.postMessage({type:'result', id:data.id, result});
   }

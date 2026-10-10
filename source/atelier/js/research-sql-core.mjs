@@ -1,6 +1,10 @@
 // Original, deliberately small teaching fixtures. These are not research results.
 export const SQL_LIMITS = Object.freeze({queryChars:4000, rows:100, columns:16, cellChars:512, heapBytes:16 * 1024 * 1024});
-export const SQL_CASES = Object.freeze([
+function deepFreeze(value) {
+  Object.values(value).forEach(item => { if (item && typeof item === 'object') deepFreeze(item); });
+  return Object.freeze(value);
+}
+export const SQL_CASES = deepFreeze([
   {
     id:'empty-count', label:'空集计数',
     question:'列出每位创作者的曲目数，包含 0 首，按 id 排序。',
@@ -48,6 +52,40 @@ export function getSqlCase(id) {
   return fixture;
 }
 
+// Published revision 1 fixtures are immutable. Add a new revision rather than
+// changing these rows when an exported draft must continue to replay them.
+export const SQL_ENGINE = 'sql.js@1.14.2';
+export const SQL_CASE_REVISION = 1;
+const variants = deepFreeze({
+  'empty-count':[
+    {id:'no-tracks', label:'没有曲目', rows:[null,[]], expected:[['Aster',0],['Lumen',0],['Moss',0]]},
+    {id:'empty', label:'全部为空', rows:[[],[]], expected:[]}
+  ],
+  'top-ties':[
+    {id:'unique', label:'唯一最高分', rows:[[['Blue',95],['Gold',94],['Echo',88]]], expected:[['Blue',95]]},
+    {id:'empty', label:'没有评分', rows:[[]], expected:[]}
+  ],
+  'null-exclusion':[
+    {id:'no-null', label:'没有空值', rows:[null,[[1,102]]], expected:[[101,'Blue'],[103,'Echo']]},
+    {id:'empty-rehearsals', label:'没有排练', rows:[null,[]], expected:[[101,'Blue'],[102,'Gold'],[103,'Echo']]}
+  ]
+});
+export function listSqlDatasets(caseId) {
+  getSqlCase(caseId);
+  return [{id:'default',label:'原始反例',revision:1}, ...variants[caseId].map(item => ({id:item.id,label:item.label,revision:1}))];
+}
+export function getSqlDataset(caseId, datasetId='default', caseRevision=1, datasetRevision=1) {
+  const fixture = getSqlCase(caseId);
+  if (caseRevision !== SQL_CASE_REVISION || datasetRevision !== 1) throw new Error('不支持此案例或数据集版本。');
+  if (datasetId === 'default') return fixture;
+  const variant = variants[caseId].find(item => item.id === datasetId);
+  if (!variant) throw new Error('未知数据集，请重新选择。');
+  return deepFreeze({...fixture,
+    tables:fixture.tables.map((table,index) => ({...table,rows:variant.rows[index] ?? table.rows})),
+    expected:{columns:fixture.expected.columns,rows:variant.expected}
+  });
+}
+
 export function validateQuery(sql) {
   if (typeof sql !== 'string' || !sql.trim()) throw new Error('先写一条 SELECT 或 WITH 查询。');
   if (sql.length > SQL_LIMITS.queryChars) throw new Error('查询最多 4,000 个字符。');
@@ -62,8 +100,8 @@ export function validateQuery(sql) {
 // everywhere, so input cannot introduce a second statement or change query_only.
 // An outer LIMIT is an optimization; the independent step limit still applies
 // when a valid input comment or expression changes the wrapper's structure.
-export function runFixtureQuery(SQL, caseId, input) {
-  const fixture = getSqlCase(caseId), sql = validateQuery(input);
+export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
+  const fixture = getSqlDataset(caseId, datasetId), sql = validateQuery(input);
   const db = new SQL.Database();
   try {
     db.run(`PRAGMA hard_heap_limit = ${SQL_LIMITS.heapBytes}`);

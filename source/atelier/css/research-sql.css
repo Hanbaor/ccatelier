@@ -84,3 +84,8 @@ body.dark-mode .sql-lab {--sql-accent:#8ccfc2;--sql-soft:#17302d;--sql-wrong:#ef
 }
 @media(prefers-reduced-motion:reduce) {.sql-result tbody tr {transition:none}}
 body.motion-off .sql-result tbody tr {transition:none}
+
+.sql-draft-tools {display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;margin:0 0 8px;font:11px var(--chinese);color:var(--muted)}
+.sql-draft-tools label {display:flex;align-items:center;gap:9px;min-width:0}
+.sql-draft-tools select {min-height:36px;max-width:100%;padding:5px 26px 5px 9px;border:1px solid var(--line);border-radius:2px;background:var(--surface);color:var(--ink);font:inherit;outline-offset:4px}
+.sql-draft-tools select:focus-visible {outline:2px solid var(--sql-accent)}

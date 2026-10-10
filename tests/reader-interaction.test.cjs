@@ -84,3 +84,47 @@ test('reader find leaves IME confirmation alone and preserves Enter navigation',
   }
   assert.equal(scrolls, 3);
 });
+
+test('Escape preserves focused reading while a dialog, consumed event or IME owns the key', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '../public/hot100/036/index.html'), 'utf8');
+  const dom = new JSDOM(html, {url:'https://ccatelier.test/hot100/036/'});
+  const {window} = dom;
+  Object.assign(globalThis, {window, document:window.document, location:window.location,
+    localStorage:window.localStorage, innerHeight:900,
+    matchMedia:()=>({matches:false,addEventListener(){}})});
+  const {initAfterHours} = await import('../source/atelier/js/after-hours.js');
+  try {
+    initAfterHours();
+    const focus = document.querySelector('[data-focus-reading]');
+    const input = document.querySelector('#reader-find');
+    const dialog = document.querySelector('#search-dialog');
+    const focused = () => document.body.classList.contains('reading-focused');
+    focus.click();
+    assert.equal(focused(), true);
+    for (const scenario of ['dialog', 'consumed', 'composition', 'legacy-ime']) {
+      dialog.open = scenario === 'dialog';
+      const target = dialog.open ? document.querySelector('#search-input') : input;
+      const consume = event => event.preventDefault();
+      if (scenario === 'consumed') target.addEventListener('keydown', consume, {once:true});
+      const event = new window.KeyboardEvent('keydown', {
+        key:'Escape', bubbles:true, cancelable:true,
+        isComposing:scenario === 'composition', keyCode:scenario === 'legacy-ime' ? 229 : 27,
+      });
+      target.dispatchEvent(event);
+      assert.equal(focused(), true, scenario + ' must preserve focused reading');
+      assert.equal(focus.getAttribute('aria-pressed'), 'true');
+      assert.equal(event.defaultPrevented, scenario === 'consumed', 'leave native key handling untouched');
+    }
+    dialog.open = false;
+    input.dispatchEvent(new window.KeyboardEvent('keydown', {key:'Escape', bubbles:true, cancelable:true}));
+    assert.equal(focused(), false, 'ordinary Escape still exits focused reading after the dialog closes');
+    assert.equal(focus.getAttribute('aria-pressed'), 'false');
+    assert.equal(focus.textContent, '专注阅读');
+    focus.click();
+    input.dispatchEvent(new window.KeyboardEvent('keydown', {key:'Enter', bubbles:true, cancelable:true}));
+    assert.equal(focused(), true, 'unrelated keys do not change focused reading');
+  } finally {
+    window.dispatchEvent(new window.Event('pagehide'));
+    window.close();
+  }
+});
