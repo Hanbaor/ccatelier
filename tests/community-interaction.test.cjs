@@ -6,7 +6,7 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 const receipt=(status='pending')=>json({id,status},202);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 async function setup(deliver,loadComments=()=>json({items:[],total:0,next:null})) {
-  const dom=new JSDOM(`<body data-section="guestbook"><section data-comments><span data-comment-total></span><form><fieldset data-form-guard disabled><input name="nickname" value="听众"><textarea name="message">尚未投递的留言</textarea><input name="stamp" value="star"><input name="website" value=""><span data-comment-length></span><button type="submit">投递留言</button><p class="comment-status" role="status"></p></fieldset></form><div data-comment-list></div><button data-comment-more hidden>更多</button></section></body>`,{url:'https://ccatelier.test/guestbook/'});
+  const dom=new JSDOM(`<body data-section="guestbook"><section data-comments><span data-comment-total></span><form><fieldset data-form-guard disabled><input name="nickname" value="听众"><textarea name="message">尚未投递的留言</textarea><input name="stamp" value="star"><input name="website" value=""><span data-comment-length></span><button type="submit">投递留言</button><p class="comment-status" role="status"></p></fieldset></form><div data-comment-list><p class="community-empty">正在打开留言簿……</p></div><button data-comment-more hidden>更多</button></section></body>`,{url:'https://ccatelier.test/guestbook/'});
   Object.assign(globalThis,{window:dom.window,document:dom.window.document,location:dom.window.location,FormData:dom.window.FormData,matchMedia:()=>({matches:false,addEventListener(){}})});
   const bodies=[];
   globalThis.fetch=async(url,options)=>{
@@ -261,5 +261,178 @@ for(const invalidView of ['different route','detached','hidden'])test(`page-cach
     if(invalidView==='hidden')s.form.closest('[data-comments]').hidden=true;
     r.resolve(receipt());await tick();s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));
     assert.equal(s.status.textContent,'正在投递……');assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+
+const unavailableResponse=()=>json({code:'not_configured',message:'Service unavailable'},503);
+const emptyComments=()=>json({items:[],total:0,next:null});
+const recheck=s=>s.status.querySelector('button');
+const moreComments=s=>s.dom.window.document.querySelector('[data-comment-more]');
+const commentList=s=>s.dom.window.document.querySelector('[data-comment-list]');
+test('confirmed unavailable GET locks only submission, preserves editable fields and recovers through a read',async()=>{
+  let reads=0;const s=await setup(()=>receipt(),()=>++reads===1?unavailableResponse():emptyComments());
+  try{
+    assert.equal(s.button.disabled,true);assert.match(s.status.textContent,/暂未开放/);assert.doesNotMatch(s.status.textContent,/再次投递|重试/);
+    assert.equal(recheck(s).type,'button');assert.equal(recheck(s).textContent,'重新检查');
+    for(const field of [...s.form.elements].filter(node=>['INPUT','TEXTAREA','FIELDSET'].includes(node.tagName)))assert.equal(field.disabled,false);
+    const before=JSON.stringify([...new s.dom.window.FormData(s.form)]);s.submit();assert.equal(s.bodies.length,0);assert.equal(JSON.stringify([...new s.dom.window.FormData(s.form)]),before);
+    s.button.disabled=false;s.submit();assert.equal(s.bodies.length,0,'handler guards even a programmatically enabled button');
+    s.input.value='服务恢复前仍能修改';s.form.elements.nickname.value='新的昵称';recheck(s).click();await tick();
+    assert.equal(reads,2);assert.equal(s.bodies.length,0);assert.equal(s.button.disabled,false);assert.equal(s.status.textContent,'');assert.equal(s.input.value,'服务恢复前仍能修改');assert.equal(s.form.elements.nickname.value,'新的昵称');
+    s.submit();await tick();assert.equal(s.bodies.length,1);assert.equal(s.bodies[0].message,'服务恢复前仍能修改');
+  }finally{s.close();}
+});
+test('POST-only unavailability offers a read-only recovery and retains its nonce and edited draft',async()=>{
+  const post=deferred();let reads=0;const s=await setup((body,n)=>n===1?post.promise:receipt(),()=>{reads++;return emptyComments();});
+  try{
+    s.submit();const originalNonce=s.bodies[0].submissionId;s.input.value+='\n';s.form.elements.nickname.value+=' ';
+    post.resolve(unavailableResponse());await tick();assert.equal(s.button.disabled,true);assert.match(s.status.textContent,/暂未开放/);assert.equal(s.input.value,'尚未投递的留言\n');assert.equal(s.form.elements.nickname.value,'听众 ');
+    s.submit();assert.equal(s.bodies.length,1);recheck(s).click();await tick();assert.equal(reads,2);assert.equal(s.bodies.length,1);assert.equal(s.button.disabled,false);
+    s.submit();await tick();assert.equal(s.bodies[1].submissionId,originalNonce,'read recovery does not rotate unchanged normalized payload');
+  }finally{s.close();}
+});
+for(const [name,failure] of [
+  ['network',()=>{throw new TypeError('offline');}],['timeout',()=>{throw new DOMException('Timeout','AbortError');}],
+  ['other 503',()=>json({code:'unavailable'},503)],['missing code',()=>json({message:'not_configured'},503)],
+  ['wrong status',()=>json({code:'not_configured'},500)],['invalid success',()=>json({code:'not_configured'})],
+  ['wrong type',()=>new Response('{"code":"not_configured"}',{status:503,headers:{'Content-Type':'text/html'}})],
+  ['bad JSON',()=>new Response('{bad',{status:503,headers:{'Content-Type':'application/json'}})],
+  ['array',()=>json([{code:'not_configured'}],503)],['null',()=>json(null,503)],
+  ['nonstring code',()=>json({code:['not_configured']},503)],['misleading code',()=>json({code:'not_configured_again'},503)]
+])for(const method of ['GET','POST'])test(`${method} ${name} cannot declare configuration unavailable`,async()=>{
+  const s=await setup(method==='POST'?failure:()=>receipt(),method==='GET'?failure:emptyComments);
+  try{if(method==='POST'){s.submit();await tick();}assert.equal(s.button.disabled,false);assert.equal(recheck(s),null);assert.equal(s.input.value,'尚未投递的留言');assert.doesNotMatch(s.status.textContent,/暂未开放/);}finally{s.close();}
+});
+test('failed rechecks keep the unavailable gate and recovery entry until a validated success',async()=>{
+  let reads=0;const s=await setup(()=>receipt(),()=>{
+    reads++;if(reads===1)return unavailableResponse();if(reads===2)throw new TypeError('offline');if(reads===3)return json({items:null});return emptyComments();
+  });
+  try{
+    for(let n=2;n<=3;n++){recheck(s).click();await tick();assert.equal(reads,n);assert.equal(s.button.disabled,true);assert.equal(recheck(s).disabled,false);assert.match(s.status.textContent,/暂未开放/);s.submit();assert.equal(s.bodies.length,0);}
+    recheck(s).click();await tick();assert.equal(s.button.disabled,false);assert.equal(recheck(s),null);assert.equal(s.input.value,'尚未投递的留言');
+  }finally{s.close();}
+});
+for(const getUnavailable of [false,true])test(`older GET evidence cannot reverse newer POST ${getUnavailable?'receipt':'unavailability'}`,async()=>{
+  const get=deferred(),post=deferred(),s=await setup(()=>post.promise,()=>get.promise);
+  try{
+    s.submit();post.resolve(getUnavailable?receipt():unavailableResponse());await tick();const feedback=s.status.textContent;
+    get.resolve(getUnavailable?unavailableResponse():emptyComments());await tick();assert.equal(s.status.textContent,feedback);assert.equal(s.button.disabled,!getUnavailable);assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+for(const getUnavailable of [false,true])for(const first of ['GET','POST'])test(`newer GET ${getUnavailable?'unavailability':'success'} wins configuration evidence, ${first} completes first`,async()=>{
+  const get=deferred(),post=deferred();let reads=0;
+  const s=await setup(()=>post.promise,()=>++reads===1?emptyComments():get.promise);
+  try{
+    s.submit();moreComments(s).dispatchEvent(new s.dom.window.Event('click'));
+    const finishGet=()=>get.resolve(getUnavailable?unavailableResponse():emptyComments());
+    const finishPost=()=>post.resolve(getUnavailable?receipt():unavailableResponse());
+    if(first==='GET'){
+      finishGet();await tick();assert.equal(s.button.disabled,true,'a successful read cannot unlock an active POST');assert.match(s.status.textContent,/正在投递/);s.submit();assert.equal(s.bodies.length,1);finishPost();
+    }else{finishPost();await tick();finishGet();}
+    await tick();assert.equal(s.button.disabled,getUnavailable);
+    if(getUnavailable){assert.match(s.status.textContent,/已收到/);assert.match(s.status.textContent,/暂未开放/);assert.ok(recheck(s),'receipt remains with a recovery entry');}
+    else{assert.doesNotMatch(s.status.textContent,/暂未开放/);assert.equal(recheck(s),null);assert.equal(s.input.value,'尚未投递的留言');}
+    assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+for(const phase of ['in flight','receipt'])test(`background GET failures do not overwrite ${phase} delivery feedback`,async()=>{
+  const get=deferred(),post=deferred();let reads=0;const s=await setup(()=>post.promise,()=>++reads===1?emptyComments():get.promise);
+  try{
+    s.submit();moreComments(s).dispatchEvent(new s.dom.window.Event('click'));
+    if(phase==='receipt'){post.resolve(receipt());await tick();}
+    const text=s.status.textContent;get.reject(new TypeError('offline'));await tick();assert.equal(s.status.textContent,text);
+    if(phase==='in flight'){post.resolve(receipt());await tick();}
+  }finally{s.close();}
+});
+test('successful recovery only removes its own unavailable message and retains a confirmed receipt',async()=>{
+  const get=deferred(),post=deferred();let reads=0;const s=await setup(()=>post.promise,()=>++reads===1?emptyComments():reads===2?get.promise:emptyComments());
+  try{
+    s.submit();moreComments(s).dispatchEvent(new s.dom.window.Event('click'));post.resolve(receipt('approved'));await tick();get.resolve(unavailableResponse());await tick();
+    assert.match(s.status.textContent,/^这条留言已公开。.*留言暂未开放。/);assert.equal(s.button.disabled,true);assert.equal(s.status.querySelector('span').textContent,' 留言暂未开放。');
+    recheck(s).click();await tick();assert.equal(s.status.textContent,'这条留言已公开。');assert.equal(s.status.querySelector('span'),null);assert.equal(s.button.disabled,false);assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+for(const leave of ['pathname','pagehide','detached','hidden','closed'])for(const result of ['success','unavailable'])test(`late GET ${result} after ${leave} cannot update the old comment view`,async()=>{
+  const get=deferred(),s=await setup(()=>receipt(),()=>get.promise);
+  try{
+    const list=commentList(s),root=s.form.closest('[data-comments]'),previous=list.textContent;
+    if(leave==='pathname')s.dom.window.history.pushState({},'','/other/');
+    if(leave==='pagehide')s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(leave==='detached')root.remove();if(leave==='hidden')root.hidden=true;if(leave==='closed')s.close();
+    get.resolve(result==='success'?emptyComments():unavailableResponse());await tick();assert.equal(list.textContent,previous);assert.equal(s.status.textContent,'');assert.equal(s.button.disabled,false);assert.equal(s.input.value,'尚未投递的留言');
+  }finally{s.close();}
+});
+for(const order of ['old while away','old before new','old after new'])test(`BFCache read recovery discards old GET and remains usable: ${order}`,async()=>{
+  const old=deferred(),fresh=deferred();let reads=0;const s=await setup(()=>receipt(),()=>++reads===1?old.promise:reads===2?fresh.promise:emptyComments());
+  try{
+    s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));
+    if(order==='old while away'){old.resolve(unavailableResponse());await tick();}
+    s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));assert.equal(reads,2,'return starts a read even if the old one is unresolved');
+    if(order==='old before new'){old.resolve(unavailableResponse());await tick();assert.equal(commentList(s).getAttribute('aria-busy'),'true');assert.equal(moreComments(s).disabled,true);}
+    fresh.resolve(emptyComments());await tick();
+    if(order==='old after new'){old.resolve(unavailableResponse());await tick();}
+    assert.equal(s.button.disabled,false);assert.equal(s.status.textContent,'');assert.equal(commentList(s).hasAttribute('aria-busy'),false);assert.equal(moreComments(s).disabled,false);assert.match(commentList(s).textContent,/还没有公开/);assert.equal(s.bodies.length,0);
+    moreComments(s).dispatchEvent(new s.dom.window.Event('click'));await tick();assert.equal(reads,3);assert.equal(commentList(s).hasAttribute('aria-busy'),false);
+  }finally{s.close();}
+});
+test('BFCache recheck recovery keeps unavailable state until the new read succeeds',async()=>{
+  const old=deferred(),fresh=deferred();let reads=0;const s=await setup(()=>receipt(),()=>++reads===1?unavailableResponse():reads===2?old.promise:fresh.promise);
+  try{
+    recheck(s).click();s.dom.window.dispatchEvent(new s.dom.window.Event('pagehide'));s.dom.window.dispatchEvent(new s.dom.window.Event('pageshow'));
+    old.resolve(emptyComments());await tick();assert.equal(s.button.disabled,true);assert.equal(recheck(s).disabled,true);
+    fresh.resolve(emptyComments());await tick();assert.equal(s.button.disabled,false);assert.equal(recheck(s),null);assert.equal(s.input.value,'尚未投递的留言');assert.equal(s.bodies.length,0);
+  }finally{s.close();}
+});
+
+for(const existing of [false,true])test(`stale unavailable list read stays recoverable without undoing a newer receipt: ${existing?'existing list':'initial load'}`,async()=>{
+  const get=deferred();let reads=0;
+  const item={id,nickname:'公开听众',message:'已有的公开留言',stamp:'star',reply:'',createdAt:'2026-10-10T00:00:00Z'};
+  const populated=()=>json({items:[item],total:1,next:null});
+  const s=await setup(()=>receipt('approved'),()=>{
+    reads++;if(existing&&reads===1)return populated();if(reads===(existing?2:1))return get.promise;return populated();
+  });
+  try{
+    if(existing)moreComments(s).dispatchEvent(new s.dom.window.Event('click'));
+    s.submit();await tick();assert.equal(s.status.textContent,'这条留言已公开。');get.resolve(unavailableResponse());await tick();
+    assert.equal(s.status.textContent,'这条留言已公开。');assert.equal(s.button.disabled,false);assert.equal(recheck(s),null);
+    const list=commentList(s);assert.match(list.textContent,/列表读取未完成/);assert.doesNotMatch(list.textContent,/暂未开放|正在打开/);
+    if(existing)assert.match(list.textContent,/已有的公开留言/);
+    const retry=list.querySelector('button');assert.ok(retry);assert.equal(retry.type,'button');retry.click();retry.click();await tick();
+    assert.equal(reads,existing?3:2);assert.equal(s.bodies.length,1);assert.equal(s.status.textContent,'这条留言已公开。');assert.equal(s.button.disabled,false);
+    assert.match(list.textContent,/已有的公开留言/);assert.doesNotMatch(list.textContent,/读取未完成/);assert.equal(list.querySelector('button'),null);
+  }finally{s.close();}
+});
+test('confirmed unavailable refresh preserves already rendered public comments',async()=>{
+  let reads=0;const s=await setup(()=>receipt(),()=>++reads===1?json({items:[{id,nickname:'听众',message:'已公开内容',stamp:'star',reply:'',createdAt:'2026-10-10T00:00:00Z'}],total:1,next:null}):unavailableResponse());
+  try{
+    moreComments(s).dispatchEvent(new s.dom.window.Event('click'));await tick();assert.match(commentList(s).textContent,/已公开内容/);assert.match(s.status.textContent,/暂未开放/);assert.equal(s.button.disabled,true);assert.ok(recheck(s));assert.equal(s.bodies.length,0);
+  }finally{s.close();}
+});
+
+test('unavailable evidence uses only the status recovery entry even after a stale list failure',async()=>{
+  const get=deferred();let reads=0;const s=await setup(()=>receipt(),()=>++reads===1?get.promise:unavailableResponse());
+  try{
+    s.submit();await tick();get.resolve(unavailableResponse());await tick();assert.ok(commentList(s).querySelector('button'));
+    commentList(s).querySelector('button').click();await tick();assert.equal(s.button.disabled,true);assert.equal(commentList(s).querySelector('button'),null);assert.ok(recheck(s));assert.match(s.status.textContent,/已收到.*暂未开放/);assert.equal(s.bodies.length,1);
+  }finally{s.close();}
+});
+for(const [name,response] of [
+  ['confirmed unavailable',unavailableResponse],['ordinary failure',()=>{throw new TypeError('offline');}],['success',emptyComments]
+])test(`real initial loading placeholder is removed on ${name}`,async()=>{
+  const get=deferred(),s=await setup(()=>receipt(),()=>get.promise);
+  try{
+    const list=commentList(s),placeholder=list.querySelector('p.community-empty');assert.equal(placeholder.textContent,'正在打开留言簿……');
+    get.resolve(Promise.resolve().then(response));await tick();assert.equal(placeholder.isConnected,false);assert.doesNotMatch(list.textContent,/正在打开/);
+    if(name==='confirmed unavailable'){assert.match(s.status.textContent,/暂未开放/);assert.ok(recheck(s));}
+    if(name==='ordinary failure')assert.ok(list.querySelector('button'));
+    if(name==='success')assert.match(list.textContent,/还没有公开/);
+  }finally{s.close();}
+});
+test('unavailable response removes only the captured loading node and preserves newer list content',async()=>{
+  const get=deferred(),s=await setup(()=>receipt(),()=>get.promise);
+  try{
+    const list=commentList(s),placeholder=list.querySelector('p'),card=s.dom.window.document.createElement('article'),newState=s.dom.window.document.createElement('p');
+    card.className='encore-message';card.textContent='已渲染的留言';newState.className='community-empty';newState.textContent='较新的状态';list.append(card,newState);
+    get.resolve(unavailableResponse());await tick();assert.equal(placeholder.isConnected,false);assert.equal(card.parentNode,list);assert.equal(newState.parentNode,list);assert.match(list.textContent,/已渲染的留言.*较新的状态/);assert.doesNotMatch(list.textContent,/正在打开/);
   }finally{s.close();}
 });

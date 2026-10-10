@@ -7,7 +7,7 @@ test('module audit distinguishes static edges from dynamic imports',()=>{
 test('built global graph excludes route/audio/graph modules and retains essential UI',()=>{
  const result=graph(publicDir,['atelier/js/main.js']),names=result.files.map(file=>path.basename(file.path));
  for(const file of ['ui.js','theme.js','navigation-scenes.js','search.js','queue.js','offline.js','route-features.js','rhythm.js','stage-engine.js'])assert.ok(names.includes(file),file);
- for(const file of ['archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js','search-context.mjs'])assert.ok(!names.includes(file),file);
+ for(const file of ['archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js','search-context.mjs','community-moderation.js'])assert.ok(!names.includes(file),file);
  assert.ok(result.modules<25);assert.ok(result.bytes<100000);
  const routes=report(publicDir).routes,base=routes.find(row=>row.route==='/');assert.equal(base.bytes,result.bytes);
  const notes=routes.find(row=>row.route==='/notes/');assert.ok(notes.files.some(file=>file.path.endsWith('archive-worker.js')));assert.ok(!notes.files.some(file=>file.path.endsWith('constellation.js')));
@@ -43,3 +43,26 @@ test('two-sum route audit counts the scoped demo and its core without global loa
  assert.ok(!result.files.some(file=>file.path.endsWith('/search-context.mjs')));
  assert.match(fs.readFileSync(path.join(__dirname,'../source/atelier/js/search.js'),'utf8'),/import\('\.\/search-context\.mjs'\)/);
  });
+
+test('source admin interface is lazy while its route report includes shared dependencies once',()=>{
+ const source=path.resolve(__dirname,'../source'),result=report(source),admin=result.routes.find(row=>row.route==='/admin/');
+ assert.ok(result.initial.bytes<100000);
+ assert.ok(!result.initial.files.some(file=>file.path.endsWith('/community-moderation.js')));
+ assert.ok(admin.files.some(file=>file.path.endsWith('/community-moderation.js')));
+ assert.equal(admin.files.filter(file=>file.path.endsWith('/community.js')).length,1);
+ assert.equal(admin.bytes-result.initial.bytes,fs.statSync(path.join(source,'atelier/js/community-moderation.js')).size);
+ assert.match(fs.readFileSync(path.join(source,'atelier/js/community.js'),'utf8'),/import\('\.\/community-moderation\.js'\)/);
+});
+
+test('offline manifest generator automatically covers the new lazy admin module without a site build',()=>{
+ const generators=new Map(),previous=globalThis.hexo;
+ try {
+  globalThis.hexo={extend:{generator:{register:(name,fn)=>generators.set(name,fn)},helper:{register(){}}}};
+  const script=require.resolve('../scripts/live-archive.js');delete require.cache[script];require(script);
+  for(const root of ['/','/preview/']){
+   const result=generators.get('live-archive').call({config:{root},base_dir:path.resolve(__dirname,'..')},{posts:{sort:()=>({toArray:()=>[]})},data:{}});
+   const shell=JSON.parse(result.find(file=>file.path==='atelier/data/offline-shell.json').data);
+   for(const file of ['community.js','community-moderation.js','ui.js','theme.js'])assert.ok(shell.includes(root+'atelier/js/'+file),file);
+  }
+ }finally{if(previous===undefined)delete globalThis.hexo;else globalThis.hexo=previous;}
+});
