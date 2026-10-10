@@ -136,13 +136,30 @@ function readerTableFocus(content){
   for(const index of edits.reverse())content=content.slice(0,index)+' tabindex="0"'+content.slice(index);
   return content;
 }
+function readerCodeFocus(content){
+  if(!/<figure\b/i.test(content))return content;
+  const edits=[];
+  const highlighted=node=>node.name==='figure'&&/(?:^|\s)highlight(?:\s|$)/.test(node.attribs?.class||'');
+  const explicitFocus=node=>'tabindex'in(node.attribs||{})||(node.children||[]).some(explicitFocus);
+  const hasCode=node=>node.name==='pre'||(node.children||[]).some(hasCode);
+  function visit(node,owned=false){
+    const code=highlighted(node);
+    // Focus the actual outer scroller, never code lines or the layout table.
+    // Preserve author-owned focus behavior, including an explicit opt-out.
+    if(code&&hasCode(node)&&!owned&&!explicitFocus(node))edits.push(node.startIndex+7);
+    for(const child of node.children||[])visit(child,owned||code||'tabindex'in(node.attribs||{}));
+  }
+  visit(parseDocument(content,{withStartIndices:true}));
+  for(const index of edits.reverse())content=content.slice(0,index)+' tabindex="0"'+content.slice(index);
+  return content;
+}
 function articleContent(page,{reading=false}={}){
   let content=String(page.content||'');const state=exerciseState(page);
   // The raw section must equal the known empty template. Never discard partial work.
   if(state?.codePlaceholder)content=removeRenderedSection(content,'代码实现');
   if(state?.analysisPlaceholder)content=removeRenderedSection(content,'个人解析');
   content=reading?readerTitleAnchor(content,page.title):content.replace(/^(\s*)<h1\b[^>]*>([\s\S]*?)<\/h1>/i,(all,space,title)=>plain(title)===plain(page.title)?space:all);
-  if(reading)content=readerTableFocus(readerExerciseMetadata(content,page));
+  if(reading)content=readerCodeFocus(readerTableFocus(readerExerciseMetadata(content,page)));
   return content.replace(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(all,level,body)=>plain(body)||/<(?:img|svg|video)\b/i.test(body)?all:'');
 }
 module.exports={plain,section,exerciseState,metadata,articleContent,CODE_PLACEHOLDER,ANALYSIS_PLACEHOLDER};

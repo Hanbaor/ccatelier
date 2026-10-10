@@ -37,3 +37,6 @@
 .reading-studio .article-body.markdown-body>table:not(.not-markdown){display:block;table-layout:auto;max-width:100%;overflow-x:auto}
 .reading-studio .article-body.markdown-body>table:not(.not-markdown) :is(th,td){min-width:90px;overflow-wrap:anywhere}
 .reading-studio .article-body.markdown-body>table:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+
+/* Inset focus stays visible inside the code container's clipped border. */
+.reading-studio .article-body.markdown-body figure.highlight:focus-visible{outline:2px solid var(--yellow);outline-offset:-2px}

@@ -2,7 +2,7 @@
   <% const readiness=live_metadata(page).exercise;
      const sourceReaderContent=live_reader_content(page);
      const permutationCandidates=String(page.source_id)==='124338541' && nijika_permutation_demo(page)
-       ? [...sourceReaderContent.matchAll(/<div class="code-container" data-rel="Cpp"><figure[\s\S]*?<\/figure><\/div>|<figure class="(?:iseeu )?highlight cpp">[\s\S]*?<\/figure>/g)] : [];
+       ? [...sourceReaderContent.matchAll(/<div class="code-container" data-rel="Cpp"><figure[\s\S]*?<\/figure><\/div>|<figure(?: tabindex="0")? class="(?:iseeu )?highlight cpp">[\s\S]*?<\/figure>/g)] : [];
      const permutationCode=permutationCandidates.length===1 ? permutationCandidates[0] : null;
      const permutationOffset=permutationCode ? permutationCode.index+permutationCode[0].length : -1;
      const readerContent=permutationOffset<0 ? sourceReaderContent : sourceReaderContent.slice(0,permutationOffset)+partial('nijika/permutation-demo')+sourceReaderContent.slice(permutationOffset);

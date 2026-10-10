@@ -228,7 +228,9 @@ h1,h2 {text-wrap:balance}
 .reading-studio .article-body.markdown-body .code-container {border-radius:var(--ui-radius);padding-top:44px}
 .reading-studio .code-container .copy-code,.code-workbench-open {min-height:34px;top:5px;font-size:11px}
 .code-workbench-open {right:72px}
-.reading-studio .code-container pre,.reading-studio .article-body.markdown-body figure.highlight {font-size:13px;line-height:1.85}
+/* Keep the compact 13px baseline at 18px prose, while honoring reader zoom. */
+.reading-studio .code-container pre,.reading-studio .article-body.markdown-body figure.highlight {font-size:calc(var(--reader-size) / 18 * 13);line-height:1.85}
+.reading-studio .article-body.markdown-body table:not(.highlight table) {font-size:calc(var(--reader-size) / 18 * 13)}
 .chapter-copy {min-width:32px;min-height:32px;opacity:0}
 .reading-studio .neighbor-posts {display:flex;gap:24px;margin:28px 0 16px;padding:0;border:0}
 .reading-studio .neighbor-posts a {flex:1;min-width:0;padding:0;border:0;background:none;max-width:50%;gap:4px}

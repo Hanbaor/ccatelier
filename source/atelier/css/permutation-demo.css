@@ -51,7 +51,7 @@
 .permutation-demo .permutation-timeline{display:block;box-sizing:border-box;width:100%;min-width:0;margin:.1rem 0 .65rem;min-height:44px;accent-color:var(--trace-gold);cursor:pointer}
 .permutation-demo .permutation-output{font-size:.75em;display:flex;gap:.75rem;align-items:baseline;flex-wrap:wrap;color:var(--muted,#666)}
 .article-body .permutation-demo .permutation-output ol{display:flex;gap:.4rem .8rem;flex-wrap:wrap;list-style:none;padding:0;margin:0;max-height:8rem;overflow-y:auto;min-width:0;font:1em/1.9 ui-monospace,SFMono-Regular,Consolas,monospace}
-.article-body .permutation-demo .permutation-output li{margin:0;padding:0}
+.article-body .permutation-demo .permutation-output li{margin:0;padding:0;list-style:none}
 .permutation-demo .permutation-output button{font:inherit;min-height:44px;min-width:44px;padding:.25rem .4rem;background:transparent}
 .permutation-demo .permutation-output [data-latest=true]{color:var(--trace-gold);font-weight:600}
 /* Deliberately no CSS animations or transitions, including during playback. */

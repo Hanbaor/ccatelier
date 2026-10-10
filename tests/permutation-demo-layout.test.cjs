@@ -31,3 +31,12 @@ test('trace anchor stays collapsed and reader text extraction excludes both stat
 test('residual numeric values retain opaque muted text rather than low-contrast faded data',async()=>{
  const {mountPermutationDemo}=await import('../source/atelier/js/permutation-demo-view.js'),dom=fixture();try{mountPermutationDemo(dom.window.document.querySelector('details'));const slot=dom.window.document.querySelector('.permutation-slot[data-active=false] b');assert.equal(dom.window.getComputedStyle(slot).opacity,'');assert.doesNotMatch(css,/opacity\s*:\s*\.56/);assert.match(css,/\.permutation-slot\{[^}]*color:var\(--muted/);}finally{dom.window.close();}
 });
+test('result chips suppress theme decimal markers on li while preserving the semantic ol and ordinary lists',async()=>{
+ const {mountPermutationDemo}=await import('../source/atelier/js/permutation-demo-view.js');
+ // The real theme assigns list-style to li itself, overriding a reset only on ol.
+ const themeSource=read('node_modules/hexo-theme-redefine/source/css/common/markdown.styl');
+ assert.match(themeSource,/ol:not\(\.not-markdown\)[\s\S]*?\n    li\n      list-style decimal/);
+ const themeRule='.markdown-body ol:not(.not-markdown) li{list-style:decimal}';
+ const dom=new JSDOM(`<style>${themeRule}</style><style>${css}</style><div class="article-body markdown-body"><ol id="ordinary"><li>Author list</li></ol>${ejs.render(read('custom/redefine/nijika/permutation-demo.ejs'),{url_for:p=>'/'+p})}</div>`,{pretendToBeVisual:true});
+ try{const doc=dom.window.document;mountPermutationDemo(doc.querySelector('details'));const seek=doc.querySelector('[data-permutation-seek]');seek.value=seek.max;seek.dispatchEvent(new dom.window.Event('input'));const results=doc.querySelector('[data-permutation-results]');assert.equal(results.tagName,'OL');assert.equal(results.children.length,6);for(const item of results.children){assert.equal(item.tagName,'LI');assert.equal(dom.window.getComputedStyle(item).listStyle,'none');assert.equal(item.firstElementChild.tagName,'BUTTON');}assert.equal(dom.window.getComputedStyle(doc.querySelector('#ordinary li')).listStyle,'decimal');}finally{dom.window.close();}
+});
