@@ -121,3 +121,64 @@
  .project-implementation {margin-top:28px}
  .project-implementation>summary>span {display:block;margin-left:0}
 }
+
+/* Editorial project spreads: one illustration, two explorable source studies. */
+.project-intro {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:center;gap:clamp(28px,5vw,72px)}
+.project-summary {padding-block:24px}
+.project-context {font:500 11px/1.6 var(--sans);letter-spacing:.12em}
+.project-summary h1 {font-size:clamp(42px,5.2vw,72px);line-height:1.03;margin-bottom:28px}
+.project-lead {font-size:clamp(21px,2.2vw,29px);line-height:1.55;letter-spacing:-.03em;max-width:15em}
+.project-description {font-size:14px;line-height:1.9;max-width:28em;margin-top:16px;color:var(--muted)}
+.project-art {margin:0;align-self:stretch;display:flex;flex-direction:column;background:none;border-radius:0}
+.project-art img {height:100%;min-height:310px;max-height:420px;aspect-ratio:1.4;object-fit:cover;object-position:64% center;border-radius:2px}
+.project-art figcaption {display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:13px;font:10px/1.6 var(--sans);letter-spacing:.09em;color:var(--muted)}
+.project-implementation {margin-top:28px}
+.project-section-heading {display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:32px}
+.project-section-heading h2 {font:500 clamp(26px,2.7vw,36px)/1.3 var(--chinese);letter-spacing:-.035em;margin:0}
+.project-section-heading>span {font:11px/1.6 var(--sans);color:var(--muted)}
+.project-coursework-list {grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(28px,5vw,72px)}
+.project-coursework-list>li {display:flex;flex-direction:column;gap:22px}
+.project-coursework-heading {position:relative}
+.project-work-number {position:absolute;right:0;top:0;font:600 48px/1 var(--condensed);color:var(--line)}
+.project-coursework-heading h3 {font-size:clamp(30px,3.3vw,44px);letter-spacing:-.04em}
+.project-coursework-body {display:flex;flex-direction:column;align-items:flex-start;flex:1}
+.project-coursework-body>p {font-size:15px;max-width:31em}
+.project-coursework-stack {margin-top:auto;padding-top:16px}
+.project-process {margin-top:26px;padding:25px 28px 19px;background:var(--surface);color:var(--ink)}
+.project-process-caption,.project-process-footnote {display:block;font:10px/1.7 var(--sans);letter-spacing:.1em;color:var(--muted)}
+.project-process ol {list-style:none;padding:0;margin:20px 0 14px;display:grid;gap:0}
+.project-process li {min-width:0;position:relative;padding:0}
+.project-process li+li {border-top:1px solid var(--line)}
+.project-process summary {display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:60px;cursor:pointer;list-style:none}
+.project-process summary::-webkit-details-marker {display:none}
+.project-process summary:after {content:'+';font:400 22px/1 var(--sans);color:var(--yellow)}
+.project-process details[open]>summary:after {content:'−'}
+.project-process summary:focus-visible {outline:2px solid var(--ink);outline-offset:5px}
+.project-process summary span {display:block;font:9px/1.6 var(--sans);letter-spacing:.1em;color:var(--muted)}
+.project-process strong {display:block;font:500 clamp(15px,1.6vw,19px)/1.65 var(--sans)}
+.project-process strong i {font-style:normal;color:var(--yellow);margin-inline:5px}
+.project-process details p {font:13px/1.85 var(--chinese);color:var(--text);margin:0 0 15px;overflow-wrap:anywhere}
+.project-process details code {font:12px/1.8 var(--mono);overflow-wrap:anywhere}
+.project-process details a {text-decoration:underline;text-underline-offset:4px}
+.project-process-footnote {letter-spacing:0;font-family:var(--chinese)}
+.project-reading {padding-top:34px;border-top:1px solid var(--line)}
+@media(max-width:760px) {
+ .project-intro {grid-template-columns:minmax(0,1fr);gap:28px}
+ .project-summary {padding:0}
+ .project-summary h1 {font-size:clamp(42px,8vw,62px)}
+ .project-lead {max-width:none}
+ .project-art img {min-height:0;max-height:350px;height:auto;aspect-ratio:1.65;object-fit:cover}
+ .project-coursework-list {grid-template-columns:minmax(0,1fr);gap:42px}
+ .project-coursework-list>li {gap:18px}
+ .project-coursework-heading h3 {font-size:34px}
+ .project-section-heading {align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:26px}
+ .project-process {padding:22px;margin-top:22px}
+ .project-process strong {font-size:18px}
+ .project-reading {padding-top:26px}
+}
+@media print {
+ .project-art {display:none}
+ .project-intro {display:block}
+ .project-coursework-list {grid-template-columns:minmax(0,1fr)}
+ .project-process details {break-inside:avoid}
+}

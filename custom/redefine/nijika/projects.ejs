@@ -2,16 +2,16 @@
 <section class="atelier-room room-projects project-case" aria-labelledby="project-title">
   <header class="project-intro">
     <div class="project-summary">
-      <p class="project-context">个人作品 · 网站</p>
+      <p class="project-context">SELECTED WORK / 作品与实践</p>
       <h1 id="project-title" tabindex="-1">CC Atelier</h1>
-      <p class="project-lead">一间写代码、记笔记，也留给兴趣的创作室。</p>
-      <p class="project-description">基于 Hexo / Redefine。以静态文章为底，慢慢加入搜索、阅读工具与声音实验。</p>
+      <p class="project-lead">把想法，做成可以打开的东西。</p>
+      <p class="project-description">这个网站也是一件持续打磨的作品。以静态文章为底，连接代码、笔记与声音实验。</p>
       <div class="project-actions">
         <a class="room-action" href="<%= url_for('notes/') %>">浏览笔记 <%- partial('nijika/editorial-arrow') %></a>
         <a class="project-text-link" href="https://github.com/Hanbaor/ccatelier/tree/nijika-dot" target="_blank" rel="noopener noreferrer">查看源码 <%- partial('nijika/editorial-arrow') %></a>
       </div>
     </div>
-    <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:1280px) 92vw, 1200px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"></figure>
+    <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:760px) 92vw, (max-width:1280px) 50vw, 649px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"><figcaption><span>01 / CC ATELIER</span><span>网站 · 阅读 · 声音</span></figcaption></figure>
   </header>
 
   <details class="project-implementation">
@@ -54,10 +54,15 @@
   </details>
 
   <section class="project-section project-coursework" aria-labelledby="project-coursework-title">
-    <h2 id="project-coursework-title">课程实践</h2>
+    <div class="project-section-heading"><h2 id="project-coursework-title">课程实践</h2><span>02—03 / 从材料到模型</span></div>
     <ul class="project-coursework-list">
       <li>
-        <div class="project-coursework-heading"><p class="project-coursework-kind">课程助教原型</p><h3>EduRAG</h3></div>
+        <div class="project-coursework-heading"><span class="project-work-number" aria-hidden="true">02</span><p class="project-coursework-kind">课程助教原型</p><h3>EduRAG</h3>
+          <div class="project-process project-process-rag" role="group" aria-label="EduRAG 流程示意：课程材料、检索问答、来源片段与选择题自测">
+            <span class="project-process-caption">RETRIEVE → READ</span>
+            <ol><li><details><summary><div><span>01 / INPUT</span><strong>课程材料</strong></div></summary><p>从课程材料开始，问答围绕这些材料展开。</p></details></li><li><details><summary><div><span>02 / RETRIEVAL</span><strong>检索问答</strong></div></summary><p>检索相关内容，再围绕问题组织回答；来源片段为核对答案提供入口。</p></details></li><li><details><summary><div><span>03 / OUTPUT</span><strong>来源片段 <i>＋</i> 自测题</strong></div></summary><p>答案旁展示来源片段，并可生成选择题进行自测。</p></details></li></ol>
+            <span class="project-process-footnote">展开阶段，查看材料与产物 · 功能导览</span>
+          </div></div>
         <div class="project-coursework-body">
           <p>围绕课程材料做检索问答，展示来源片段，并生成选择题用于自测。</p>
           <ul class="project-coursework-stack" aria-label="EduRAG 技术栈"><li>Streamlit</li><li>LlamaIndex</li><li>FAISS</li></ul>
@@ -65,7 +70,12 @@
         </div>
       </li>
       <li>
-        <div class="project-coursework-heading"><p class="project-coursework-kind">德英翻译课程实验</p><h3>Transformer</h3></div>
+        <div class="project-coursework-heading"><span class="project-work-number" aria-hidden="true">03</span><p class="project-coursework-kind">德英翻译课程实验</p><h3>Transformer</h3>
+          <div class="project-process project-process-transformer" role="group" aria-label="Transformer 流程示意：德语输入、编码器与解码器、束搜索和英语输出；使用 BLEU 评估">
+            <span class="project-process-caption">ENCODE → DECODE</span>
+            <ol><li><details><summary><div><span>DE → EN</span><strong>德语 <i>→</i> 英语</strong></div></summary><p>输入语言为德语，输出为英语。配置在 <code>configs/transformer.yml</code> 中；训练、推理使用一致的分词方式。</p></details></li><li><details><summary><div><span>MODEL</span><strong>Encoder <i>→</i> Decoder</strong></div></summary><p><code>src/model.py</code> 定义模型，<code>src/train.py</code> 负责训练。公开实现使用固定正弦位置编码。</p></details></li><li><details><summary><div><span>DECODE / EVALUATE</span><strong>Beam search <i>·</i> BLEU</strong></div></summary><p><code>src/translate.py</code> 支持束搜索。评估输出 <code>results/test_pairs.txt</code>（翻译配对）与 <code>results/test_bleu.txt</code>（BLEU 结果文件）。</p></details></li></ol>
+            <span class="project-process-footnote">展开阶段，查看实现与产物 · 功能导览</span>
+          </div></div>
         <div class="project-coursework-body">
           <p>用编码器—解码器 Transformer 练习德英翻译，串起训练、束搜索与 BLEU 评估流程。</p>
           <ul class="project-coursework-stack" aria-label="Transformer 技术要点"><li>PyTorch</li><li>Beam search</li><li>BLEU</li></ul>

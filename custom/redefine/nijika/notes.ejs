@@ -1,7 +1,22 @@
 <section class="live-archive catalog-v3 content-view" data-archive aria-label="笔记目录">
-  <header class="catalog-heading-v3">
-    <div><h1 tabindex="-1">笔记</h1><p><a href="<%= url_for('series/hot100/') %>">Hot100 <%- partial('nijika/editorial-arrow') %></a></p></div><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width:600px) 100px, 160px" width="1536" height="1024" alt="日光窗边写笔记的虹夏" decoding="async">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/editorial-index.css') %>">
+  <header class="catalog-heading-v3 notes-editorial-heading">
+    <div><p class="index-eyebrow">FIELD NOTES / 学习与验证</p><h1 tabindex="-1">笔记<span>把思路，写清楚。</span></h1><p class="notes-deck">从容器到算法，从张量到模型。<br>顺着一个问题，读到它的实现。</p><nav aria-label="笔记页导航"><a href="#reading-paths">选一条阅读路径 ↓</a><a href="#notes-catalog">查找笔记 ↗</a></nav></div>
+    <figure><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width:700px) 92vw, 460px" width="1536" height="1024" alt="日光窗边写笔记的虹夏主题插画" decoding="async" fetchpriority="high"><figcaption>READ / TRACE / TRY<span>CC 的学习手记</span></figcaption></figure>
   </header>
+  <section class="notes-paths" id="reading-paths" aria-labelledby="reading-paths-title">
+    <header class="index-section-heading"><h2 id="reading-paths-title">从这里读起</h2><span>编辑选读 / 按问题串起的线索</span></header>
+    <div class="notes-path-grid">
+    <% const paths=[
+      {number:'01',label:'CONTAINERS',title:'数据，如何组织？',description:'从基本操作走到一道真实题目。',shape:'[ ] → { }',steps:[['writing/csdn-124387071/','vector · 连续存储'],['writing/csdn-124460411/','set · 有序与去重'],['writing/csdn-124514677/','列车调度 · 边界查找']]},
+      {number:'02',label:'ALGORITHMS',title:'问题，如何拆开？',description:'沿着状态、递归与拆分往下走。',shape:'n → n/2',steps:[['writing/csdn-124338541/','全排列 · 搜索与回溯'],['writing/csdn-154834561/','分治 · 拆分与合并'],['series/hot100/','Hot100 · 按主题练习']]},
+      {number:'03',label:'MACHINE LEARNING',title:'模型，如何学习？',description:'从张量实验进入分类任务。',shape:'x → f(x)',steps:[['writing/csdn-149880710/','PyTorch · 张量与梯度'],['projects/#project-coursework-title','课程实践 · 从材料到模型']]}
+    ]; paths.forEach(path=>{ %>
+      <article class="notes-path"><div class="path-topline"><span><%= path.number %> / <%= path.label %></span><span class="path-formula" aria-hidden="true"><%= path.shape %></span></div><h3><%= path.title %></h3><p><%= path.description %></p><details open><summary>展开选读 <span><%= path.steps.length %> 个入口</span></summary><ol><% path.steps.forEach(([route,label])=>{ %><li><a href="<%= url_for(route) %>"><%= label %><span aria-hidden="true">↗</span></a></li><% }) %></ol></details></article>
+    <% }) %>
+    </div>
+  </section>
+  <section class="notes-catalog-shell" id="notes-catalog" aria-labelledby="notes-catalog-title"><header class="index-section-heading"><h2 id="notes-catalog-title">全部笔记</h2><a href="<%= url_for('series/hot100/') %>">Hot100 专题 ↗</a></header>
   <div class="archive-app" hidden>
     <div class="archive-discovery">
       <div class="archive-group" role="group" aria-label="文章类型"><button type="button" data-group="writing">笔记</button><button type="button" data-group="hot100">Hot100</button><button type="button" data-group="all">全部</button></div>
@@ -18,4 +33,5 @@
     </div></div>
   </div>
   <div class="archive-fallback"><p>笔记 · 按发布时间排序 · <a href="<%= url_for('archives/') %>">完整归档 <%- partial('nijika/editorial-arrow') %></a></p><div class="archive-results" data-mode="list"><% page.posts.each((post,index)=>{ %><%- partial('nijika/archive-row',{post,index}) %><% }) %></div><%- partial('nijika/pagination') %></div>
+  </section>
 </section>

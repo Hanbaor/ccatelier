@@ -25,14 +25,24 @@ const sqlCases = [
 <section class="atelier-room room-research" aria-label="研究">
   <header class="personal-research-opening">
     <div class="personal-research-copy">
-      <p class="personal-eyebrow">关注的方向</p>
+      <p class="personal-eyebrow">RESEARCH NOTES / 关注与练习</p>
       <h1 tabindex="-1">研究</h1>
       <p class="personal-intro">Database · Text-to-SQL</p>
+      <p class="research-opening-question">从一句问题，<br>到一个可信的答案。</p>
+      <p class="research-opening-note">关注查询如何表达意图，也关心结果为什么成立。</p>
       <a class="personal-research-link" href="<%= url_for('notes/') %>">阅读笔记 <%- partial('nijika/editorial-arrow') %></a>
     </div>
-    <figure class="personal-research-art"><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) 92vw, 430px" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"></figure>
+    <figure class="personal-research-art"><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) 92vw, (max-width:1280px) 40vw, 504px" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><figcaption><span>问题 / 表达 / 验证</span><span>CC 的研究笔记</span></figcaption></figure>
   </header>
-  <p class="personal-research-caption">下面是一个 SQL 教学示例：从小数据出发，观察查询与预期的差别。</p>
+  <section class="research-framing" aria-labelledby="research-framing-title">
+    <div class="research-framing-heading"><p>从问题到验证 / 01</p><h2 id="research-framing-title">答案，藏在细节里。</h2></div>
+    <ol class="research-questions">
+      <li><span>01 / INTENT</span><details><summary><h3>零首，还是一首？</h3></summary><p>LEFT JOIN 会为 Moss 保留一行。COUNT(*) 得到 1，COUNT(t.id) 才得到题目要求的 0。</p></details><p>“每一位”，也包含没有曲目的人。</p></li>
+      <li><span>02 / SEMANTICS</span><details><summary><h3>第一名，只有一个？</h3></summary><p>Blue 与 Gold 同为 95 分。LIMIT 1 遗漏并列；筛选等于最高分的记录会保留两个答案。</p></details><p>并列、空值、零行，都可能改变答案。</p></li>
+      <li><span>03 / EVIDENCE</span><details><summary><h3>没出现，就能留下？</h3></summary><p>NOT IN 的子查询含 NULL 时，未命中的判断也可能为未知值。下方第三例用 NOT EXISTS 检查匹配。</p></details><p>从几行数据开始，对照实际与预期。</p></li>
+    </ol>
+  </section>
+  <p class="personal-research-caption">SQL 教学示例 · 展开上方问题，再到下方运行对照。</p>
   <section class="sql-lab" data-sql-lab aria-labelledby="sql-lab-title">
     <header class="sql-lab-heading"><div><p>QUERY / RESULT</p><h2 id="sql-lab-title">能运行，然后呢？</h2></div><span>SQLite · 浏览器内运行</span></header>
     <div class="sql-case-switch" data-sql-switch hidden aria-label="选择 SQL 教学示例">

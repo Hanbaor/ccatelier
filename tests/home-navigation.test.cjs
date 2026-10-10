@@ -18,7 +18,7 @@ function render(name, prefix = '/', writing = []) {
     theme: yaml.load(read('_config.redefine.yml')),
     url_for: value => prefix + String(value).replace(/^\//, ''),
     nijika_writing: () => writing, live_metadata: post=>({excerpt:post.excerpt||''}),
-    date: () => '2026.10.10', date_xml: () => '2026-10-10',
+    date: value => String(value).slice(0,10).replaceAll('-','.'), date_xml: value => new Date(value).toISOString(),
     partial: name => read(`custom/redefine/${name}.ejs`)
   };
   context.nijika_art_srcset = helpers.nijika_art_srcset.bind(context);
@@ -32,12 +32,22 @@ for (const prefix of ['/', '/lab/']) {
    try {
     const doc=dom.window.document;
     assert.equal(doc.querySelectorAll('h1').length,1);
-    assert.match(doc.querySelector('h1').textContent,/CC/);
+    assert.ok(doc.querySelector('h1').textContent.trim());
+    if(name==='cover')assert.match(doc.querySelector('h1').textContent,/CC/);
     assert.ok(doc.querySelector(`a[href="${prefix}writing/example/"]`));
     assert.ok(doc.querySelector(`a[href="${prefix}writing/second/"]`));
-    for(const route of ['notes/','projects/','research/','studio/','about/']) assert.ok(doc.querySelector(`a[href="${prefix}${route}"]`),route);
+    for(const route of ['notes/','projects/','research/','studio/','about/']) assert.ok([...doc.querySelectorAll('a[href]')].some(a=>new URL(a.getAttribute('href'),'https://ccatelier.test').pathname===prefix+route),route);
     assert.equal(doc.querySelectorAll('a a,script,example').length,0);
-    assert.match(doc.textContent||doc.body.textContent,/真实摘要 <script>不执行<\/script>/);
+    if(name==='cover')assert.equal(doc.querySelector('.personal-note p').textContent,writing[0].excerpt);
+    const entries=[...doc.querySelectorAll(name==='cover'?'.personal-note':'.creation-traces li')];
+    assert.equal(entries.length,writing.length);
+    entries.forEach((entry,index)=>{
+     const title=entry.querySelector(name==='cover'?'h3 a':'a').cloneNode(true);
+     title.querySelectorAll('[aria-hidden],svg').forEach(node=>node.remove());
+     assert.equal(title.textContent.trim(),writing[index].title);
+     assert.equal(entry.querySelector('time').textContent,writing[index].date.replaceAll('-','.'));
+     assert.equal(new Date(entry.querySelector('time').dateTime).toISOString(),new Date(writing[index].date).toISOString());
+    });
     for(const img of doc.querySelectorAll('img')) {
      assert.ok(img.alt.trim());assert.ok(img.width>0&&img.height>0);
      assert.ok(fs.existsSync(path.join(root,'source',img.getAttribute('src').slice(prefix.length))));
@@ -75,23 +85,72 @@ test('cover keeps native navigation and tolerates absent optional artwork',()=>{
  assert.doesNotMatch(source,/preventDefault|location.assign|setTimeout/);
 });
 
-test('long unbroken article excerpts wrap on both personal page compositions',()=>{
+test('long article content stays intact with wrapping in the relevant compositions',()=>{
  const css=read('source/atelier/css/personal-home.css');
- assert.match(css,/\.personal-note p \{[^}]*overflow-wrap:anywhere/);
- assert.match(css,/\.atelier-writing-summary \{[^}]*overflow-wrap:anywhere/);
+ const indexCss=read('source/atelier/css/editorial-index.css');
  const excerpt='https://example.test/'+ 'unbroken'.repeat(100);
+ const title='LongUnbrokenArticleTitle'.repeat(80);
  for(const name of ['cover','stage']) {
-  const dom=render(name,'/',[{...writing[0],excerpt}]);
-  try {const summary=dom.window.document.querySelector(name==='cover'?'.personal-note p':'.atelier-writing-summary');assert.equal(summary.textContent,excerpt);}finally{dom.window.close();}
+  const dom=render(name,'/',[{...writing[0],title,excerpt}]);
+  try {
+   const style=dom.window.document.createElement('style');
+   style.textContent=name==='cover'?css:indexCss;
+   dom.window.document.head.append(style);
+   const renderedLink=dom.window.document.querySelector(name==='cover'?'.personal-note h3 a':'.creation-traces li>a');
+   assert.equal(dom.window.getComputedStyle(renderedLink).overflowWrap,'anywhere');
+   if(name==='cover')assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.personal-note p')).overflowWrap,'anywhere');
+   const link=renderedLink.cloneNode(true);
+   link.querySelectorAll('[aria-hidden],svg').forEach(node=>node.remove());
+   assert.equal(link.textContent.trim(),title);
+   if(name==='cover')assert.equal(dom.window.document.querySelector('.personal-note p').textContent,excerpt);
+   else assert.equal(dom.window.document.querySelectorAll('.creation-traces li p,.atelier-writing-summary').length,0);
+  }finally{dom.window.close();}
  }
 });
 
-test('hero framing preserves both hands across desktop and tablet crops',()=>{
- const css=read('source/atelier/css/personal-home.css');
- assert.match(css,/\.personal-portrait img \{[^}]*object-position:90% center/);
- for(const ratio of [1.25,1.05]){
-  const crop=821*ratio,extra=crop*(1-1/1.012)/2;
-  const left=(1916-crop)*.9+extra,right=left+crop/1.012;
-  assert.ok(left<1020&&right>1690,`both hands have breathing room at ratio ${ratio}`);
+test('cover selects three actual articles after excluding the introductory post',()=>{
+ const posts=[{title:'Hello CC Atelier',path:'hello/',date:'2026-10-10'},...writing,{title:'第三篇',path:'third/',date:'2026-08-10'},{title:'第四篇',path:'fourth/',date:'2026-07-10'}];
+ for(const prefix of ['/','/lab/']) {
+  const dom=render('cover',prefix,posts);
+  try {
+   assert.deepEqual([...dom.window.document.querySelectorAll('.home-writing-grid .personal-note h3 a')].map(a=>a.getAttribute('href')),posts.slice(1,4).map(post=>prefix+post.path));
+   assert.equal(dom.window.document.querySelectorAll(`a[href="${prefix}hello/"]`).length,0);
+  }finally{dom.window.close();}
  }
+});
+
+test('hero has responsive source assets and switches from a wide backdrop to a separate mobile image',()=>{
+ const css=read('source/atelier/css/personal-home.css');
+ const dom=render('cover','/lab/');
+ try {
+  const picture=dom.window.document.querySelector('#cover-photograph picture');
+  assert.ok(picture);
+  const source=picture.querySelector('source[media="(max-width:600px)"]');
+  assert.ok(source);
+  const img=picture.querySelector('#cover-image');
+  assert.equal(img.width,1916);assert.equal(img.height,821);
+  assert.equal(img.getAttribute('fetchpriority'),'high');
+  for(const node of [source,img]) {
+   assert.ok(node.getAttribute('sizes'));
+   const candidates=node.getAttribute('srcset').split(',').map(item=>item.trim().split(/\s+/));
+   assert.equal(candidates.length,2);
+   assert.deepEqual(candidates.map(item=>item[1]),['960w','1916w']);
+   for(const [src] of candidates)assert.ok(fs.existsSync(path.join(root,'source',src.slice('/lab/'.length))));
+  }
+  const sheetDom=new JSDOM(`<style>${css}</style>`);
+  try {
+   const rules=[...sheetDom.window.document.styleSheets[0].cssRules];
+   const selector='.personal-home.home-edition ';
+   const rule=(list,suffix)=>list.filter(item=>item.selectorText===selector+suffix).at(-1)?.style;
+   assert.equal(rule(rules,'.personal-hero').getPropertyValue('grid-template-columns'),'1fr');
+   assert.equal(rule(rules,'.personal-portrait').getPropertyValue('position'),'absolute');
+   const mobile=rules.filter(item=>item.conditionText==='(max-width:760px)').flatMap(item=>[...item.cssRules]);
+   assert.equal(rule(mobile,'.personal-hero').getPropertyValue('flex-direction'),'column');
+   assert.equal(rule(mobile,'.personal-portrait').getPropertyValue('position'),'relative');
+   assert.equal(rule(mobile,'.personal-portrait').getPropertyValue('order'),'1');
+   assert.equal(rule(mobile,'.personal-intro').getPropertyValue('order'),'0');
+   assert.equal(rule(mobile,'.personal-portrait img').getPropertyValue('transform'),'none');
+   assert.match(rule(mobile,'.personal-portrait img').getPropertyValue('object-position'),/center/);
+  }finally{sheetDom.window.close();}
+ }finally{dom.window.close();}
 });

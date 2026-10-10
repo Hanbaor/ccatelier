@@ -71,8 +71,11 @@ test('static Notes matches the writing-first default and the series exposes sour
  const dom=new JSDOM(read('notes/index.html'));
  try{
   const d=dom.window.document;
-  assert.equal(d.querySelector('.catalog-heading-v3 h1').textContent,'笔记');
-  assert.ok(d.querySelector('.catalog-heading-v3 a[href$="series/hot100/"]'));
+  assert.equal(d.querySelectorAll('h1').length,1);
+  const heading=d.querySelector('.catalog-heading-v3 h1');
+  assert.equal([...heading.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim(),'笔记');
+  assert.equal(heading.querySelector('span').textContent,'把思路，写清楚。');
+  assert.equal(d.querySelector('.notes-catalog-shell > header a[href$="series/hot100/"]').getAttribute('href'),prefix+'series/hot100/');
   assert.doesNotMatch(d.querySelector('.catalog-heading-v3').textContent,/篇技术笔记|篇手记/);
   const rows=[...d.querySelectorAll('.archive-fallback .archive-record')];assert.ok(rows.length);
   for(const row of rows){assert.ok(!row.querySelector('a').getAttribute('href').includes('/hot100/'));assert.ok(row.querySelector('p').textContent.length);}

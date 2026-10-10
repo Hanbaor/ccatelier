@@ -51,16 +51,17 @@ for(const root of ['/','/lab/']) {
   assert.deepEqual(articleResources(html,origin+root+'writing/csdn-131792879/',origin+root),[origin+url]);
   assert.ok(cacheableURL(url,origin+root));
  });
- test(`phone source and preload share candidates/sizes, while desktop is unchanged (${root})`,async()=>{
+ test(`wide-stage picture and both preloads share crop-aware candidates/sizes (${root})`,async()=>{
   const cover=render('cover',root),head=render('head',root),dom=new JSDOM(head+cover);
   try {
    const doc=dom.window.document,source=doc.querySelector('picture source'),img=doc.querySelector('#cover-image');
    const phone=doc.querySelector('link[as="image"][media="(max-width:600px)"]'),desktop=doc.querySelector('link[as="image"][media="(min-width:601px)"]');
    const candidates=`${root}atelier/images/v3/hero-960.webp 960w, ${root}atelier/images/v3/hero.webp 1916w`;
    assert.equal(source.media,'(max-width:600px)');assert.equal(source.srcset,candidates);assert.equal(phone.getAttribute('imagesrcset'),source.srcset);
-   assert.equal(source.sizes,'(max-width:500px) calc(148vw - 59.2px), 136.16vw');assert.equal(phone.getAttribute('imagesizes'),source.sizes);
+   assert.equal(source.sizes,'(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px');assert.equal(phone.getAttribute('imagesizes'),source.sizes);
    assert.equal(phone.getAttribute('href'),root+'atelier/images/v3/hero-960.webp');
-   assert.equal(img.getAttribute('srcset'),candidates);assert.equal(img.sizes,'(max-width:760px) 92vw, 60vw');assert.equal(desktop.getAttribute('imagesizes'),img.sizes);assert.equal(desktop.getAttribute('imagesrcset'),candidates);
+   assert.equal(img.getAttribute('srcset'),candidates);assert.equal(img.sizes,'(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px');assert.equal(desktop.getAttribute('imagesizes'),img.sizes);assert.equal(desktop.getAttribute('imagesrcset'),candidates);
+   assert.equal(source.sizes,img.sizes);assert.equal(desktop.getAttribute('href'),root+'atelier/images/v3/hero.webp');
    assert.equal(img.width,1916);assert.equal(img.height,821);assert.equal(img.getAttribute('fetchpriority'),'high');
    for(const [filename,width] of [['hero-960.webp',960],['hero.webp',1916]])assert.equal((await sharp(path.join(sourceDir,'atelier/images/v3',filename)).metadata()).width,width);
    const {articleResources}=await import('../source/atelier/js/offline-resources.mjs');
@@ -82,20 +83,39 @@ for(const root of ['/','/lab/']) {
   }finally{dom.window.close();}
  });
 }
-test('phone sizes account for actual gutter, object-fit crop and scale without changing CSS',()=>{
+test('wide-stage sizes include actual gutter, mobile cover crop and conservative full-resolution desktop selection',async()=>{
  const head=read('custom/redefine/nijika/head.ejs'),css=read('source/atelier/css/personal-home.css'),layout=read('source/atelier/css/immersive.css');
  assert.ok(head.indexOf('css/editorial.css')<head.indexOf('css/immersive.css'));
  assert.match(layout,/--page-gutter:clamp\(20px,4vw,56px\)/);assert.match(layout,/--layout-width:1200px/);
  assert.match(css,/width:min\(var\(--layout-width\),calc\(100% - 2 \* var\(--page-gutter\)\)\)/);
- assert.match(css,/@media\(max-width:760px\)[\s\S]*?\.personal-portrait \{aspect-ratio:1\.6\}/);
- assert.match(css,/object-fit:cover;object-position:90% center;transform:translateX\(var\(--portrait-x,0\)\) scale\(1\.012\)/);
- assert.match(css,/\.personal-portrait img \{object-position:68% center\}/);
- const scale=1916/821/1.6*1.012;assert.equal(Math.ceil(scale*100)/100,1.48);
- for(const width of [320,360,390,430,500,501,600]) {
-  const frame=width-2*Math.max(20,width*.04),declared=width<=500?1.48*width-59.2:1.3616*width;
-  assert.ok(declared>=frame*scale&&declared<frame*scale*1.003,`crop-aware source width at ${width}px`);
+ const edition=css.slice(css.indexOf('/* Home edition:'));
+ assert.match(edition,/\.personal-home\.home-edition \.personal-portrait\{position:absolute;inset:0;aspect-ratio:auto/);
+ assert.match(edition,/\.personal-home\.home-edition \.personal-portrait img\{object-position:center;transform:translateX\(var\(--portrait-x,0\)\) scale\(1\.012\)/);
+ // Read the current edition's mobile rules, not superseded legacy portrait styles.
+ const mobile=edition.slice(edition.indexOf('@media(max-width:760px)'));
+ assert.match(mobile,/\.personal-home\.home-edition \.personal-portrait\{position:relative;inset:auto;order:1;z-index:0;aspect-ratio:1\.8;width:100%\}/);
+ assert.match(mobile,/\.personal-home\.home-edition \.personal-portrait img\{object-position:75% center;transform:none\}/);
+ assert.match(css,/\.personal-portrait img \{[^}]*object-fit:cover/);
+ const asset=await sharp(path.join(sourceDir,'atelier/images/v3/hero.webp')).metadata();
+ assert.equal(asset.width,1916);assert.equal(asset.height,821);
+ const scale=asset.width/asset.height/1.8;
+ // Round up the 1.29655 cover multiplier to 1.30, under 0.3% overhead.
+ assert.equal(Math.ceil(scale*100)/100,1.30);
+ for(const width of [320,360,390,430,500,501,600,601,760]) {
+  const frame=Math.min(1200,width-2*Math.min(56,Math.max(20,width*.04)));
+  const declared=width<=500?1.30*width-52:1.196*width;
+  assert.ok(declared>=frame*scale&&declared<frame*scale*1.003,`crop-aware mobile source width at ${width}px`);
  }
- assert.ok((1.48*390-59.2)*2>960,'390px/2x can now select the larger original');
+ assert.ok((1.30*390-52)*2<=960,'390px/2x can use 960w after the wider, unscaled mobile crop');
+ assert.ok((1.30*430-52)*2>960,'430px/2x can request the original rather than under-sample');
+ // Desktop is text-height-driven, not fixed to its CSS min-height. Request the
+ // complete 1916w asset conservatively rather than claiming an exact crop slot.
+ // There are only 960w and 1916w candidates: this avoids under-sampling if text
+ // wraps or the title stack grows, without adding an extra candidate/download.
+ assert.match(edition,/min-height:540px/);
+ assert.match(edition,/\.personal-home\.home-edition \.personal-portrait img\{object-position:center;transform:translateX\(var\(--portrait-x,0\)\) scale\(1\.012\)/);
+ assert.equal(asset.width,1916,'desktop sizes selects the original, not an invented intermediate asset');
+ assert.match(head,/\(max-width:500px\) calc\(130vw - 52px\), \(max-width:760px\) 119\.6vw, 1916px/);
 });
 test('actual Markdown rendering preserves all article content, image metadata and reviewed descriptions',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
@@ -117,5 +137,26 @@ test('actual Markdown rendering preserves all article content, image metadata an
     const image=images.find(image=>image.getAttribute('src').endsWith('/'+entry.filename));assert.equal(image.alt,entry.alt);
    }
   }finally{dom.window.close();}
+ }
+});
+test('tablet-only stage crop retains the drumming gesture without moving phone or wide artwork',async()=>{
+ const css=read('source/atelier/css/personal-home.css');
+ assert.match(css,/@media\(min-width:761px\) and \(max-width:1000px\)\{\s*\.personal-home\.home-edition \.personal-portrait img\{object-position:90% center\}/);
+ const asset=await sharp(path.join(sourceDir,'atelier/images/v3/hero.webp')).metadata();
+ // Visually estimated from the authored source: the far hand/gesture extends
+ // to roughly x=1750. This guards the crop geometry, not pixel segmentation.
+ const gesture={left:1020,right:1750};
+ for(const viewport of [761,800,900,1000]){
+  const frame=viewport-2*Math.max(20,viewport*.04);
+  // The tablet stage uses 500px minimum height. Check extra text growth too;
+  // the browser QA separately verifies real glyph placement and face overlap.
+  for(const height of [500,540,580]){
+   const scale=Math.max(frame/asset.width,height/asset.height);
+   const croppedWidth=asset.width*scale-frame;
+   const left=croppedWidth*.9/scale,right=left+frame/scale;
+   // Account for the artwork's 1.012 overscan and maximum 1.5px pointer drift.
+   const inset=frame/scale*(1-1/1.012)/2+1.5/scale;
+   assert.ok(left+inset<gesture.left&&right-inset>gesture.right,`${viewport}×${height}: visible source x=${left.toFixed(0)}–${right.toFixed(0)}`);
+  }
  }
 });

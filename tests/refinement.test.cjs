@@ -11,6 +11,14 @@ test('editorial styles load after refinements and quick navigation identifies th
     const dom = new JSDOM(read(route));
     try {
       const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].filter(style => !['/livehouse.css','/navigation-scenes.css','/practice.css','/content-catalog.css','/research-sql.css'].some(name => style.href.endsWith(name)));
+      const needsIndex=['atelier/index.html','notes/index.html'].includes(route);
+      const indexStyles=styles.filter(style=>style.href.endsWith('/editorial-index.css'));
+      assert.equal(indexStyles.length,needsIndex?1:0,'editorial index styling stays on the two index routes');
+      if(needsIndex){
+        assert.equal(styles.at(-1),indexStyles[0],'route index rules load after all shared and personal composition rules');
+        assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/editorial-index.css'));
+        styles.pop();
+      }
       const expectedPersonal = ['index.html','atelier/index.html'].includes(route) ? 'personal-home.css' : ['about/index.html','research/index.html'].includes(route) ? 'personal-pages.css' : null;
       const personalStyles = styles.filter(style => /\/personal-(home|pages)\.css$/.test(style.href));
       assert.equal(personalStyles.length, expectedPersonal ? 1 : 0, 'only the matching personal composition is loaded');

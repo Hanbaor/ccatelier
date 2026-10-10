@@ -100,3 +100,51 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-plan [data-sql-plan-output] {font:12px/1.8 var(--chinese);color:var(--muted)}
 
 @media(max-width:650px) {.sql-plan-table th:not(:last-child) {width:50px}.sql-plan-table td,.sql-plan-table th {padding-inline:6px}.sql-plan-table td:first-child,.sql-plan-table th:first-child {padding-left:0}}
+
+/* Research editorial opening. SQL controls and runtime remain independent. */
+.room-research .personal-research-opening {grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(30px,6vw,80px);align-items:center}
+.room-research .personal-eyebrow {font:500 11px/1.6 var(--sans);letter-spacing:.12em;margin-bottom:24px}
+.room-research .personal-research-copy h1 {font-size:clamp(42px,5.2vw,72px);line-height:1.05;margin-bottom:20px}
+.room-research .personal-research-copy .personal-intro {font:13px/1.6 var(--sans);letter-spacing:.04em;color:var(--muted)}
+.room-research .research-opening-question {font:400 clamp(24px,2.9vw,38px)/1.55 var(--chinese);letter-spacing:-.035em;margin:24px 0 14px}
+.room-research .research-opening-note {max-width:27em;font:14px/1.9 var(--chinese);color:var(--muted);margin:0}
+.room-research .personal-research-art img {aspect-ratio:1.17;max-height:440px;object-fit:cover;object-position:60% center}
+.room-research .personal-research-art figcaption {display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font:10px/1.7 var(--chinese);color:var(--muted);margin-top:12px;letter-spacing:.05em}
+.room-research .research-framing {margin-top:72px;display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1.8fr);gap:clamp(24px,5vw,60px);padding-block:32px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.room-research .research-framing-heading>p {font:10px/1.6 var(--sans);letter-spacing:.08em;color:var(--muted);margin:0 0 12px}
+.room-research .research-framing-heading h2 {font:500 clamp(23px,2.3vw,30px)/1.4 var(--chinese);letter-spacing:-.03em;margin:0}
+.room-research .research-questions {list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px}
+.room-research .research-questions li {min-width:0}
+.room-research .research-questions li>span {font:10px/1.6 var(--sans);letter-spacing:.08em;color:var(--muted)}
+.room-research .research-questions h3 {font:500 16px/1.65 var(--chinese);margin:10px 0 7px}
+.room-research .research-questions p {font:13px/1.85 var(--chinese);color:var(--muted);margin:0}
+.room-research .personal-research-caption {margin-top:46px;font:12px/1.8 var(--chinese);color:var(--muted)}
+@media(max-width:900px) {
+ .room-research .research-framing {grid-template-columns:minmax(0,1fr);gap:25px}
+}
+@media(max-width:650px) {
+ .room-research .personal-research-opening {grid-template-columns:minmax(0,1fr);gap:25px}
+ .room-research .personal-research-copy h1 {font-size:46px}
+ .room-research .research-opening-question {font-size:28px;margin-top:20px}
+ .room-research .personal-research-art img {aspect-ratio:1.65;max-height:280px;object-position:center 40%}
+ .room-research .research-framing {margin-top:42px;padding-block:26px}
+ .room-research .research-questions {grid-template-columns:minmax(0,1fr);gap:22px}
+ .room-research .research-questions li {display:grid;grid-template-columns:100px minmax(0,1fr);gap:4px 16px}
+ .room-research .research-questions li>span {grid-row:1/3;padding-top:5px}
+ .room-research .research-questions h3 {margin:0}
+ .room-research .personal-research-caption {margin-top:32px}
+}
+@media print {
+ .room-research .personal-research-opening {display:block}
+ .room-research .research-framing {break-inside:avoid}
+}
+.room-research .research-questions summary {display:flex;align-items:baseline;justify-content:space-between;gap:7px;min-height:44px;cursor:pointer;list-style:none}
+.room-research .research-questions summary::-webkit-details-marker {display:none}
+.room-research .research-questions summary:after {content:'+';font:18px/1 var(--sans);color:var(--yellow)}
+.room-research .research-questions details[open]>summary:after {content:'−'}
+.room-research .research-questions summary:focus-visible {outline:2px solid var(--ink);outline-offset:4px}
+.room-research .research-questions details>p {color:var(--text);padding-block:3px 14px}
+@media(max-width:650px) {
+ .room-research .research-questions summary {min-height:44px}
+ .room-research .research-questions li>p {grid-column:2}
+}

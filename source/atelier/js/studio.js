@@ -10,12 +10,14 @@ export function initStudio(){
  let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
  const status=$('[data-studio-status]'),grid=$('[data-sequencer]'),play=$('[data-studio-play]'),canvas=$('[data-audio-scope]'),ctx=canvas.getContext('2d');
  grid.addEventListener('focusin',e=>{const button=e.target.closest('[data-studio-step]');if(!button||!grid.contains(button))return;stepFocus={track:Number(button.dataset.studioTrack),step:Number(button.dataset.studioStep)};$$('[data-studio-step]',grid).forEach(b=>{b.tabIndex=b===button?0:-1;});});
- const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));});
- function saveHistory(){history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
+ const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();});
+ function saveHistory(){updateOverview();history.push(project);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
  const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
+ function paintPosition(){const step=active>=0&&active<project.steps?active:-1;$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));}
  function render(){
+  updateOverview();paintPosition();$('[data-studio-preset]').value='';
   const restoreStepFocus=grid.contains(document.activeElement)&&document.activeElement.hasAttribute('data-studio-step');stepFocus.step=Math.min(stepFocus.step,project.steps-1);
   $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
   grid.style.setProperty('--steps',project.steps);grid.style.minWidth=project.steps===32?'1100px':'';grid.replaceChildren();
@@ -38,7 +40,17 @@ export function initStudio(){
  $('[data-project-name]').addEventListener('input',e=>{project.name=e.target.value.trim()||'未命名磁带';});
  $('[data-project-name]').addEventListener('change',e=>{e.target.value=project.name;saveHistory();});
  $('[data-step-count]').addEventListener('change',e=>{stop();const count=Number(e.target.value);project.tracks.forEach(t=>{t.steps=Array.from({length:count},(_,i)=>t.steps[i]??t.steps[i%16]??0);});project.steps=count;saveHistory();render();});
- $('[data-studio-preset]').addEventListener('change',e=>{stop();project=preset(e.target.value);saveHistory();render();status.textContent='预设已载入；可通过撤销回到刚才的编排。';});
+ function updateOverview(){
+  const overview=host.querySelector('[data-studio-overview]');if(overview)overview.textContent=project.bpm+' BPM · '+project.steps+' 步进 · '+project.tracks.reduce((n,t)=>n+t.steps.filter(v=>v>0).length,0)+' 个音符';
+ }
+ function loadStarter(key){stop();project=preset(key);saveHistory();render();status.textContent='预设已载入；可通过撤销回到刚才的编排。';const notice=host.querySelector('[data-starter-status]');if(notice)notice.textContent='已载入「'+project.name+'」。按下播放试听；撤销可找回上一份编排。';}
+ $('[data-studio-preset]').addEventListener('change',e=>{if(e.target.value)loadStarter(e.target.value);});
+ for(const button of $$('[data-studio-starter]',host)){
+  const sample=preset(button.dataset.studioStarter),preview=button.querySelector('[data-starter-pattern]');
+  for(const track of sample.tracks.slice(0,3)){const row=element('span','studio-starter-track');for(const value of track.steps){const step=element('i');step.classList.toggle('is-note',value>0);row.append(step);}preview.append(row);}
+  button.disabled=false;button.addEventListener('click',()=>loadStarter(button.dataset.studioStarter));
+ }
+
  $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();});
  let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
  document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});

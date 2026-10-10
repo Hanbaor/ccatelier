@@ -10,19 +10,31 @@ test('generated personal home and creative index lead with actual published writ
  const cover=page('index.html'),stage=page('atelier/index.html');
  const archive=JSON.parse(fs.readFileSync(path.join(root,'public/atelier/data/archive.json'),'utf8'));
  const writing=archive.posts.filter(post=>post.group==='writing');
+ const selected=writing.filter(post=>!/^Hello CC Atelier$/i.test(post.title)).slice(0,3);
+ const label=node=>{const copy=node.cloneNode(true);copy.querySelectorAll('[aria-hidden],svg').forEach(child=>child.remove());return copy.textContent.trim();};
  try {
   const c=cover.window.document,d=stage.window.document;
   assert.ok(c.querySelector('.personal-home'));
-  assert.ok(d.querySelector('.personal-atelier'));
+  assert.ok(d.querySelector('.personal-atelier.creation-index'));
+  assert.equal(selected.length,3,'the published catalogue supplies three real featured articles');
   assert.equal(c.querySelector('.personal-primary').getAttribute('href'),'/notes/');
-  assert.deepEqual([...c.querySelectorAll('.personal-note h3 a')].map(a=>a.getAttribute('href')),writing.slice(0,3).map(post=>post.path));
-  assert.equal(d.querySelector('.atelier-writing-copy h2 a').getAttribute('href'),writing[0].path);
-  for(const [index,article] of [...c.querySelectorAll('.personal-note')].entries()) {
-   assert.equal(article.querySelector('h3').textContent.trim(),writing[index].title);
-   if(writing[index].excerpt)assert.equal(article.querySelector('p').textContent,writing[index].excerpt);
+  assert.deepEqual([...c.querySelectorAll('.personal-note h3 a')].map(a=>a.getAttribute('href')),selected.map(post=>post.path));
+  const traces=[...d.querySelectorAll('.creation-traces li')];
+  assert.deepEqual(traces.map(item=>item.querySelector('a').getAttribute('href')),writing.slice(0,5).map(post=>post.path));
+  for(const [index,item] of traces.entries()){
+   assert.equal(label(item.querySelector('a')),writing[index].title);
+   assert.equal(item.querySelector('time').textContent,writing[index].date.replaceAll('-','.'));
+   assert.equal(item.querySelector('time').dateTime.slice(0,10),writing[index].date);
   }
-  assert.ok(d.querySelector('.atelier-work-pair a[href="/projects/"]'));
-  assert.ok(d.querySelector('.atelier-interests a[href="/studio/practice/"]'));
+  assert.equal(d.querySelectorAll('.atelier-writing-summary,.atelier-writing-feature').length,0);
+  for(const [index,article] of [...c.querySelectorAll('.personal-note')].entries()) {
+   assert.equal(label(article.querySelector('h3')),selected[index].title);
+   assert.equal(article.querySelector('time').textContent,selected[index].date.replaceAll('-','.'));
+   assert.equal(article.querySelector('time').dateTime.slice(0,10),selected[index].date);
+   if(selected[index].excerpt)assert.equal(article.querySelector('p').textContent,selected[index].excerpt);
+  }
+  assert.ok(d.querySelector('.creation-works a[href="/projects/"]'));
+  assert.ok(d.querySelector('.creation-main-work a[href="/studio/practice/"]'));
   assert.equal(c.querySelectorAll('.cinema-v3').length,0);
   assert.equal(d.querySelectorAll('.hub-grid,a a').length,0);
   assert.ok(c.querySelector('link[href="/atelier/css/personal-home.css"]'));

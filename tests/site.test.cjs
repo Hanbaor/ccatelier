@@ -15,10 +15,10 @@ test('the personal homepage leads directly to notes and preserves article routes
   const cover = read('index.html');
   assert.match(cover, /class="[^"]*on-cover/);
   assert.match(cover, /href="[^"]*\/notes\/"[^>]*data-enter/);
-  assert.match(cover, /personal-note-list/);
-  assert.match(cover, /Hello CC Atelier/);
+  assert.match(cover, /home-writing-grid/);
+  assert.doesNotMatch(cover, /Hello CC Atelier/);
   const notes = read('notes/index.html');
-  assert.match(read('atelier/index.html'), /atelier-writing-feature/);
+  assert.match(read('atelier/index.html'), /creation-traces/);
   assert.match(notes, /aria-label="笔记目录"/);
   const article = read('2026/09/22/Hello-CC-Atelier/index.html');
   assert.match(article, /这是我的第一篇博客文章/);
