@@ -11,12 +11,17 @@ test('personal home presents actual writing and a responsive artwork without an 
   assert.ok(d.querySelector('.personal-actions a[href="/notes/"]'));
   assert.ok(d.querySelector('.personal-actions a[href="/about/"]'));
   assert.equal(d.querySelectorAll('.cinema-v3,.entry-index,.entry-running-head,.entry-art-seal').length,0);
-  assert.match(d.querySelector('.personal-portrait source').srcset,/v3\/hero-960\.webp/);
+  const source=d.querySelector('.personal-portrait source');
+  assert.equal(source.media,'(max-width:600px)');
+  assert.equal(source.getAttribute('srcset'),'/atelier/images/v3/hero-960.webp 960w, /atelier/images/v3/hero.webp 1916w');
+  assert.equal(source.getAttribute('sizes'),'(max-width:500px) calc(148vw - 59.2px), 136.16vw');
   assert.ok(d.querySelector('.personal-primary svg'));
   assert.equal(d.querySelectorAll('main a a').length,0);
   assert.ok(d.querySelector('link[href="/atelier/css/personal-home.css"]'));
   const preload=d.querySelector('link[rel="preload"][as="image"][media="(max-width:600px)"]');
-  assert.equal(preload.getAttribute('href'),d.querySelector('.personal-portrait source').getAttribute('srcset'));
+  assert.equal(preload.getAttribute('href'),'/atelier/images/v3/hero-960.webp');
+  assert.equal(preload.getAttribute('imagesrcset'),source.getAttribute('srcset'));
+  assert.equal(preload.getAttribute('imagesizes'),source.getAttribute('sizes'));
  }finally{dom.window.close();}
 });
 test('reveals keep content available without motion and disconnect on pagehide',async()=>{
