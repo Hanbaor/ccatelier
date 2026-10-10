@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('twenty visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,20);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,20);
+test('forty-two visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,42);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,42);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -118,17 +118,19 @@ test('only exact Redefine machine captions reuse the hash-verified description',
   const img=input(entry),caption=`<figcaption>${escapeAttribute(entry.oldAlt)}</figcaption>`;
   const figure=body=>`<figure class="image-caption">${body}</figure>`;
   const raw=figure(img+caption),output=await enhance(raw,identity(entry));
-  assert.equal(output,figure(img.replace(`alt="${entry.oldAlt}"`,`alt="${entry.alt}"`)+`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`));
+  assert.equal(output,figure(img.replace(`alt="${entry.oldAlt}"`,`alt="${entry.alt}"`)+`<figcaption>${escapeAttribute(entry.caption??entry.alt)}</figcaption>`));
   assert.equal(await enhance(output,identity(entry)),output);
   assert.equal(await enhance(raw.replaceAll('+','&plus;'),identity(entry)),output);
   for(const wrapper of ['strong','em']) {
    const enhancedImg=img.replace(`alt="${entry.oldAlt}"`,`alt="${entry.alt}"`);
-   assert.equal(await enhance(figure(`<${wrapper}>${img}${caption}</${wrapper}>`),identity(entry)),figure(`<${wrapper}>${enhancedImg}<figcaption>${escapeAttribute(entry.alt)}</figcaption></${wrapper}>`));
+   assert.equal(await enhance(figure(`<${wrapper}>${img}${caption}</${wrapper}>`),identity(entry)),figure(`<${wrapper}>${enhancedImg}<figcaption>${escapeAttribute(entry.caption??entry.alt)}</figcaption></${wrapper}>`));
   }
   // A previously enhanced image can still have the old theme-generated caption.
   assert.equal(await enhance(figure(img.replace(entry.oldAlt,entry.alt)+caption),identity(entry)),output);
   for(const body of [
    img+'<figcaption>作者的解释</figcaption>',
+   img+`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`,
+   img+'<figcaption>gif.latex?unverified-formula</figcaption>',
    img+`<figcaption><span>${escapeAttribute(entry.oldAlt)}</span></figcaption>`,
    img+`<figcaption title="作者标记">${escapeAttribute(entry.oldAlt)}</figcaption>`,
    img+`<figcaption> ${escapeAttribute(entry.oldAlt)}</figcaption>`,
@@ -149,7 +151,7 @@ test('only exact Redefine machine captions reuse the hash-verified description',
   assert.equal(await createArticleImageAltEnhancer({sourceDir:'/nonexistent'})(raw,identity(entry)),raw);
  }
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all twenty descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-two descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.
@@ -187,12 +189,32 @@ test('real Hexo loader, Warehouse posts and native cache rendering apply all twe
    const post=hexo.model('Post').findOne({source_id:entry.sourceId}),attrs=findImage(post.content,entry);
    assert.equal(attrs.alt,entry.alt);
    if(entry.oldAlt!==null) {
-    assert.ok(post.content.includes(`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`));
+    assert.ok(post.content.includes(`<figcaption>${escapeAttribute(entry.caption??entry.alt)}</figcaption>`));
     assert.ok(!post.content.includes(`<figcaption>${escapeAttribute(entry.oldAlt)}</figcaption>`));
    }
    assert.ok(Number(attrs.width)>0);assert.ok(Number(attrs.height)>0);
    assert.equal(post._content,frontMatter.parse(fs.readFileSync(post.full_source,'utf8'))._content);
   }
+  // Only this fully reviewed article is expected to have no machine labels.
+  const reviewed=allowlist.filter(entry=>entry.sourceId==='124338392');
+  assert.equal(reviewed.length,31);
+  for(const entry of reviewed) {
+   assert.equal(typeof entry.caption,'string');assert.ok(entry.caption.length<=24);
+  }
+  const article=hexo.model('Post').findOne({source_id:'124338392'});
+  const captions=[];
+  function checkLabels(node) {
+   if(node.name==='img')assert.doesNotMatch(node.attribs.alt||'',/gif\.latex\?|[a-f0-9]{20,}\.(?:png|jpe?g)/i);
+   if(node.name==='figcaption') {
+    assert.equal(node.children.length,1);assert.equal(node.children[0].type,'text');
+    const label=node.children[0].data;captions.push(label);
+    assert.doesNotMatch(label,/gif\.latex\?|[a-f0-9]{20,}\.(?:png|jpe?g)/i);
+   }
+   for(const child of node.children||[])checkLabels(child);
+  }
+  checkLabels(parseDocument(article.content));
+  assert.equal(captions.length,31);
+  assert.deepEqual(captions.slice().sort(),reviewed.map(entry=>entry.caption).sort());
   // Native cached rerender must respect an author edit to the original source.
   const entry=allowlist.find(entry=>entry.oldAlt===null),post=hexo.model('Post').findOne({source_id:entry.sourceId});
   post._content=post._content.replace(`![](${image(entry)})`,`![作者的新说明](${image(entry)})`);
