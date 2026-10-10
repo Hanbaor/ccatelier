@@ -7,6 +7,9 @@ const {parseDocument}=require('htmlparser2');
 // Descriptions were checked against these exact original image bytes.
 // This is deliberately not a generic missing-alt generator.
 const allowlist=Object.freeze([
+ // Additional originals visually reviewed for the migrated caption cleanup.
+ ['124338392','c1139fa1d237927bb567.png','2e804dacb8cd563e2a04e6a77c632b6d0d671756c38cb626910e892b30d03205','gif.latex?2*%289%29%5E%7B3%7D+0*%289%29%5E%7B2%7D+2*%289%29%5E%7B1%7D+2%3D1478','九进制2022转为十进制：2×9³＋0×9²＋2×9＋2＝1478。'],
+ ['124338392','639ad0fb7015911e0003.jpg','f723bb0ce87b557e93a11f1988d61d165dc78c264f8bdce1c0a6985aead0ad8f','49b5a1042d764b71bdef29b44e3c732d.jpg','草叶间牵手回望的两位少女。'],
  ['124338541','0d10b4b4cfb687c1b8e6.png','108fb2790632f9f9d18a17934a1f83f5ab0ff7027e0c906af2d74ed9e8a4e09d',null,'全排列的深度优先搜索示意：首位选1，跳过已用数字，依次得到123与132，并沿箭头回溯。'],
  ['124514677','63738c13849aabe4f477.png','32b647a8bedd5c2d21f65c890359563ada04c6d62f52b4d4f3d69d0294009904',null,'轨道内车号从左到右为2、4、8时可按要求出站；2、8、4的排列会使4挡住8。'],
  ['124514677','b19c58f2b634f5b5dafb.png','e144860542af0226bad29c4c8eec335f845e958ab25914bd8ec55e12681b087b',null,'四条调度轨道示意：从上到下分别停放1、2、4、8；3、5；6、9；7号列车。'],
@@ -73,14 +76,35 @@ function createArticleImageAltEnhancer({sourceDir,root='/'}={}) {
    const attrs=node.attribs;
    if('srcset'in attrs||'data-src'in attrs||attrs.role==='presentation'||attrs.role==='none')continue;
    const entry=entries.find(item=>attrs.src===prefix+item.filename||(root!=='/'&&attrs.src===rooted+item.filename));
-   if(!entry||(entry.oldAlt===null?attrs.alt!==undefined&&attrs.alt!=='':attrs.alt!==entry.oldAlt))continue;
+   if(!entry)continue;
+   const originalAlt=entry.oldAlt===null?attrs.alt===undefined||attrs.alt==='':attrs.alt===entry.oldAlt;
+   if(!originalAlt&&attrs.alt!==entry.alt)continue;
    if(!verified.has(entry.filename))verified.set(entry.filename,originalMatches(entry));
    if(!await verified.get(entry.filename))continue;
    const start=node.startIndex,end=node.endIndex+1,tag=content.slice(start,end);
    if(!/^<img\b/i.test(tag)||!/>$/.test(tag))continue;
-   edits.push({start,end,value:replaceAlt(tag,entry.alt)});
+   if(originalAlt)edits.push({start,end,value:replaceAlt(tag,entry.alt)});
+   // Redefine copies the old alt into a caption at priority 10, before this
+   // priority-21 filter. Repair only its exact, plain-text generated shape.
+   // Never infer descriptions or replace meaningful/custom author captions.
+   const visibleChildren=parent=>(parent?.children||[]).filter(child=>child.type!=='text'||child.data.trim()!=='');
+   const container=node.parent;
+   let figure=container;
+   // HTML parsing can repair an inline formula's surrounding emphasis into
+   // the figure. Accept only exclusive, attribute-free emphasis wrappers.
+   while(figure&&['strong','em'].includes(figure.name)&&!Object.keys(figure.attribs).length) {
+    const parent=figure.parent;
+    if(visibleChildren(parent).length!==1||visibleChildren(parent)[0]!==figure)break;
+    figure=parent;
+   }
+   if(entry.oldAlt===null||figure?.name!=='figure'||figure.attribs?.class!=='image-caption'||Object.keys(figure.attribs).length!==1)continue;
+   const children=visibleChildren(container);
+   const caption=children[1];
+   if(children.length!==2||children[0]!==node||caption?.name!=='figcaption'||Object.keys(caption.attribs).length||caption.children.length!==1||caption.children[0].type!=='text'||caption.children[0].data!==entry.oldAlt)continue;
+   const text=caption.children[0];
+   edits.push({start:text.startIndex,end:text.endIndex+1,value:escapeAttribute(entry.alt)});
   }
-  for(const edit of edits.reverse())content=content.slice(0,edit.start)+edit.value+content.slice(edit.end);
+  for(const edit of edits.sort((a,b)=>b.start-a.start))content=content.slice(0,edit.start)+edit.value+content.slice(edit.end);
   return content;
  };
 }

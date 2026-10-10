@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('eighteen visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,18);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,18);
+test('twenty visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,20);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,20);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -53,7 +53,7 @@ test('only absent or exactly empty alt is filled; meaningful author text and for
  }
 });
 test('wrong article, unknown images and non-exact URLs receive no fallback',async()=>{
- const entry=allowlist[0],raw=input(entry),enhance=createArticleImageAltEnhancer({sourceDir});
+ const entry=allowlist.find(entry=>entry.oldAlt===null),raw=input(entry),enhance=createArticleImageAltEnhancer({sourceDir});
  for(const post of [{},{source_id:entry.sourceId},{source:entry.source},{...identity(entry),source_id:'different'},{...identity(entry),source:'_posts/other.md'},{...identity(entry),source_id:Number(entry.sourceId)}])assert.equal(await enhance(raw,post),raw);
  for(const src of [image(entry)+'?v=1',image(entry)+'#x','/lab'+image(entry),'https://example.com'+image(entry),'//example.com'+image(entry),image(entry).replace('0d10','%30d10'),'/atelier/images/posts/../'+entry.filename,'/atelier/images/posts/unknown.png']) {
   const html=`<img src="${src}">`;assert.equal(await enhance(html,identity(entry)),html);
@@ -78,7 +78,7 @@ test('original bytes are rechecked across calls; missing, changed and escaped fi
 });
 test('attribute escaping is safe and existing surrounding markup is byte-preserved',async()=>{
  assert.equal(escapeAttribute('"<&\'>'),'&quot;&lt;&amp;&#39;&gt;');
- const entry=allowlist[0],enhance=createArticleImageAltEnhancer({sourceDir});
+ const entry=allowlist.find(entry=>entry.oldAlt===null),enhance=createArticleImageAltEnhancer({sourceDir});
  const original=`<p title="原文 &amp; 引号">可见正文</p><IMG data-caption='a > b &amp; c alt=""' src='${image(entry)}' alt='' width="1432" height="722" decoding="async" loading="lazy" />尾文`;
  const expected=original.replace("alt=''",`alt="${entry.alt}"`);
  assert.equal(await enhance(original,identity(entry)),expected);
@@ -99,7 +99,7 @@ test('geometry and alt filters commute without losing attributes, changing sourc
  }
 });
 test('independent Hexo filter uses priority 21 and only refreshes eligible source-backed post caches',async()=>{
- const filters={},entry=allowlist[0];
+ const filters={},entry=allowlist.find(entry=>entry.oldAlt===null);
  let saved=0;
  const matching={...identity(entry),content:input(entry),_content:'author markdown',save:async()=>{saved++;}};
  const unknown={source_id:'unknown',source:'_posts/unknown.md',content:input(entry),_content:'author markdown'};
@@ -112,11 +112,50 @@ test('independent Hexo filter uses priority 21 and only refreshes eligible sourc
  const authorEdited={...identity(entry),content:`<img src="${image(entry)}" alt="作者后来补充的说明">`,_content:'author edited markdown'};
  await filters.after_post_render(authorEdited);assert.equal(imageAttrs(authorEdited.content).alt,'作者后来补充的说明');
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all eighteen descriptions from actual Markdown',async()=>{
+test('only exact Redefine machine captions reuse the hash-verified description',async()=>{
+ const enhance=createArticleImageAltEnhancer({sourceDir});
+ for(const entry of allowlist.filter(entry=>entry.oldAlt!==null)) {
+  const img=input(entry),caption=`<figcaption>${escapeAttribute(entry.oldAlt)}</figcaption>`;
+  const figure=body=>`<figure class="image-caption">${body}</figure>`;
+  const raw=figure(img+caption),output=await enhance(raw,identity(entry));
+  assert.equal(output,figure(img.replace(`alt="${entry.oldAlt}"`,`alt="${entry.alt}"`)+`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`));
+  assert.equal(await enhance(output,identity(entry)),output);
+  assert.equal(await enhance(raw.replaceAll('+','&plus;'),identity(entry)),output);
+  for(const wrapper of ['strong','em']) {
+   const enhancedImg=img.replace(`alt="${entry.oldAlt}"`,`alt="${entry.alt}"`);
+   assert.equal(await enhance(figure(`<${wrapper}>${img}${caption}</${wrapper}>`),identity(entry)),figure(`<${wrapper}>${enhancedImg}<figcaption>${escapeAttribute(entry.alt)}</figcaption></${wrapper}>`));
+  }
+  // A previously enhanced image can still have the old theme-generated caption.
+  assert.equal(await enhance(figure(img.replace(entry.oldAlt,entry.alt)+caption),identity(entry)),output);
+  for(const body of [
+   img+'<figcaption>作者的解释</figcaption>',
+   img+`<figcaption><span>${escapeAttribute(entry.oldAlt)}</span></figcaption>`,
+   img+`<figcaption title="作者标记">${escapeAttribute(entry.oldAlt)}</figcaption>`,
+   img+`<figcaption> ${escapeAttribute(entry.oldAlt)}</figcaption>`,
+   img+caption+caption,img+img+caption,
+   `<strong title="author">${img}${caption}</strong>`,
+   `<strong>${img}${caption}</strong>`+caption,
+   `<strong>${img}${caption}</strong>`+img,
+   `<a>${img}</a>`+caption,img+caption+'<!-- author note -->'
+  ]) {
+   const raw=figure(body),result=await enhance(raw,identity(entry));
+   assert.equal(result.replaceAll(`alt="${entry.alt}"`,`alt="${entry.oldAlt}"`),raw);
+  }
+  for(const wrapper of ['<figure>','<figure class="image-caption custom">','<figure class="image-caption" id="author">']) {
+   const raw=wrapper+img+caption+'</figure>';
+   assert.equal((await enhance(raw,identity(entry))).replace(`alt="${entry.alt}"`,`alt="${entry.oldAlt}"`),raw);
+  }
+  assert.equal(await enhance(raw,{...identity(entry),source_id:'other'}),raw);
+  assert.equal(await createArticleImageAltEnhancer({sourceDir:'/nonexistent'})(raw,identity(entry)),raw);
+ }
+});
+test('real Hexo loader, Warehouse posts and native cache rendering apply all twenty descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.
   const hexo=new Hexo(base,{silent:true});hexo.config.root=root;
+  hexo.theme.config={articles:{style:{image_caption:true}}};
+  await hexo.loadPlugin(require.resolve('hexo-theme-redefine/scripts/filters/img-handle.js'));
   await hexo.loadPlugin(require.resolve('hexo-renderer-marked'));
   await hexo.loadPlugin(path.join(base,'scripts/article-images.js'));
   await hexo.loadPlugin(path.join(base,'scripts/article-image-alts.js'));
@@ -146,11 +185,16 @@ test('real Hexo loader, Warehouse posts and native cache rendering apply all eig
   }
   for(const entry of allowlist) {
    const post=hexo.model('Post').findOne({source_id:entry.sourceId}),attrs=findImage(post.content,entry);
-   assert.equal(attrs.alt,entry.alt);assert.ok(Number(attrs.width)>0);assert.ok(Number(attrs.height)>0);
+   assert.equal(attrs.alt,entry.alt);
+   if(entry.oldAlt!==null) {
+    assert.ok(post.content.includes(`<figcaption>${escapeAttribute(entry.alt)}</figcaption>`));
+    assert.ok(!post.content.includes(`<figcaption>${escapeAttribute(entry.oldAlt)}</figcaption>`));
+   }
+   assert.ok(Number(attrs.width)>0);assert.ok(Number(attrs.height)>0);
    assert.equal(post._content,frontMatter.parse(fs.readFileSync(post.full_source,'utf8'))._content);
   }
   // Native cached rerender must respect an author edit to the original source.
-  const entry=allowlist[0],post=hexo.model('Post').findOne({source_id:entry.sourceId});
+  const entry=allowlist.find(entry=>entry.oldAlt===null),post=hexo.model('Post').findOne({source_id:entry.sourceId});
   post._content=post._content.replace(`![](${image(entry)})`,`![作者的新说明](${image(entry)})`);
   await post.save();
   await hexo.execFilter('before_generate',null,{context:hexo});

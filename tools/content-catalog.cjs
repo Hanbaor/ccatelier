@@ -122,13 +122,27 @@ function readerExerciseMetadata(content,page){
     '<details class="exercise-meta-details"><summary>题目信息</summary><p>'+escapeHTML(title)+'</p><p>标签：'+escapeHTML(tags)+'</p></details>';
   return content.slice(0,opening.startIndex)+compact+content.slice(table.endIndex+1);
 }
+function readerTableFocus(content){
+  if(!/<table\b/i.test(content))return content;
+  const edits=[];
+  // Only direct data tables use the reader's scrollable fallback. Leave code,
+  // wrapped tables and an author's explicit keyboard behavior untouched.
+  for(const table of parseDocument(content,{withStartIndices:true}).children){
+    if(table.name!=='table'||'tabindex'in table.attribs||/(?:^|\s)not-markdown(?:\s|$)/.test(table.attribs.class||''))continue;
+    const rows=(table.children||[]).flatMap(node=>node.name==='tr'?[node]:['thead','tbody','tfoot'].includes(node.name)?node.children.filter(child=>child.name==='tr'):[]);
+    if(!rows.some(row=>row.children.filter(cell=>['th','td'].includes(cell.name)).length>=4))continue;
+    edits.push(table.startIndex+6);
+  }
+  for(const index of edits.reverse())content=content.slice(0,index)+' tabindex="0"'+content.slice(index);
+  return content;
+}
 function articleContent(page,{reading=false}={}){
   let content=String(page.content||'');const state=exerciseState(page);
   // The raw section must equal the known empty template. Never discard partial work.
   if(state?.codePlaceholder)content=removeRenderedSection(content,'代码实现');
   if(state?.analysisPlaceholder)content=removeRenderedSection(content,'个人解析');
   content=reading?readerTitleAnchor(content,page.title):content.replace(/^(\s*)<h1\b[^>]*>([\s\S]*?)<\/h1>/i,(all,space,title)=>plain(title)===plain(page.title)?space:all);
-  if(reading)content=readerExerciseMetadata(content,page);
+  if(reading)content=readerTableFocus(readerExerciseMetadata(content,page));
   return content.replace(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(all,level,body)=>plain(body)||/<(?:img|svg|video)\b/i.test(body)?all:'');
 }
 module.exports={plain,section,exerciseState,metadata,articleContent,CODE_PLACEHOLDER,ANALYSIS_PLACEHOLDER};

@@ -32,3 +32,8 @@
 
 /* Line numbers make even an empty referenced line visible without changing code. */
 .reading-studio .article-body .gutter .line.code-reference-gutter{background:#e8eaed!important;color:#18212c!important;box-shadow:2px 0 #e8eaed,-2px 0 #e8eaed}
+
+/* A wide data table scrolls locally instead of squeezing six columns into a phone. */
+.reading-studio .article-body.markdown-body>table:not(.not-markdown){display:block;table-layout:auto;max-width:100%;overflow-x:auto}
+.reading-studio .article-body.markdown-body>table:not(.not-markdown) :is(th,td){min-width:90px;overflow-wrap:anywhere}
+.reading-studio .article-body.markdown-body>table:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
