@@ -113,25 +113,6 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 
 /* On reading destinations the first article, not a poster, leads the page. */
 
-.catalog-heading-v3 {display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:32px;align-items:center;padding-bottom:25px;border-bottom:0}
-.catalog-heading-v3 h1 {font:500 var(--page-title)/1.2 var(--chinese);letter-spacing:-.05em;margin:0 0 22px}
-.catalog-heading-v3>div>p {display:flex;align-items:center;gap:30px;font-size:13px;color:var(--muted);margin:0;flex-wrap:wrap}
-.catalog-heading-v3>div>p>a {display:flex;align-items:center;gap:10px;color:var(--ink);min-height:40px}
-.catalog-heading-v3>div>p>a>span {color:var(--muted);font-size:12px}
-.catalog-heading-v3 svg {width:16px;height:16px;color:var(--yellow)}
-.catalog-heading-v3>img {display:block;width:100%;height:auto;aspect-ratio:1.5;object-fit:cover;object-position:42% center;border-radius:3px}
-.catalog-v3 .archive-search {padding:24px 0}
-.catalog-v3 .archive-search>label {font-size:12px}
-.catalog-v3 .archive-search>div {min-height:48px}
-.catalog-v3 .archive-layout {grid-template-columns:170px minmax(0,1fr);gap:40px}
-.catalog-v3 .archive-filters {top:95px;gap:21px}
-.catalog-v3 .archive-toolbar {min-height:44px;margin-bottom:8px}
-.catalog-v3 .archive-results[data-mode=list] .archive-record {min-height:101px;padding-block:18px}
-.catalog-v3 .archive-results[data-mode=list] .record-top b {font-size:26px;color:var(--muted)}
-.catalog-v3 .archive-results[data-mode=list] h2 {font-size:18px}
-.catalog-v3 .archive-results[data-mode=list] p {font-size:12px}
-.catalog-v3 .archive-filter-tags {gap:7px}
-.catalog-v3 .archive-filter-tags button {font-size:11px;min-height:32px}
 .reading-studio .reading-opener .eyebrow {display:none}
 .reading-studio .reading-opener h1 {margin-top:0;font-family:var(--chinese)}
 .reading-nav>span {display:none}
@@ -161,8 +142,6 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .header-navigation a:last-child {display:flex}
   .cinema-title {font-size:min(23vw,27vh);gap:2.5vw;bottom:107px}
   .cinema-art img {object-position:67% center}
-  .catalog-heading-v3 {grid-template-columns:minmax(0,1fr) 240px;gap:30px}
-  .catalog-v3 .archive-layout {grid-template-columns:150px minmax(0,1fr);gap:28px}
 }
 @media(max-width:760px) {
   .site-header,body[data-section="atelier"] .site-header {height:64px;padding-inline:var(--page-gutter);gap:12px}
@@ -184,15 +163,6 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .cinema-bottom {padding-inline:25px;gap:20px}
   .cinema-bottom>p {font-size:12px;letter-spacing:.02em}
   .cinema-v3 .cinema-enter {min-width:184px;gap:28px;font-size:12px}
-  .catalog-heading-v3 {grid-template-columns:minmax(0,1fr) 190px;gap:25px;padding-bottom:24px}
-  .catalog-heading-v3 h1 {font-size:var(--page-title);margin-bottom:14px}
-  .catalog-heading-v3>div>p {gap:15px;font-size:12px}
-  .catalog-v3 .archive-layout {display:flex;gap:20px}
-  .catalog-v3 .archive-search {padding-block:21px}
-  .catalog-v3 .archive-search>label {display:none}
-  .catalog-v3 .archive-filters {position:static;gap:12px}
-  .catalog-v3 .archive-group {gap:8px}
-  .catalog-v3 .archive-queue-link {padding-block:8px;min-height:39px}
   .site-footer,body[data-section="atelier"] .site-footer {padding:19px var(--page-gutter);gap:10px}
   .utility-controls {padding-top:6px;width:auto;border-top:0;gap:0;margin-left:auto}
   .footer-after-links {margin-left:auto;font-size:11px;gap:14px}
@@ -229,30 +199,6 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .cinema-intro>p {display:none}
   .cinema-bottom>p {font-size:11px;max-width:98px;line-height:1.8;letter-spacing:0}
   .cinema-v3 .cinema-enter {min-width:160px;min-height:48px;height:48px;padding:13px 16px;font-size:12px;gap:24px}
-  .catalog-heading-v3 {grid-template-columns:minmax(0,1fr) 123px;gap:20px;padding-bottom:21px}
-  .catalog-heading-v3 h1 {font-size:var(--page-title);margin-bottom:11px}
-  .catalog-heading-v3>div>p {gap:5px;font-size:11px;display:block}
-  .catalog-heading-v3>div>p>a {margin-top:2px;font-size:12px;min-height:34px;gap:7px}
-  .catalog-heading-v3>div>p>a>span {font-size:10px}
-  .catalog-heading-v3>img {aspect-ratio:1.1;object-position:40% center;align-self:center}
-  .catalog-heading-v3 svg {width:14px;height:14px}
-  .catalog-v3 .archive-search {gap:8px;padding-block:18px}
-  .catalog-v3 .archive-search>div {flex-basis:75%;order:0;min-height:46px;padding-inline:11px}
-  .catalog-v3 .archive-search>button {font-size:10px;min-height:32px;min-width:59px}
-  .catalog-v3 .archive-group button {min-height:42px;font-size:12px;padding-inline:10px}
-  .catalog-v3 .archive-filters {gap:10px}
-  .catalog-v3 .archive-filters label {font-size:11px}
-  .catalog-v3 .archive-filters select {font-size:15px;min-height:40px;padding:8px}
-  .catalog-v3 .archive-queue-link {font-size:12px;min-height:36px;padding-block:7px}
-  .catalog-v3 .archive-toolbar {gap:9px;min-height:42px}
-  .catalog-v3 .archive-toolbar>span {width:auto;flex:1;font-size:11px}
-  .catalog-v3 .archive-toolbar select {font-size:14px;min-height:40px;padding:7px;max-width:112px}
-  .catalog-v3 .archive-toolbar>div {margin-left:auto}
-  .catalog-v3 .archive-toolbar button {min-width:34px;min-height:36px;padding:3px 6px}
-  .catalog-v3 .archive-results[data-mode=list] .archive-record {grid-template-columns:24px minmax(0,1fr) 38px;gap:7px 12px;min-height:106px;padding-block:18px}
-  .catalog-v3 .archive-results[data-mode=list] h2 {font-size:17px}
-  .catalog-v3 .archive-results[data-mode=list] p {font-size:12px;-webkit-line-clamp:2}
-  .catalog-v3 .record-bottom button {height:42px;width:38px}
   .nijika .menu-v3 {width:calc(100vw - 28px);padding:22px;max-height:calc(100dvh - 28px)}
   .menu-v3-layout {grid-template-columns:1.05fr 1fr;gap:20px}
   .menu-v3-layout>nav>a {min-height:49px;font-size:19px;gap:10px}
@@ -269,9 +215,6 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .cinema-bottom {padding-inline:18px;gap:10px}
   .cinema-v3 .cinema-enter {min-width:150px;padding-inline:14px;font-size:11px}
   .cinema-bottom>p {font-size:10px;max-width:84px}
-  .catalog-heading-v3 {grid-template-columns:minmax(0,1fr) 109px;gap:17px}
-  .catalog-heading-v3 h1 {font-size:var(--page-title)}
-  .catalog-v3 .archive-toolbar>span {flex-basis:100%}
   .menu-v3-layout {grid-template-columns:1.15fr 1fr;gap:16px}
   .menu-v3-layout>nav>a {font-size:17px}
 }
