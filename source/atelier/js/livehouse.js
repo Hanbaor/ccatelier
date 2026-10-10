@@ -6,15 +6,21 @@ import {initLiveRecorder} from './livehouse-recorder.js';
 export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={}){
  const dialog=$('#livehouse-dialog');if(!dialog)return {open(){}};
  const canvas=$('[data-live-canvas]',dialog),ctx=canvas.getContext('2d'),audio=new LivehouseAudio(),score=scoreEvents();
- const showButton=$('[data-live-show]',dialog),soundButton=$('[data-live-sound]',dialog),motionButton=$('[data-live-motion]',dialog),status=$('[data-live-status]',dialog),scene=$('[data-live-scene]',dialog),progress=$('[data-live-progress]',dialog),timeline=progress.parentElement;
+ const showButton=$('[data-live-show]',dialog),soundButton=$('[data-live-sound]',dialog),motionButton=$('[data-live-motion]',dialog),status=$('[data-live-status]',dialog),announcement=$('[data-live-announcement]',dialog),scene=$('[data-live-scene]',dialog),progress=$('[data-live-progress]',dialog),timeline=progress.parentElement;
  const pads=new Map($$('[data-live-pad]',dialog).map(p=>[p.dataset.livePad,p]));
  const sections={arrival:'灯光亮起',build:'找到节奏',chorus:'这一刻，尽情演奏',finale:'最后一拍，也属于你'};
  let opener=null,sound=false,playing=false,start=0,cursor=0,scheduler=0,raf=0,last=0,clock=0,energy=0,visualAt=-1000,localMotion=true,generation=0,section='',hits=0,width=0,height=0;
  let pointer=.5,target=.5,rings=[],visualTimers=new Set(),padTimers=new Map(),padLast=new Map();
  const wave=new Uint8Array(256);
- let stage=null,stageAbort=null,stageGeneration=0;
+ let stage=null,stageAbort=null,stageGeneration=0,hitSummary=0,summaryVersion=0,soundGeneration=0;
  const animated=()=>motion.enabled&&localMotion;
- function say(text){status.textContent=text;}
+ function clearHitSummary(){clearTimeout(hitSummary);hitSummary=0;summaryVersion++;}
+ function say(text){clearHitSummary();status.textContent=text;if(announcement)announcement.textContent=text;}
+ function summarizeHits(text){
+  clearHitSummary();status.textContent=text;const version=summaryVersion;
+  // Keep the visual counter immediate; announce only after a pause in playing.
+  hitSummary=setTimeout(()=>{if(version!==summaryVersion)return;hitSummary=0;if(dialog.open&&!document.hidden&&announcement)announcement.textContent=text;},700);
+ }
  function syncSound(){soundButton.setAttribute('aria-pressed',String(sound));$('span',soundButton).textContent=sound?'声音已开启':'开启声音';}
  function syncMotion(){const active=animated();dialog.classList.toggle('livehouse-still',!active);motionButton.setAttribute('aria-pressed',String(active));motionButton.textContent=active?'动态灯光':'静态灯光';motionButton.disabled=!motion.enabled;motionButton.title=motion.enabled?'只切换现场动效':'已遵循全站或系统减少动态设置';stage?.setMotion(active);wake();}
  function pulse(type,velocity=.7){
@@ -25,10 +31,10 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
   const pad=pads.get(type);if(!pad||!animated()||now-(padLast.get(type)||-1000)<400)return;
   padLast.set(type,now);pad.classList.add('is-hit');clearTimeout(padTimers.get(type));padTimers.set(type,setTimeout(()=>{pad.classList.remove('is-hit');padTimers.delete(type);},430));wake();
  }
- function hit(type){if(!dialog.open||document.hidden)return;audio.hit(type);pulse(type);recorder.capture(type);hits++;say(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
+ function hit(type){if(!dialog.open||document.hidden)return;audio.hit(type);pulse(type);recorder.capture(type);hits++;summarizeHits(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
  function clearVisuals(){visualTimers.forEach(clearTimeout);visualTimers.clear();padTimers.forEach(clearTimeout);padTimers.clear();pads.forEach(p=>p.classList.remove('is-hit'));rings=[];energy=0;stage?.clear();}
  function stopShow(message='演出已停止'){playing=false;generation++;clearInterval(scheduler);scheduler=0;clearVisuals();showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');if(message)say(message);}
- function silence(){sound=false;audio.stop();syncSound();}
+ function silence(){soundGeneration++;clearHitSummary();sound=false;soundButton.disabled=false;audio.stop();syncSound();}
  function transport(){
   if(!playing||!dialog.open||document.hidden)return;
   const elapsed=(performance.now()-start)/1000,beat=elapsed*SCORE_BPM/60;
@@ -49,11 +55,12 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
   clearVisuals();playing=true;generation++;start=performance.now()+120;cursor=0;section='';showButton.setAttribute('aria-pressed','true');$('span',showButton).textContent='停止演出';dialog.classList.add('livehouse-playing');say(sound?'原创现场 · 34 秒':'静音演出 · 可随时开启声音');scheduler=setInterval(transport,25);transport();wake();
  }
  async function toggleSound(){
+  if(!dialog.open||document.hidden)return;
   if(sound){silence();say('声音已关闭，灯光继续');return;}
-  soundButton.disabled=true;
-  try{const ready=await audio.enable();if(!ready||!dialog.open||document.hidden){audio.stop();return;}sound=true;syncSound();say(playing?'声音已开启 · 可一起敲击鼓面':'声音已开启 · 从轻轻一拍开始');}
-  catch(error){audio.stop();say(error.message||'音频未能开启，可继续静音体验。');}
-  finally{soundButton.disabled=false;}
+  const token=++soundGeneration;soundButton.disabled=true;say('正在开启声音…');
+  try{const ready=await audio.enable();if(token!==soundGeneration)return;if(!dialog.open||document.hidden){audio.stop();return;}if(!ready){audio.stop();say('声音未开启，可继续静音体验。');return;}sound=true;syncSound();say(playing?'声音已开启 · 可一起敲击鼓面':'声音已开启 · 从轻轻一拍开始');}
+  catch(error){if(token!==soundGeneration||!dialog.open||document.hidden)return;audio.stop();say(error.message||'音频未能开启，可继续静音体验。');}
+  finally{if(token===soundGeneration)soundButton.disabled=false;}
  }
  function draw(now){
   raf=0;if(!dialog.open||document.hidden||!ctx)return;
@@ -88,7 +95,7 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
    if(signal.aborted||token!==stageGeneration||!dialog.open){created?.dispose();return;}stage=created;if(!stage&&dialog.dataset.liveStageState==='loading')dialog.dataset.liveStageState='fallback';stage?.setVisible(!document.hidden);stage?.setMotion(animated());
   }catch{if(current())dialog.dataset.liveStageState=loaded?'init-failed':'module-load-failed';/* Native controls remain available. */}
  }
- const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){if(playing){stopShow('演出已停止，舞台留给你的节奏');silence();}clearVisuals();}});
+ const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){clearHitSummary();if(playing){stopShow('演出已停止，舞台留给你的节奏');silence();}clearVisuals();}});
  showButton.addEventListener('click',toggleShow);soundButton.addEventListener('click',toggleSound);$('[data-live-close]',dialog).addEventListener('click',()=>dialog.close());
  $('[data-live-volume]',dialog).addEventListener('input',e=>audio.setVolume(Number(e.target.value)/100));motionButton.addEventListener('click',()=>{localMotion=!localMotion;clearVisuals();syncMotion();});
  pads.forEach((pad,type)=>{

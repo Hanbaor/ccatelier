@@ -17,7 +17,7 @@
     <p data-live-record-status role="status">只记录你敲出的节奏，不使用麦克风。</p>
    </details>
    <div class="livehouse-timeline" role="progressbar" aria-label="演出进度" aria-valuemin="0" aria-valuemax="64" aria-valuenow="0"><i data-live-progress></i><span></span><span></span><span></span><span></span></div>
-   <div class="livehouse-foot"><p id="livehouse-help">触摸鼓面，或按 A S D F。声音由你开启。</p><p data-live-status role="status" aria-live="polite">静音待场</p><a href="<%= url_for('studio/practice/') %>">跟谱排练 <%- partial('nijika/editorial-arrow') %></a></div>
+   <div class="livehouse-foot"><p id="livehouse-help">触摸鼓面，或按 A S D F。声音由你开启。</p><p data-live-status aria-live="off">静音待场</p><span class="sr-only" data-live-announcement role="status" aria-live="polite" aria-atomic="true"></span><a href="<%= url_for('studio/practice/') %>">跟谱排练 <%- partial('nijika/editorial-arrow') %></a></div>
   </div>
   <div class="livehouse-curtain livehouse-curtain-left" aria-hidden="true"></div><div class="livehouse-curtain livehouse-curtain-right" aria-hidden="true"></div>
  </div>

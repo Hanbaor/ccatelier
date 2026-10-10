@@ -3,17 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {JSDOM} = require('jsdom');
+const ejs = require('ejs');
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 // Each fixture owns its clock and restores every global, even after a failed
 // assertion. No real show scheduler or animation frame can outlive a test.
-async function livehouse(t, {motionEnabled = true, canvasAvailable = true, deferredAudio = false, loadStage} = {}) {
+async function livehouse(t, {motionEnabled = true, canvasAvailable = true, deferredAudio = false, audioReady = true, loadStage} = {}) {
   const dom = new JSDOM(fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8'), {
     url: 'https://ccatelier.test/',
   });
   const {window} = dom;
   const {document} = window;
+  // Exercise current template without rebuilding or modifying generated output.
+  document.querySelector('#livehouse-dialog').outerHTML=ejs.render(fs.readFileSync(path.join(__dirname,'../custom/redefine/nijika/livehouse.ejs'),'utf8'),{url_for:value=>'/'+value,partial:()=>''});
   const globals = new Map();
   let now = 1000, nextId = 0, hidden = false;
   const intervals = new Map(), timers = new Map(), frames = new Map(), contexts = [], errors = [];
@@ -70,9 +73,10 @@ async function livehouse(t, {motionEnabled = true, canvasAvailable = true, defer
     }
     get currentTime() { return now / 1000; }
     resume() {
-      if (!deferredAudio) { this.state = 'running'; return Promise.resolve(); }
-      return new Promise(resolve => {
-        this.resolveResume = () => { if (this.state !== 'closed') this.state = 'running'; resolve(); };
+      if (!deferredAudio) { if(audioReady)this.state = 'running'; return Promise.resolve(); }
+      return new Promise((resolve,reject) => {
+        this.rejectResume=reject;
+        this.resolveResume = () => { if (this.state !== 'closed'&&audioReady) this.state = 'running'; resolve(); };
       });
     }
     close() { this.closeCalls++; this.state = 'closed'; return Promise.resolve(); }
@@ -99,7 +103,7 @@ async function livehouse(t, {motionEnabled = true, canvasAvailable = true, defer
   const find = selector => dialog.querySelector(selector);
   const api = {
     window, document, dialog, controller, opener, contexts, errors, intervals, timers, frames, drawing, find,
-    show: find('[data-live-show]'), sound: find('[data-live-sound]'), status: find('[data-live-status]'),
+    show: find('[data-live-show]'), sound: find('[data-live-sound]'), status: find('[data-live-status]'), announcement: find('[data-live-announcement]'),
     progress: find('[data-live-progress]'),
     open() { opener.focus(); controller.open(opener); },
     // Focus restoration queues a zero-delay jsdom selectionchange event.
@@ -486,4 +490,54 @@ test('stage initializer failure is labeled without breaking native input or leak
 });
 test('an old adapter rejection cannot overwrite a newer open stage status',async t=>{
  const pending=[];const f=await livehouse(t,{loadStage:()=>new Promise((resolve,reject)=>pending.push({resolve,reject}))});f.open();f.close();f.open();pending[1].resolve({createLiveStage(){return null;}});await settle();assert.equal(f.dialog.dataset.liveStageState,'fallback');pending[0].reject(Error('old import'));await settle();assert.equal(f.dialog.dataset.liveStageState,'fallback');
+});
+
+test('pad counters stay immediate while live announcements wait for a playing pause',async t=>{
+ const f=await livehouse(t,{motionEnabled:false});f.open();
+ assert.equal(f.status.getAttribute('aria-live'),'off');assert.equal(f.status.hasAttribute('role'),false);
+ assert.equal(f.announcement.getAttribute('role'),'status');assert.equal(f.announcement.getAttribute('aria-atomic'),'true');assert.equal(f.announcement.classList.contains('sr-only'),true);
+ const baseline=f.announcement.textContent;
+ for(let i=1;i<=12;i++){
+  f.key(f.dialog,['a','s','d','f'][i%4]);assert.match(f.status.textContent,new RegExp(' '+i+' 拍$'));f.advance(300);assert.equal(f.announcement.textContent,baseline);
+ }
+ f.advance(399);assert.equal(f.announcement.textContent,baseline);f.advance(1);assert.equal(f.announcement.textContent,'静音试奏 · 12 拍');
+ f.find('[data-live-pad="kick"]').click();assert.equal(f.announcement.textContent,'静音试奏 · 12 拍');f.advance(700);assert.equal(f.announcement.textContent,'静音试奏 · 13 拍');assert.equal(f.contexts.length,0,'summaries never enable sound');
+});
+
+test('important show and sound messages cancel older pending hit summaries',async t=>{
+ const f=await livehouse(t,{motionEnabled:false,deferredAudio:true});f.open();const hit=()=>f.find('[data-live-pad="kick"]').click();
+ hit();f.show.click();const show=f.announcement.textContent;assert.match(show,/静音演出/);f.advance(700);assert.equal(f.announcement.textContent,show);
+ hit();f.sound.click();assert.equal(f.announcement.textContent,'正在开启声音…');f.advance(700);assert.equal(f.announcement.textContent,'正在开启声音…');
+ f.contexts[0].resolveResume();await settle();const enabled=f.announcement.textContent;assert.match(enabled,/声音已开启/);f.advance(700);assert.equal(f.announcement.textContent,enabled);
+ hit();f.sound.click();assert.match(f.announcement.textContent,/声音已关闭/);const muted=f.announcement.textContent;f.advance(700);assert.equal(f.announcement.textContent,muted);
+ hit();f.sound.click();f.contexts[1].rejectResume(Error('音频暂不可用'));await settle();assert.equal(f.announcement.textContent,'音频暂不可用');f.advance(700);assert.equal(f.announcement.textContent,'音频暂不可用');assert.equal(f.sound.disabled,false);
+});
+
+for(const lifecycle of ['close','hidden','pagehide'])test(`${lifecycle} discards pending pad summaries without replay on return`,async t=>{
+ const f=await livehouse(t,{motionEnabled:false});f.open();f.find('[data-live-pad="kick"]').click();
+ const stale=[...f.timers.values()].find(timer=>timer.at===1700).callback;
+ if(lifecycle==='close')f.close();else if(lifecycle==='hidden')f.visibility(true);else f.hidePage();
+ const interrupted=f.announcement.textContent;f.advance(1000);assert.equal(f.announcement.textContent,interrupted);
+ if(lifecycle==='hidden')f.visibility(false);else f.open();
+ const reopened=f.announcement.textContent;stale();assert.equal(f.announcement.textContent,reopened,'a stale queued callback cannot report an earlier room');
+ f.find('[data-live-pad="snare"]').click();f.advance(700);assert.match(f.announcement.textContent,lifecycle==='hidden'?/2 拍$/:/1 拍$/);assert.equal(f.contexts.length,0);
+});
+
+test('late sound failures cannot overwrite a newer room or its current enable',async t=>{
+ const f=await livehouse(t,{deferredAudio:true});f.open();f.sound.click();const stale=f.contexts[0];f.close();f.open();f.sound.click();const fresh=f.contexts[1];
+ stale.rejectResume(Error('旧的错误'));await settle();assert.equal(f.announcement.textContent,'正在开启声音…');assert.equal(f.sound.disabled,true);assert.equal(fresh.state,'suspended');fresh.resolveResume();await settle();assert.match(f.announcement.textContent,/声音已开启/);assert.equal(f.sound.disabled,false);
+});
+
+test('late successful enable cannot stop or clear a newer sound request',async t=>{
+ const f=await livehouse(t,{deferredAudio:true});f.open();f.sound.click();const stale=f.contexts[0];f.close();f.open();f.sound.click();const fresh=f.contexts[1];fresh.resolveResume();await settle();const current=f.announcement.textContent;stale.resolveResume();await settle();assert.equal(fresh.state,'running');assert.equal(f.sound.getAttribute('aria-pressed'),'true');assert.equal(f.announcement.textContent,current);
+});
+
+test('an active sound request that stays suspended ends loading with accurate silent feedback',async t=>{
+ const f=await livehouse(t,{deferredAudio:true,audioReady:false,motionEnabled:false});f.open();f.find('[data-live-pad="kick"]').click();f.sound.click();assert.equal(f.announcement.textContent,'正在开启声音…');f.contexts[0].resolveResume();await settle();
+ assert.equal(f.status.textContent,'声音未开启，可继续静音体验。');assert.equal(f.announcement.textContent,f.status.textContent);assert.equal(f.sound.getAttribute('aria-pressed'),'false');assert.equal(f.sound.disabled,false);assert.equal(f.contexts[0].state,'closed');f.advance(1000);assert.equal(f.announcement.textContent,'声音未开启，可继续静音体验。');
+});
+
+test('a stale false sound result cannot clear a newer loading state',async t=>{
+ const f=await livehouse(t,{deferredAudio:true,audioReady:false});f.open();f.sound.click();const stale=f.contexts[0];f.close();f.open();f.sound.click();const fresh=f.contexts[1];stale.resolveResume();await settle();
+ assert.equal(f.announcement.textContent,'正在开启声音…');assert.equal(f.sound.disabled,true);assert.equal(fresh.state,'suspended');fresh.resolveResume();await settle();assert.equal(f.announcement.textContent,'声音未开启，可继续静音体验。');assert.equal(f.sound.disabled,false);
 });
