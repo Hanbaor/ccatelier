@@ -37,8 +37,8 @@ for (const prefix of ['/', '/lab/']) {
       assert.equal(doc.querySelectorAll('h1').length, 1);
       const studio = doc.querySelector('.hub-studio');
       assert.equal(studio.querySelector('h2').textContent, '节奏实验室');
-      assert.equal(studio.querySelector('.hub-practice').getAttribute('href'), prefix + 'studio/practice/');
-      assert.deepEqual([...doc.querySelectorAll('.hub-secondary a')].map(a => a.getAttribute('href')), [prefix + 'life/', prefix + 'about/']);
+      assert.equal(doc.querySelector('.hub-practice').getAttribute('href'), prefix + 'studio/practice/');
+      assert.deepEqual([...doc.querySelectorAll('.hub-secondary a')].map(a => a.getAttribute('href')), [prefix + 'studio/practice/', prefix + 'life/', prefix + 'about/']);
       assert.equal(doc.querySelectorAll('a a,script,[hidden],a[tabindex="-1"]').length, 0);
       for (const card of cards) {
         const img = card.querySelector('img');
@@ -84,8 +84,8 @@ test('navigation styles parse and retain mobile, focus and theme-aware safeguard
     assert.ok(dom.window.document.styleSheets[0].cssRules.length > 100);
     assert.match(hub, /\.hub-v3 a:focus-visible\s*\{outline:2px solid var\(--yellow\)/);
     assert.match(hub, /\.hub-v3 a\[data-reveal\]:focus-visible \{clip-path:none;opacity:1;transform:none\}/);
-    assert.match(hub, /@media\(max-width:600px\)[\s\S]*\.hub-studio \{margin:0 0 32px\}/);
-    assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.52;object-position:52% 35%\}/);
+    assert.match(hub, /@media\(max-width:600px\)[\s\S]*\.hub-grid \{grid-template-columns:minmax\(0,1fr\);gap:24px\}/);
+    assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 35%\}/);
     assert.match(hub, /\.hub-secondary>a[^}]*min-height:44px[^}]*color:var\(--text\)/);
     assert.match(rooms, /\.life-paths \{display:flex;flex-wrap:wrap/);
     assert.match(rooms, /\.atelier-room a:focus-visible/);

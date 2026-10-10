@@ -274,8 +274,6 @@ body:not(.on-cover) .site-header {background:color-mix(in srgb,var(--bg) 94%,tra
 .reading-studio {padding-top:36px}
 .reading-studio .reading-opener h1 {font-family:var(--editorial);font-weight:600;line-height:1.5}
 .reading-studio .reading-opener .eyebrow {color:var(--yellow)}
-.reader-workbench {border-radius:3px;background:color-mix(in srgb,var(--surface) 70%,var(--bg));box-shadow:none}
-.light .reader-workbench {box-shadow:none}
 .reading-studio .article-body.markdown-body {color:var(--text)}
 .reading-studio .article-body.markdown-body h2 {font-family:var(--editorial);font-weight:600}
 .reading-studio .article-toolbox-main>button {background:var(--surface);border-radius:3px}

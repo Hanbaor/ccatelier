@@ -1,14 +1,17 @@
 <section class="practice-room content-view" data-practice aria-labelledby="practice-title">
- <header class="practice-heading"><div><a href="<%= url_for('studio/') %>"><%- partial('nijika/editorial-arrow') %> 节奏实验室</a><h1 id="practice-title" tabindex="-1">鼓谱排练室</h1><p>原创练习 · 按自己的速度来</p></div><img src="<%= url_for('atelier/images/v4/practice-room.webp') %>" srcset="<%= url_for('atelier/images/v4/practice-room-960.webp') %> 960w, <%= url_for('atelier/images/v4/practice-room.webp') %> 1536w" sizes="(max-width:600px) 100px, (max-width:850px) 38vw, 500px" width="1536" height="1024" alt="虹夏在暖金日光的排练室里练习深蓝鼓组的主题同人插画" decoding="async"></header>
+ <header class="practice-heading"><div><a href="<%= url_for('studio/') %>"><%- partial('nijika/editorial-arrow') %> 节奏实验室</a><h1 id="practice-title" tabindex="-1">鼓谱排练室</h1><p>原创练习 · 按自己的速度来</p></div><img src="<%= url_for('atelier/images/v4/practice-room.webp') %>" srcset="<%= url_for('atelier/images/v4/practice-room-960.webp') %> 960w, <%= url_for('atelier/images/v4/practice-room.webp') %> 1536w" sizes="(max-width:600px) 90px, (max-width:850px) 190px, 240px" width="1536" height="1024" alt="虹夏在暖金日光的排练室里练习深蓝鼓组的主题同人插画" decoding="async"></header>
  <noscript><p>互动鼓谱需要 JavaScript。你仍可浏览<a href="<%= url_for('notes/') %>">笔记</a>。</p></noscript>
  <div class="practice-app" hidden>
-  <div class="practice-selection"><label>练习曲<select data-practice-demo aria-label="选择原创练习"></select></label><p data-practice-description></p><div><button type="button" data-practice-export>导出鼓谱</button><label class="practice-import">导入鼓谱<input type="file" data-practice-import accept=".json,application/json"></label><button type="button" data-practice-remove-recording hidden>移除本机录音</button></div></div>
+  <div class="practice-selection"><label>练习曲<select data-practice-demo aria-label="选择原创练习"></select></label><details class="practice-selection-details"><summary>练习说明与文件</summary><p data-practice-description></p><div><button type="button" data-practice-export>导出鼓谱</button><label class="practice-import">导入鼓谱<input type="file" data-practice-import accept=".json,application/json"></label><button type="button" data-practice-remove-recording hidden>移除本机录音</button></div></details></div>
   <div class="practice-transport">
    <button type="button" data-practice-play aria-pressed="false" class="practice-play">开始跟练</button><button type="button" data-practice-stop aria-label="停止跟练" class="practice-stop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7Z"/></svg></button>
    <label class="practice-tempo"><span>速度 <output data-practice-bpm-label aria-live="off" aria-label="当前速度 BPM">96</output> BPM</span><input type="range" min="40" max="220" value="96" data-practice-bpm aria-label="练习速度"></label>
    <label class="practice-volume">音量<input type="range" min="0" max="60" value="25" data-practice-volume aria-label="练习音量"></label>
    <div class="practice-beats" aria-hidden="true"><i></i><i></i><i></i><i></i></div><output data-practice-position aria-live="off">准备</output>
   </div>
+  <div class="practice-sheet-heading"><h2 data-practice-title></h2><span>4 / 4</span><p>点击小节选起点</p></div>
+  <div class="practice-sheet" data-practice-sheet role="group" aria-label="鼓谱小节"></div>
+  <div class="practice-lower"><p class="practice-legend"><span>× 踩镲</span><span>● 军鼓 / 通鼓 / 底鼓</span><span>每格 = 十六分音符</span></p><p data-practice-status role="status">点击开始后发声，先数四拍。</p></div>
   <div class="practice-options"><label><input type="checkbox" data-practice-loop checked>循环练习</label><label>从<select data-practice-start aria-label="起始小节"></select></label><label>到<select data-practice-end aria-label="结束小节"></select></label><label><input type="checkbox" data-practice-metronome checked>节拍器</label><label><input type="checkbox" data-practice-drums checked>示范鼓声</label><button type="button" data-practice-reset>恢复速度</button></div>
   <details class="practice-challenge" data-challenge>
    <summary><span>跟拍挑战</span><small>把这一段，交给你的双手</small></summary>
@@ -25,9 +28,6 @@
    <p class="challenge-result" data-challenge-result role="status" hidden></p>
    <div class="challenge-bottom"><span data-challenge-best>成绩仅存本机</span><details><summary>玩法与计分</summary><p>按上方选区与速度挑战一遍。点击鼓垫或按 A / S / D / F；同列鼓点一起敲，空格留白。开始后发声，示范鼓声暂时关闭，可用上方音量静音。提前或延后 120ms 内算接住，45ms 内算合拍。跟拍率 = 接住 ÷（目标 + 额外敲击）。设备可能有延迟，成绩仅供练习参考。</p></details></div>
   </details>
-  <div class="practice-sheet-heading"><h2 data-practice-title></h2><span>4 / 4</span><p>点击小节选起点</p></div>
-  <div class="practice-sheet" data-practice-sheet role="group" aria-label="鼓谱小节"></div>
-  <div class="practice-lower"><p class="practice-legend"><span>× 踩镲</span><span>● 军鼓 / 通鼓 / 底鼓</span><span>每格 = 十六分音符</span></p><p data-practice-status role="status">点击开始后发声，先数四拍。</p></div>
   <details class="practice-score-sources"><summary>结束乐队 · 官方乐谱</summary><p>查看出版社提供的鼓谱与乐队总谱。本站不复制销售中的谱面。</p><a href="https://sheetmusic.jp.yamaha.com/products/4947817310204" target="_blank" rel="noopener noreferrer"><span>青春コンプレックス / ギターと孤独と蒼い惑星 / 月並みに輝け</span><small>Yamaha · 入门鼓谱集 ↗</small></a><a href="https://sheetmusic.jp.yamaha.com/products/4947817305804" target="_blank" rel="noopener noreferrer"><span>ぼっち・ざ・ろっく！ Selection</span><small>Yamaha · 乐队总谱集 ↗</small></a></details>
   <details class="practice-file-help"><summary>自己的谱怎么放进来？</summary><p>先导出一份鼓谱作为 JSON 模板，再填入自己的节奏。导入只在本机读取，不上传；仅使用你有权使用的谱面。示例都是本站原创练习，不是结束乐队歌曲原谱。</p></details>
  </div>

@@ -1,20 +1,25 @@
-.practice-room {width:100%;box-sizing:border-box;max-width:1280px;margin:auto;padding:42px var(--page-gutter) 65px}
-.practice-heading {display:grid;grid-template-columns:1.3fr 1fr;gap:50px;align-items:center;margin-bottom:35px}
+.practice-room {padding-top:var(--page-start)}
+.practice-heading {display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:32px;align-items:center;margin-bottom:24px}
 .practice-heading>div>a {display:inline-flex;align-items:center;gap:10px;color:var(--muted);font:12px var(--chinese);min-height:35px}
 .practice-heading>div>a svg {width:15px;height:15px;transform:rotate(225deg)}
-.practice-heading h1 {font:500 clamp(30px,4vw,54px)/1.4 var(--chinese);letter-spacing:-.05em;margin:12px 0 10px}
+.practice-heading h1 {font:500 var(--page-title)/1.25 var(--chinese);letter-spacing:-.05em;margin:12px 0 10px}
 .practice-heading p {font:12px var(--chinese);color:var(--yellow);letter-spacing:.15em;margin:0}
-.practice-heading>img {display:block;width:100%;height:auto;aspect-ratio:2.4;object-fit:cover;object-position:52% 0%;border-radius:3px;mask-image:linear-gradient(90deg,transparent,#000 16%)}
-.practice-selection {display:flex;align-items:center;gap:22px;border-block:1px solid var(--line);padding:22px 0}
-.practice-selection>label {display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);white-space:nowrap}
-.practice-selection select {font:500 18px var(--chinese);max-width:270px;background:var(--bg);color:var(--ink);border:0;padding:6px 20px 6px 0}
-.practice-selection>p {font:12px/1.8 var(--chinese);color:var(--muted);margin:0;max-width:260px}
-.practice-selection>div {display:flex;gap:10px;align-items:center;margin-left:auto}
+.practice-heading>img {display:block;width:100%;height:auto;aspect-ratio:1.5;object-fit:cover;object-position:52% 0%;border-radius:3px}
+.practice-selection {display:flex;align-items:center;gap:20px;border-block:1px solid var(--line);padding:14px 0}
+.practice-selection>label {min-width:0;display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);white-space:nowrap}
+.practice-selection select {min-width:0;flex:1;font:500 18px var(--chinese);max-width:270px;background:var(--bg);color:var(--ink);border:0;padding:6px 20px 6px 0}
+.practice-selection>details {margin-left:auto;font:13px/1.8 var(--chinese);color:var(--muted)}
+.practice-selection summary {min-height:40px;display:flex;align-items:center;cursor:pointer;list-style:none}
+.practice-selection summary:after {content:"+";margin-left:16px;color:var(--yellow)}
+.practice-selection details[open] summary:after {content:"−"}
+.practice-selection details p {max-width:42em;margin:8px 0 16px}
+.practice-selection details>div {display:flex;gap:10px;flex-wrap:wrap}
+
 .practice-selection button,.practice-import {font:11px var(--chinese);border:1px solid var(--line);padding:9px 12px;min-height:38px;border-radius:3px;white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer}
 .practice-import {position:relative;overflow:hidden}
 .practice-import input {position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .practice-import:focus-within {outline:2px solid var(--yellow);outline-offset:3px}
-.practice-transport {display:flex;align-items:center;gap:15px;padding:24px 0 20px;flex-wrap:wrap}
+.practice-transport {display:flex;align-items:center;gap:15px;padding:20px 0 16px;flex-wrap:wrap}
 .practice-play {background:var(--ink);color:var(--bg);border-radius:4px;padding:13px 19px;min-height:46px;min-width:118px;font:12px var(--chinese)}
 .practice-play[aria-pressed=true] {background:var(--yellow);color:var(--bg)}
 .practice-stop {width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:4px}
@@ -58,36 +63,36 @@
 .practice-file-help p {max-width:720px;margin:4px 0 0}
 .practice-room :focus-visible {outline:2px solid var(--yellow);outline-offset:4px}
 @media(max-width:850px) {
- .practice-heading {gap:25px;grid-template-columns:1.4fr 1fr}
- .practice-heading h1 {font-size:34px}
+ .practice-heading {gap:24px;grid-template-columns:minmax(0,1fr) 190px}
+ .practice-heading h1 {font-size:var(--page-title)}
  .practice-selection {flex-wrap:wrap;gap:12px 20px}
- .practice-selection>p {flex:1;max-width:none}
- .practice-selection>div {margin-left:0}
  .practice-transport {gap:12px}
  .practice-beats {gap:8px;margin-left:15px}
  .practice-sheet {gap:14px}
  .practice-options {gap:12px 15px}
 }
 @media(max-width:600px) {
- .practice-room {padding:25px 20px 45px}
- .practice-heading {grid-template-columns:1fr;gap:15px;margin-bottom:24px;position:relative}
- .practice-heading h1 {font-size:29px}
- .practice-heading>img {position:absolute;right:0;bottom:0;width:100px;aspect-ratio:1;object-position:52% 35%;opacity:.85;z-index:-1;mask-image:linear-gradient(90deg,transparent,#000)}
+
+ .practice-heading {grid-template-columns:minmax(0,1fr) 90px;gap:12px;margin-bottom:20px;position:relative}
+ .practice-heading h1 {font-size:clamp(26px,7vw,32px);margin:8px 0}
+ .practice-heading>img {position:static;width:100%;aspect-ratio:.85;object-position:52% 35%;opacity:1;mask-image:none}
+ .practice-heading p {font-size:11px;letter-spacing:0;line-height:1.7}
  .practice-selection>label {width:100%;justify-content:space-between}
  .practice-selection select {font-size:17px;max-width:260px}
- .practice-selection>p {font-size:11px;flex-basis:100%}
- .practice-selection>div {gap:10px}
+ .practice-selection>details {width:100%;margin:0}
+ .practice-selection summary {min-height:32px}
+ .practice-selection {gap:4px;padding:10px 0}
  .practice-selection button,.practice-import {min-height:35px;padding:7px 10px}
- .practice-transport {gap:14px 9px;padding-block:21px}
+ .practice-transport {gap:12px 9px;padding-block:16px}
  .practice-play {min-width:112px;padding-inline:14px}
  .practice-tempo {min-width:140px;margin-left:auto}
  .practice-tempo input {width:140px}
  .practice-volume {flex-direction:row;align-items:center;gap:12px}
  .practice-beats {margin-left:auto;gap:11px}
  [data-practice-position] {min-width:68px;font-size:11px}
- .practice-options {gap:8px 13px;padding-bottom:18px;font-size:10px}
+ .practice-options {gap:8px 13px;padding:16px 0;font-size:12px;border-top:1px solid var(--line);margin-top:20px}
  .practice-options button {margin-left:0}
- .practice-sheet-heading {margin:25px 0 18px;flex-wrap:wrap;gap:10px 15px}
+ .practice-sheet-heading {margin:16px 0;flex-wrap:wrap;gap:10px 15px}
  .practice-sheet-heading h2 {font-size:21px}
  .practice-sheet-heading p {font-size:9px}
  .practice-sheet {grid-template-columns:1fr;gap:12px}

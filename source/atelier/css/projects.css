@@ -1,9 +1,9 @@
 /* Projects: an illustrated case study, readable before any browser enhancement. */
-.project-case {width:min(1400px,calc(100% - 112px));padding:42px 0 80px}
-.project-intro {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.3fr);align-items:center;gap:clamp(36px,5vw,80px)}
+.project-case {padding-top:var(--page-start)}
+.project-intro {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.3fr);align-items:center;gap:40px}
 .project-summary {min-width:0;padding-block:18px}
 .project-context {margin:0 0 24px;font:12px/1.6 var(--chinese);color:var(--muted)}
-.project-summary h1 {margin:0 0 23px;font:500 clamp(42px,4.8vw,70px)/1.08 var(--sans);letter-spacing:-.055em;text-wrap:balance}
+.project-summary h1 {margin:0 0 23px;font:500 var(--page-title)/1.12 var(--sans);letter-spacing:-.055em;text-wrap:balance}
 .project-lead {max-width:24em;margin:0 0 18px;font:400 clamp(18px,1.65vw,23px)/1.8 var(--chinese);color:var(--ink)}
 .project-description {max-width:32em;margin:0;font:14px/1.95 var(--chinese);color:var(--text)}
 .project-actions {display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:29px}
@@ -12,7 +12,7 @@
 .project-text-link svg,.project-inline-link svg,.project-evidence>a svg,.project-reading-pair nav svg {flex:none;width:14px;height:14px}
 .project-text-link {display:inline-flex;align-items:center;gap:13px;min-height:44px;font:12px/1.6 var(--chinese)}
 .project-art {align-self:stretch;min-width:0;overflow:hidden;border-radius:3px;background:var(--surface)}
-.project-art img {display:block;width:100%;height:100%;min-height:390px;max-height:480px;object-fit:cover;object-position:58% center}
+.project-art img {display:block;width:100%;height:100%;min-height:310px;max-height:390px;object-fit:cover;object-position:58% center}
 .project-section {margin-top:54px;padding-top:28px;border-top:1px solid var(--line)}
 .project-section>h2 {margin:0 0 27px;font:500 20px/1.6 var(--chinese);letter-spacing:-.025em}
 .project-layers {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;margin:0;padding:0;list-style:none}
@@ -46,19 +46,17 @@
 .project-actions .room-action:hover {color:var(--bg)}
 .project-case a:focus-visible {outline:2px solid var(--yellow);outline-offset:5px;border-radius:2px}
 @media(max-width:1100px) {
- .project-case {width:calc(100% - 64px);padding-top:30px}
  .project-intro {gap:32px;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
- .project-summary h1 {font-size:48px}
- .project-art img {min-height:400px}
+ .project-summary h1 {font-size:var(--page-title)}
+ .project-art img {min-height:310px}
  .project-decision-list>li {grid-template-columns:minmax(200px,.7fr) minmax(0,1.3fr);gap:32px}
  .project-decision-list h3 {gap:13px;font-size:17px}
 }
 @media(max-width:760px) {
- .project-case {width:calc(100% - 44px);padding:25px 0 55px}
  .project-intro {grid-template-columns:minmax(0,1fr);gap:27px}
  .project-summary {padding:0}
  .project-context {margin-bottom:18px}
- .project-summary h1 {font-size:48px;margin-bottom:19px}
+ .project-summary h1 {font-size:var(--page-title);margin-bottom:19px}
  .project-lead {max-width:27em;font-size:19px;margin-bottom:13px}
  .project-description {max-width:42em;font-size:13px}
  .project-actions {margin-top:22px;gap:24px}
@@ -83,8 +81,7 @@
  .project-reading-pair {padding-top:24px;border-top:1px solid var(--line)}
 }
 @media(max-width:380px) {
- .project-case {width:calc(100% - 36px)}
- .project-summary h1 {font-size:43px}
+ .project-summary h1 {font-size:var(--page-title)}
  .project-lead {font-size:18px}
  .project-layers li {grid-template-columns:67px minmax(0,1fr);gap:4px 12px}
  .project-reading-list>a,.project-reading-pair {gap:15px}

@@ -26,10 +26,11 @@ test('the entry, studio index and notes have distinct editorial compositions and
   assert.deepEqual([...hub.querySelectorAll('.hub-secondary>a')].map(link=>({
    title:link.textContent.trim(),route:link.getAttribute('href')
   })),[
+   {title:'鼓谱排练室',route:'/studio/practice/'},
    {title:'生活',route:'/life/'},
    {title:'关于 CC',route:'/about/'}
   ],'life and about remain lightweight secondary destinations');
-  const practice=hub.querySelector('.hub-studio .hub-practice');
+  const practice=hub.querySelector('.hub-practice');
   assert.equal(practice.getAttribute('href'),'/studio/practice/');
   assert.equal(practice.textContent.trim(),'鼓谱排练室');
   assert.equal(hub.querySelectorAll('a a').length,0,'rehearsal is a separate native link, never a nested interactive control');

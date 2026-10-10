@@ -17,9 +17,16 @@ test('editorial styles load after refinements and quick navigation identifies th
       assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/refinement.css'));
       const nav = dom.window.document.querySelector('nav.header-navigation');
       assert.equal(nav.getAttribute('aria-label'), '快捷导航');
-      assert.equal(nav.querySelectorAll('a').length, 3);
-      if (['notes/index.html'].includes(route)) {
-        assert.equal(nav.querySelector('[aria-current="page"]').getAttribute('href'), '/' + route.replace('index.html',''));
+      assert.deepEqual([...nav.querySelectorAll('a')].map(link => ({label:link.textContent.trim(),href:link.getAttribute('href')})), [
+        {label:'创作室',href:'/atelier/'}, {label:'笔记',href:'/notes/'},
+        {label:'音乐',href:'/studio/'}, {label:'项目',href:'/projects/'}, {label:'研究',href:'/research/'}
+      ]);
+      const active = [...nav.querySelectorAll('[aria-current="page"]')];
+      if (['atelier/index.html','notes/index.html','studio/index.html'].includes(route)) {
+        assert.equal(active.length, 1);
+        assert.equal(active[0].getAttribute('href'), '/' + route.replace('index.html',''));
+      } else {
+        assert.equal(active.length, 0, 'cover and secondary rooms do not highlight an unrelated primary section');
       }
     } finally {dom.window.close();}
   }
@@ -36,7 +43,7 @@ test('article title and tools precede optional panels and retain an accessible a
       assert.equal(doc.querySelector('.reader-paper').getAttribute('aria-labelledby'), 'article-title');
       assert.equal(doc.querySelectorAll('#article-title').length, 1);
       assert.ok(doc.querySelector('.reader-paper .article-body'));
-      assert.ok(doc.querySelector('.reader-workbench [data-reader-size]'));
+      assert.ok(doc.querySelector('.reader-paper .reader-options [data-reader-size]'));
     } finally {dom.window.close();}
   }
 });
@@ -60,12 +67,12 @@ test('small-screen readers start with optional panels collapsed and controls sti
   const dom = new JSDOM(read('hot100/036/index.html'), {url:'https://ccatelier.test/hot100/036/'});
   const {window} = dom;
   Object.assign(globalThis, {window,document:window.document,location:window.location,localStorage:window.localStorage,innerHeight:844,
-    matchMedia:query=>({matches:query === '(max-width:760px)',addEventListener(){}}),requestAnimationFrame:()=>0,cancelAnimationFrame(){}});
+    matchMedia:query=>({matches:query === '(max-width:1000px)',addEventListener(){}}),requestAnimationFrame:()=>0,cancelAnimationFrame(){}});
   try {
     const {initReader} = await import('../source/atelier/js/reader.js');
     initReader();
     assert.equal(document.querySelector('.chapter-rail details').open, false);
-    assert.equal(document.querySelector('.reader-workbench details').open, false);
+    assert.equal(document.querySelector('.reader-options').open, false);
     const shortcut = document.querySelector('[data-reader-size-cycle]');
     shortcut.click();
     assert.equal(document.querySelector('[data-reader-size]').value,'19');

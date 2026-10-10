@@ -46,7 +46,7 @@ for (const prefix of ['/', '/lab/']) {
       assert.equal(doc.querySelectorAll('img').length, 1);
       assert.equal(art.getAttribute('src'), `${prefix}atelier/images/v4/practice-room.webp`);
       assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v4/practice-room-960.webp 960w, ${prefix}atelier/images/v4/practice-room.webp 1536w`);
-      assert.equal(art.getAttribute('sizes'), '(max-width:600px) 100px, (max-width:850px) 38vw, 500px');
+      assert.equal(art.getAttribute('sizes'), '(max-width:600px) 90px, (max-width:850px) 190px, 240px');
       assert.equal(art.width, 1536);
       assert.equal(art.height, 1024);
       assert.match(art.alt, /排练室.*主题同人插画/);
@@ -61,8 +61,8 @@ for (const prefix of ['/', '/lab/']) {
 test('art styling preserves the compact rehearsal header and centered face focus', () => {
   const practice = read('source/atelier/css/practice.css');
   const hub = read('source/atelier/css/immersive.css');
-  assert.match(practice, /\.practice-heading>img \{[^}]*aspect-ratio:2\.4;object-fit:cover;object-position:52% 0%/);
-  assert.match(practice, /@media\(max-width:600px\)[\s\S]*\.practice-heading>img \{position:absolute;[^}]*width:100px;aspect-ratio:1;object-position:52% 35%/);
-  assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.18;object-position:52% 35%\}/);
-  assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.52;object-position:52% 35%\}/);
+  assert.match(practice, /\.practice-heading>img \{[^}]*aspect-ratio:1\.5;object-fit:cover;object-position:52% 0%/);
+  assert.match(practice, /@media\(max-width:600px\)[\s\S]*\.practice-heading>img \{position:static;[^}]*width:100%;aspect-ratio:\.85;object-position:52% 35%/);
+  assert.match(hub, /\.hub-card>img \{[^}]*aspect-ratio:1\.75/);
+  assert.match(hub, /\.hub-studio \.hub-card>img \{object-position:52% 35%\}/);
 });

@@ -11,7 +11,7 @@ test('immersive cover removes brochure decoration and uses a dedicated mobile po
   assert.equal(d.querySelectorAll('.cinema-copy a').length,1);
   assert.equal(d.querySelectorAll('.entry-index,.entry-running-head,.entry-art-seal,.entry-signature').length,0);
   assert.match(d.querySelector('.cinema-art source').srcset,/v3\/about/);
-  assert.equal(d.querySelectorAll('.header-navigation a').length,3);
+  assert.equal(d.querySelectorAll('.header-navigation a').length,5);
   assert.equal(d.querySelectorAll('#menu-dialog nav a').length,9);
   assert.ok(d.querySelector('.cinema-enter svg'),'CTA arrow must be a font-independent SVG');
  }finally{dom.window.close();}

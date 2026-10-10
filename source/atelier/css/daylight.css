@@ -92,7 +92,6 @@ body:not(.on-cover) .site-header{
 .light .record-top b{color:#91691f}
 .light .archive-group button[aria-pressed=true]{color:#fff9e9}
 .light .archive-group button[aria-pressed=true] span{color:#fff2ce}
-.light .reader-workbench{box-shadow:0 8px 26px #6e532208}
 .light .reading-opener{border-color:var(--line)}
 button[data-reader-size-cycle]{font:13px var(--sans);display:inline-flex;align-items:center;gap:7px;min-width:48px}
 button[data-reader-size-cycle]>span{font:12px var(--condensed);color:var(--yellow);font-variant-numeric:tabular-nums}

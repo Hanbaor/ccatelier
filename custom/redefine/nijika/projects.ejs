@@ -18,7 +18,7 @@
     <h2 id="project-architecture-title">实现结构</h2>
     <ol class="project-layers" aria-label="静态内容、浏览器增强与共享后端的职责">
       <li><span class="project-layer-label">构建时</span><h3>Markdown → HTML</h3><p>Hexo 生成文章与目录，EJS 覆盖 Redefine 视图。</p></li>
-      <li><span class="project-layer-label">浏览器</span><h3>ES modules</h3><p>全文检索、阅读工作台与 Web Audio 节奏实验。</p></li>
+      <li><span class="project-layer-label">浏览器</span><h3>ES modules</h3><p>全文检索、文章阅读工具与 Web Audio 节奏实验。</p></li>
       <li><span class="project-layer-label">共享后端</span><h3>Worker + D1</h3><p>同域 <code>/api/*</code> 处理留言、掌声与统计。<a class="project-inline-link" href="<%= projectSource %>worker/index.mjs" target="_blank" rel="noopener noreferrer">实现 <%- partial('nijika/editorial-arrow') %></a></p></li>
     </ol>
     <p class="project-boundary">阅读进度、收藏与队列仅保存在当前浏览器，存储受限时可能无法保留；离线副本需主动保存。共享互动需要独立部署后端，静态页面可单独使用。</p>
@@ -43,7 +43,7 @@
         <h3><span aria-hidden="true">03</span>离线保存先完成，再替换</h3>
         <div><p>主动保存文章时，先下载资源并写入新的独立缓存，全部成功后才更新元数据指针。写入失败便丢弃新快照，保留已有副本。</p>
           <div class="project-evidence"><a href="<%= url_for('writing/csdn-154834561/') %>">打开文章试用 <%- partial('nijika/editorial-arrow') %></a><span class="project-source-links">源码：<a href="<%= projectSource %>custom/live-sw.template#L14-L28" target="_blank" rel="noopener noreferrer">快照提交</a></span></div>
-          <p class="project-instruction">文章的「阅读工作台」中可选择「离线保存」。浏览器需支持 Service Worker，并使用 HTTPS 或 localhost。</p>
+          <p class="project-instruction">文章末尾展开「阅读工具」，选择「离线保存」。浏览器需支持 Service Worker，并使用 HTTPS 或 localhost。</p>
         </div>
       </li>
     </ol>

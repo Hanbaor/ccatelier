@@ -23,13 +23,14 @@ const sqlCases = [
 %>
 <link rel="stylesheet" href="<%= url_for('atelier/css/research-sql.css') %>">
 <section class="atelier-room room-research" aria-label="研究">
-  <header class="room-scene research-scene" data-reveal><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="94vw" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><h1 tabindex="-1">研究</h1></header>
+  <header class="room-scene research-scene" data-reveal><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) 123px, 240px" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><h1 tabindex="-1">研究</h1></header>
   <div class="research-focus"><div class="research-topics"><span>Database</span><span>Text-to-SQL</span></div><span class="room-status"><i aria-hidden="true"></i>教学示例</span><a class="room-action" href="<%= url_for('notes/') %>">笔记 <%- partial('nijika/editorial-arrow') %></a></div>
   <section class="sql-lab" data-sql-lab aria-labelledby="sql-lab-title">
     <header class="sql-lab-heading"><div><p>QUERY / RESULT</p><h2 id="sql-lab-title">能运行，然后呢？</h2></div><span>SQLite · 浏览器内运行</span></header>
     <div class="sql-case-switch" data-sql-switch hidden aria-label="选择 SQL 教学示例">
       <% sqlCases.forEach((item,index) => { %><button type="button" data-sql-select="<%= item.id %>" aria-controls="sql-case-<%= item.id %>" aria-pressed="<%= index === 0 ? 'true' : 'false' %>"><span>0<%= index + 1 %></span><%= item.label %></button><% }); %>
     </div>
+    <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
     <% sqlCases.forEach((item,index) => { %>
     <article class="sql-case" id="sql-case-<%= item.id %>" data-sql-case="<%= item.id %>" aria-labelledby="sql-question-<%= item.id %>">
       <div class="sql-question"><span aria-hidden="true">0<%= index + 1 %></span><h3 id="sql-question-<%= item.id %>"><%= item.question %></h3></div>
@@ -56,7 +57,6 @@ const sqlCases = [
       <details class="sql-insight"><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
     </article>
     <% }); %>
-    <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
     <p class="sql-editor-help" id="sql-editor-help">只读 SELECT / WITH · 不含分号 · 最多 100 行 · Ctrl / ⌘ + Enter 运行</p>
     <details class="sql-boundaries"><summary>运行边界与来源</summary><p>本站原创小数据，比较只对本例成立。列按位置对应，值类型、重复次数和顺序都参与比较。</p><p>首次运行按需下载约 705 KB 的本地 SQLite 资源；需要支持 WebAssembly 和 Worker 的浏览器。查询仅在当前浏览器运行，不保存或上传。离线时不保证可用。</p><p>查询限 4,000 字符；所有分号都需删除，包括注释和字符串中的分号。执行超过 1.5 秒即停止；SQLite 分配限 16 MiB，结果限 16 列，每格最多 512 字符。</p><p><a href="https://github.com/sql-js/sql.js/releases/tag/v1.14.2" target="_blank" rel="noopener noreferrer">sql.js 1.14.2 / MIT ↗</a></p></details>
     <noscript><p class="sql-noscript">启用 JavaScript 后可编辑并执行查询；上方保留了全部示例的完整数据与预期结果。</p></noscript>
