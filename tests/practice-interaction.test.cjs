@@ -13,11 +13,15 @@ const originalScore = (overrides = {}) => ({
 
 // The production initializer reads browser globals. Every fixture restores their
 // original descriptors and owns its fake clock, audio contexts and downloads.
-async function practice(t, {deferredAudio = false, audioAvailable = true, recordings = [], url = 'https://ccatelier.test/studio/practice/'} = {}) {
+async function practice(t, {deferredAudio = false, audioAvailable = true, recordings = [], loadScoreExporter, url = 'https://ccatelier.test/studio/practice/'} = {}) {
   const dom = new JSDOM(fs.readFileSync(path.join(__dirname, '../public/studio/practice/index.html'), 'utf8'), {
     url,
   });
   const {window} = dom, {document} = window;
+  // Render the current source template without requiring a generated-site rebuild.
+  document.querySelector('[data-practice]').outerHTML = require('ejs').render(fs.readFileSync(path.join(__dirname, '../custom/redefine/nijika/practice.ejs'), 'utf8'), {
+    url_for: value => '/' + value, partial: () => '<svg aria-hidden="true"></svg>',
+  });
   for (const value of recordings) window.localStorage.setItem('cc-live-take-v1:' + value.id, JSON.stringify(value));
   const globals = new Map(), intervals = new Map(), timers = new Map();
   const contexts = [], errors = [], downloads = [], blobs = new Map(), revoked = [], network = [];
@@ -103,7 +107,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true, record
   const {initDialogs, openDialog} = await import('../source/atelier/js/ui.js');
   initDialogs();
   const {initPractice} = await import('../source/atelier/js/practice.js');
-  const controller = initPractice();
+  const controller = initPractice({loadScoreExporter});
   t.after(() => controller.destroy());
   const host = document.querySelector('[data-practice]');
   assert.ok(host, 'the generated practice page contains the application');
@@ -820,4 +824,59 @@ test('challenge grades the event occurrence time even when main-thread delivery 
  // The shared clock began at 1000ms; the target is at 3100ms after count-in.
  const event=new f.window.KeyboardEvent('keydown',{key:'a',bubbles:true});Object.defineProperty(event,'timeStamp',{value:3100});f.document.body.dispatchEvent(event);
  assert.match(f.find('[data-challenge-feedback]').textContent,/底鼓 · 合拍/);release(f,'a');f.advance(3975);assert.match(f.find('[data-challenge-result]').textContent,/50%.*接住 1 \/ 2.*合拍 1/);
+});
+
+test('SVG export is click-lazy, deduplicated, whole-score and uses current BPM without changing playback',async t=>{
+ let calls=0,resolve;
+ const f=await practice(t,{loadScoreExporter:()=>{calls++;return new Promise(done=>{resolve=done;});}});
+ const score=originalScore();await f.importScore(score);f.change(f.bpm,144,'input');f.change(f.from,1);f.change(f.to,1);
+ await f.start();f.advance(2100);const before=f.find('[data-practice-sheet]').innerHTML,contexts=f.contexts.length;
+ assert.equal(calls,0);const button=f.find('[data-practice-export-svg]');button.click();button.click();assert.equal(calls,1);assert.equal(button.disabled,true);
+ resolve(await import('../source/atelier/js/practice-score-export.mjs'));await settle();
+ assert.equal(f.downloads.length,1);assert.match(f.downloads[0].name,/\.svg$/);const blob=f.blobs.get(f.downloads[0].href);assert.equal(blob.type,'image/svg+xml;charset=utf-8');
+ const svg=await blob.text();assert.match(svg,/144 BPM.*2 小节/);assert.match(svg,/第 1 小节/);assert.match(svg,/第 2 小节/);
+ assert.equal(f.from.value,'1');assert.equal(f.to.value,'1');assert.equal(f.play.getAttribute('aria-pressed'),'true');assert.equal(f.contexts.length,contexts);assert.equal(f.find('[data-practice-sheet]').innerHTML,before);assert.equal(button.disabled,false);
+ f.stop();f.advance(30000);assert.deepEqual(f.revoked,[f.downloads[0].href]);
+});
+
+for(const [label,cancel] of [
+ ['new practice',f=>f.change(f.demo,f.demo.options[1].value)],['pagehide',f=>f.hidePage()],['destroy',f=>f.controller.destroy()],['tempo change',f=>f.change(f.bpm,110,'input')],
+])test('late SVG module is discarded after '+label,async t=>{
+ let resolve;const f=await practice(t,{loadScoreExporter:()=>new Promise(done=>{resolve=done;})}),button=f.find('[data-practice-export-svg]');
+ button.click();cancel(f);const status=f.status.textContent;resolve(await import('../source/atelier/js/practice-score-export.mjs'));await settle();
+ assert.equal(f.downloads.length,0);assert.equal(button.disabled,false);assert.equal(f.status.textContent,status);
+});
+
+test('failed SVG load can retry and leaves project and audio untouched',async t=>{
+ let attempts=0;const f=await practice(t,{loadScoreExporter:()=>++attempts===1?Promise.reject(Error('network unavailable')):import('../source/atelier/js/practice-score-export.mjs')}),button=f.find('[data-practice-export-svg]'),before=f.find('[data-practice-sheet]').innerHTML;
+ button.click();await settle();assert.equal(button.disabled,false);assert.match(f.status.textContent,/导出失败/);assert.equal(f.downloads.length,0);assert.equal(f.find('[data-practice-sheet]').innerHTML,before);assert.equal(f.contexts.length,0);
+ button.click();await settle();assert.equal(f.downloads.length,1);f.advance(30000);
+});
+
+test('default SVG loader exports a selected local recording and rejects invalid XML titles safely',async t=>{
+ const take=originalScore({id:'live-svg',title:'我的鼓垫练习'}),f=await practice(t,{recordings:[take]});
+ f.change(f.demo,'recording:live-svg');f.find('[data-practice-export-svg]').click();await settle();
+ assert.equal(f.downloads.length,1);assert.match(await f.blobs.get(f.downloads[0].href).text(),/我的鼓垫练习/);f.advance(30000);
+ await f.importScore(originalScore({title:'XML坏字符\ud800'}));const before=f.find('[data-practice-sheet]').innerHTML;
+ f.find('[data-practice-export-svg]').click();await settle();assert.equal(f.downloads.length,1);assert.match(f.status.textContent,/导出失败/);assert.equal(f.find('[data-practice-sheet]').innerHTML,before);assert.equal(f.find('[data-practice-export-svg]').disabled,false);assert.equal(f.contexts.length,0);
+});
+
+for(const mode of ['choose','reinitialize'])test('pending SVG cancellation releases the control and stale completion cannot unlock a newer request: '+mode,async t=>{
+ const pending=[],loader=()=>new Promise(resolve=>pending.push(resolve)),f=await practice(t,{loadScoreExporter:loader}),button=f.find('[data-practice-export-svg]');
+ button.click();assert.equal(button.disabled,true);
+ if(mode==='choose')f.change(f.demo,f.demo.options[1].value);
+ else{f.controller.destroy();const replacement=f.initPractice({loadScoreExporter:loader});t.after(()=>replacement.destroy());}
+ assert.equal(button.disabled,false);button.click();assert.equal(pending.length,2);assert.equal(button.disabled,true);
+ const module=await import('../source/atelier/js/practice-score-export.mjs');pending[0](module);await settle();assert.equal(button.disabled,true);assert.equal(f.downloads.length,0);
+ pending[1](module);await settle();assert.equal(button.disabled,false);assert.equal(f.downloads.length,1);f.advance(30000);
+});
+
+for(const mode of ['choose','reinitialize'])test('a stale SVG completion after a successful replacement leaves the next request locked: '+mode,async t=>{
+ const pending=[],loader=()=>new Promise(resolve=>pending.push(resolve)),f=await practice(t,{loadScoreExporter:loader}),button=f.find('[data-practice-export-svg]');
+ button.click();
+ if(mode==='choose')f.change(f.demo,f.demo.options[1].value);
+ else{f.controller.destroy();const replacement=f.initPractice({loadScoreExporter:loader});t.after(()=>replacement.destroy());}
+ button.click();const module=await import('../source/atelier/js/practice-score-export.mjs');pending[1](module);await settle();assert.equal(f.downloads.length,1);assert.equal(button.disabled,false);
+ button.click();pending[0](module);await settle();assert.equal(button.disabled,true);assert.equal(f.downloads.length,1);
+ pending[2](module);await settle();assert.equal(f.downloads.length,2);assert.equal(button.disabled,false);f.advance(30000);
 });

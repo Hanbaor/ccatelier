@@ -31,17 +31,17 @@ export function renderPracticeBar(bar,index){
  button.append(svg);return button;
 }
 
-export function initPractice(){
+export function initPractice({loadScoreExporter=()=>import('./practice-score-export.mjs')}={}){
  const host=$('[data-practice]');if(!host)return;if(controllers.has(host))return controllers.get(host);
  const listeners=[],barListeners=[];let destroyed=false;
  const listen=(target,event,handler)=>{target.addEventListener(event,handler);listeners.push(()=>target.removeEventListener(event,handler));};
- const sheet=$('[data-practice-sheet]',host),select=$('[data-practice-demo]',host),play=$('[data-practice-play]',host),status=$('[data-practice-status]',host),position=$('[data-practice-position]',host),from=$('[data-practice-start]',host),to=$('[data-practice-end]',host),bpm=$('[data-practice-bpm]',host),remove=$('[data-practice-remove-recording]',host),recordings=new Map(),audio=new LivehouseAudio();audio.setVolume(Number($('[data-practice-volume]',host).value)/100);
- let project=validatePractice(PRACTICE_DEMOS[0]),importedProject=null,startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
+ const svgExport=$('[data-practice-export-svg]',host),sheet=$('[data-practice-sheet]',host),select=$('[data-practice-demo]',host),play=$('[data-practice-play]',host),status=$('[data-practice-status]',host),position=$('[data-practice-position]',host),from=$('[data-practice-start]',host),to=$('[data-practice-end]',host),bpm=$('[data-practice-bpm]',host),remove=$('[data-practice-remove-recording]',host),recordings=new Map(),audio=new LivehouseAudio();audio.setVolume(Number($('[data-practice-volume]',host).value)/100);
+ let exportRequest=null,project=validatePractice(PRACTICE_DEMOS[0]),importedProject=null,startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
  const say=text=>{status.textContent=text;};
  const challenge=initPracticeChallenge({host,listen,start:()=>start(true),stop,elapsed:event=>((challengeInputTime(event?.timeStamp,performance.now(),performance.timeOrigin)-origin)/1000)-4*60/tempo,sound:type=>audio.hit(type,.75)});
  const configureChallenge=()=>challenge.configure(project,tempo,startBar,endBar);
  function clearVisuals(){visuals.forEach(clearTimeout);visuals.clear();$$('.practice-measure',sheet).forEach(b=>b.classList.remove('is-current'));$$('.practice-beats i',host).forEach(b=>b.classList.remove('active'));active=-1;}
- function stop(message='已停止；谱面和选区保留。'){generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';challenge.cancel();play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
+ function stop(message='已停止；谱面和选区保留。'){if(exportRequest){exportRequest=null;svgExport.disabled=false;}generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';challenge.cancel();play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
  function paintRange(){
   from.value=String(startBar);to.value=String(endBar);
   $$('[data-practice-bar]',sheet).forEach(b=>{const n=Number(b.dataset.practiceBar);b.classList.toggle('is-outside',n<startBar||n>endBar);b.setAttribute('aria-pressed',String(n===startBar));});configureChallenge();
@@ -123,6 +123,17 @@ export function initPractice(){
  listen($('[data-practice-loop]',host),'change',()=>stop('循环设置已更新。'));
  listen($('[data-practice-reset]',host),'click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);configureChallenge();});
  listen($('[data-practice-export]',host),'click',()=>download('cc-original-drum-practice.json',JSON.stringify({...project,bpm:tempo},null,2)));
+ listen(svgExport,'click',async()=>{
+  if(destroyed||exportRequest)return;
+  const request={snapshot:validatePractice({...project,bpm:tempo})};exportRequest=request;svgExport.disabled=true;
+  try{
+   const {renderPracticeScoreSvg}=await loadScoreExporter();
+   if(destroyed||exportRequest!==request||document.hidden)return;
+   download('cc-original-drum-practice.svg',renderPracticeScoreSvg(request.snapshot),'image/svg+xml;charset=utf-8');
+   say('SVG 谱面已在本机导出，可独立打开。');
+  }catch{if(!destroyed&&exportRequest===request)say('SVG 导出失败，请重试；练习数据未改变。');}
+  finally{if(exportRequest===request){exportRequest=null;svgExport.disabled=false;}}
+ });
  listen($('[data-practice-import]',host),'change',async e=>{
   const input=e.currentTarget,file=input.files[0];input.value='';if(!file)return;
   stop();const ticket=generation;

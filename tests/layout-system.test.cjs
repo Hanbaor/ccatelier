@@ -12,6 +12,8 @@ test('practice starts with the score, keeping optional controls and explanations
  assert.ok(d.querySelector('details:not([open]) [data-practice-description]'));
  assert.ok(d.querySelector('details [data-practice-import]'));
  assert.ok(d.querySelector('details [data-practice-export]'));
+ assert.ok(d.querySelector('details:not([open]) [data-practice-export-svg]'));
+ assert.equal(d.querySelector('[data-practice-export]').textContent,'导出 JSON');
  for(const name of ['play','stop','loop','start','end','metronome','drums']) assert.equal(d.querySelectorAll(`[data-practice-${name}]`).length,1);
  dom.window.close();
 });
