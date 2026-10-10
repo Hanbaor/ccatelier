@@ -60,3 +60,15 @@ test('keyboard retry keeps focus on the summary immediately and never steals it 
   view.pause();
  }finally{dom.window.close();}
 });
+
+test('expanded source evidence keeps a 13px reading floor and 16px titles without mobile shrinkage',()=>{
+ const fs=require('node:fs'),path=require('node:path'),css=fs.readFileSync(path.join(__dirname,'../source/atelier/css/reading-connections.css'),'utf8');
+ const dom=new JSDOM('<style>'+css+'</style><section class="constellation"><details class="reading-connections" open><summary>循文而读</summary><p class="connection-note">说明</p><a class="connection-title">标题</a><small class="connection-state">状态</small><p class="connection-concepts">共同术语</p><div class="connection-pair"><strong>术语</strong><div class="connection-source"><a>来源</a><p class="connection-excerpt">摘录</p></div></div></details></section>');
+ try{
+  for(const selector of ['.reading-connections','.connection-note','.connection-state','.connection-concepts','.connection-pair>strong','.connection-source>a','.connection-excerpt'])assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector(selector)).fontSize,'13px',selector);
+  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.connection-title')).fontSize,'16px');
+  assert.ok([...css.matchAll(/font-size:\s*(\d+)px/g)].every(match=>Number(match[1])>=13),'no base or narrow-screen font rule shrinks below 13px');
+  assert.match(css,/@media\(max-width:600px\)[\s\S]*grid-template-columns:1fr/);
+  assert.match(css,/white-space:pre-wrap;overflow-wrap:anywhere/);
+ }finally{dom.window.close();}
+});
