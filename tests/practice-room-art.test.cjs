@@ -61,8 +61,8 @@ for (const prefix of ['/', '/lab/']) {
 test('art styling preserves the compact rehearsal header and centered face focus', () => {
   const practice = read('source/atelier/css/practice.css');
   const hub = read('source/atelier/css/immersive.css');
-  assert.match(practice, /\.practice-heading>img \{[^}]*aspect-ratio:2\.4;object-fit:cover;object-position:52% 35%/);
-  assert.match(practice, /@media\(max-width:600px\)[\s\S]*\.practice-heading>img \{position:absolute;[^}]*width:100px;aspect-ratio:1/);
+  assert.match(practice, /\.practice-heading>img \{[^}]*aspect-ratio:2\.4;object-fit:cover;object-position:52% 0%/);
+  assert.match(practice, /@media\(max-width:600px\)[\s\S]*\.practice-heading>img \{position:absolute;[^}]*width:100px;aspect-ratio:1;object-position:52% 35%/);
   assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.18;object-position:52% 35%\}/);
   assert.match(hub, /\.hub-studio \.hub-card>img \{aspect-ratio:1\.52;object-position:52% 35%\}/);
 });

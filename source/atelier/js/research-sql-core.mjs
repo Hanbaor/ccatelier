@@ -25,6 +25,20 @@ export const SQL_CASES = Object.freeze([
     expected:{columns:['track','points'], rows:[['Blue',95],['Gold',95]]},
     insight:'LIMIT 1 只保留一行。先取最高分，再筛选同分曲目，才能保留全部并列。',
     source:'https://sqlite.org/lang_select.html#the_limit_clause'
+  },
+  {
+    id:'null-exclusion', label:'空值陷阱',
+    question:'列出尚未排练的曲目，忽略未指定曲目的记录，按 id 排序。',
+    tables:[
+      {name:'tracks', columns:['id','title'], rows:[[101,'Blue'],[102,'Gold'],[103,'Echo']]},
+      {name:'rehearsals', columns:['id','track_id'], rows:[[1,102],[2,null]]}
+    ],
+    schema:'CREATE TABLE tracks(id INTEGER PRIMARY KEY NOT NULL, title TEXT NOT NULL); CREATE TABLE rehearsals(id INTEGER PRIMARY KEY, track_id INTEGER);',
+    candidate:'SELECT t.id, t.title\nFROM tracks AS t\nWHERE t.id NOT IN (SELECT track_id FROM rehearsals)\nORDER BY t.id',
+    reference:'SELECT t.id, t.title\nFROM tracks AS t\nWHERE NOT EXISTS (\n  SELECT 1 FROM rehearsals AS r WHERE r.track_id = t.id\n)\nORDER BY t.id',
+    expected:{columns:['id','title'], rows:[[101,'Blue'],[103,'Echo']]},
+    insight:'本例曲目 id 非空。子查询含 NULL，未命中的 NOT IN 得到未知值，WHERE 不保留；已命中的也被排除。NOT EXISTS 只检查匹配行，本例保留 Blue 和 Echo。',
+    source:'https://sqlite.org/lang_expr.html#the_in_and_not_in_operators'
   }
 ]);
 

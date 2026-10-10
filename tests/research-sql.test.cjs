@@ -22,6 +22,48 @@ test('the shipped pinned SQLite WASM executes both deliberately wrong and refere
  assert.match(read('source/atelier/vendor/sql.js/1.14.2/LICENSE'),/MIT|Permission is hereby granted/);
 });
 
+test('nullable NOT IN has unknown predicates, while correlated NOT EXISTS keeps unrehearsed tracks',async()=>{
+ const {getSqlCase,runFixtureQuery,compareResults}=await core,SQL=await engine,fixture=getSqlCase('null-exclusion');
+ const candidate=runFixtureQuery(SQL,fixture.id,fixture.candidate);
+ assert.deepEqual(candidate,{columns:['id','title'],rows:[],truncated:false});
+ assert.deepEqual(compareResults(candidate,fixture.expected),{state:'different',actualMarks:[],expectedMarks:['missing','missing'],missing:2,extra:0});
+ assert.deepEqual(runFixtureQuery(SQL,fixture.id,`SELECT t.id,
+  t.id NOT IN (SELECT track_id FROM rehearsals) AS not_in,
+  NOT EXISTS (SELECT 1 FROM rehearsals AS r WHERE r.track_id=t.id) AS not_exists
+  FROM tracks AS t ORDER BY t.id`).rows,[[101,null,1],[102,0,0],[103,null,1]]);
+ // Non-null outer keys make removing the inner NULL a valid repair in this fixture.
+ const filtered=fixture.candidate.replace('SELECT track_id FROM rehearsals','SELECT track_id FROM rehearsals WHERE track_id IS NOT NULL');
+ assert.deepEqual(runFixtureQuery(SQL,fixture.id,filtered).rows,fixture.expected.rows);
+ // An empty subquery does not poison NOT IN: every original track is returned.
+ const empty=fixture.candidate.replace('SELECT track_id FROM rehearsals','SELECT track_id FROM rehearsals WHERE 0');
+ assert.deepEqual(runFixtureQuery(SQL,fixture.id,empty).rows,fixture.tables[0].rows);
+ assert.match(fixture.schema,/tracks\(id INTEGER PRIMARY KEY NOT NULL/);
+ assert.deepEqual(runFixtureQuery(SQL,fixture.id,'SELECT track_id FROM rehearsals ORDER BY id').rows,[[102],[null]],'fixture inserts preserve a real SQL NULL');
+});
+
+test('source template stays in sync with every teaching fixture before a site build',async()=>{
+ const {SQL_CASES}=await core;
+ const html=require('ejs').render(read('custom/redefine/nijika/research.ejs'),{url_for:value=>'/'+value,partial:()=>''});
+ const dom=new JSDOM(html),doc=dom.window.document;
+ try{
+  assert.equal(doc.querySelectorAll('[data-sql-case]').length,SQL_CASES.length);
+  for(const fixture of SQL_CASES){
+   const panel=doc.querySelector(`[data-sql-case="${fixture.id}"]`);assert.ok(panel);
+   assert.equal(panel.querySelector('h3').textContent,fixture.question);
+   assert.equal(panel.querySelector('[data-sql-editor]').value,fixture.candidate);
+   assert.equal(panel.querySelector('[data-sql-reference]').textContent,fixture.reference);
+   assert.ok(panel.querySelector('.sql-insight p').textContent.startsWith(fixture.insight));
+   assert.equal(panel.querySelector('.sql-insight a').href,fixture.source);
+   for(const data of fixture.tables){
+    const table=panel.querySelector(`[data-sql-fixture="${data.name}"]`);
+    assert.deepEqual(Array.from(table.querySelectorAll('thead th'),cell=>cell.textContent),data.columns);
+    assert.deepEqual(Array.from(table.querySelectorAll('tbody tr'),row=>Array.from(row.cells,cell=>cell.textContent)),data.rows.map(row=>row.map(value=>value===null?'NULL':String(value))));
+   }
+   assert.deepEqual(Array.from(panel.querySelectorAll('[data-sql-expected] tbody tr'),row=>Array.from(row.cells).slice(1).map(cell=>cell.textContent)),fixture.expected.rows.map(row=>row.map(String)));
+  }
+ }finally{dom.window.close()}
+});
+
 test('SQL input is bounded and cannot become a PRAGMA, write, attachment or second statement',async()=>{
  const {runFixtureQuery,validateQuery,SQL_CASES}=await core,SQL=await engine;
  for(const sql of ['',null,15,'PRAGMA query_only=OFF','DELETE FROM artists','ATTACH DATABASE \'x\' AS x','SELECT 1; SELECT 2',"SELECT ';'",'SELECT 1 -- ;','SELECT 1\0; DELETE FROM artists','SELECT '+ 'x'.repeat(4000)]) assert.throws(()=>validateQuery(sql));
@@ -78,7 +120,7 @@ test('static research fixtures, SQL and expected rows agree with runtime and are
    for(const data of fixture.tables){
     const table=panel.querySelector(`[data-sql-fixture="${data.name}"]`);
     assert.deepEqual(Array.from(table.querySelectorAll('thead th'),cell=>cell.textContent),data.columns);
-    assert.deepEqual(Array.from(table.querySelectorAll('tbody tr'),row=>Array.from(row.cells,cell=>cell.textContent)),data.rows.map(row=>row.map(String)));
+    assert.deepEqual(Array.from(table.querySelectorAll('tbody tr'),row=>Array.from(row.cells,cell=>cell.textContent)),data.rows.map(row=>row.map(value=>value===null?'NULL':String(value))));
    }
    assert.deepEqual(Array.from(panel.querySelectorAll('[data-sql-expected] tbody tr'),row=>Array.from(row.cells).slice(1).map(cell=>cell.textContent)),fixture.expected.rows.map(row=>row.map(String)));
    assert.equal(panel.querySelector('.sql-insight').open,false);

@@ -25,3 +25,5 @@
 - `node --test tests/home-navigation.test.cjs tests/practice-room-art.test.cjs tests/navigation-scenes.test.cjs`：21 项通过。
 - 新测试验证 WebP 文件头的实际尺寸、文件大小预算、根路径及 `/lab/` 子路径、响应式图片属性和不变的排练控件。
 - 本轮只做模板内存渲染与静态检查；没有运行共享 Hexo build，也没有进行浏览器 UI 验收。统一构建及真实桌面/手机裁切检查由后续整体验收完成。
+
+Desktop visual QA found that the 2.4:1 header crop cut off the character’s crown at 52% 35%. It now uses 52% 0% on the desktop/medium header; the existing max-width:600px 100×100 thumbnail explicitly keeps 52% 35%. The separate studio card crop is unchanged.

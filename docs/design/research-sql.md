@@ -1,13 +1,14 @@
 # Research room: Text-to-SQL teaching playground
 
-This is an original, two-case teaching artifact attached to the site's existing Database / Text-to-SQL interest. It does not represent a publication, benchmark, research result, model evaluation, or claim about the site author's work.
+This is an original, three-case teaching artifact attached to the site's existing Database / Text-to-SQL interest. It does not represent a publication, benchmark, research result, model evaluation, or claim about the site author's work.
 
 ## What it demonstrates
 
 1. A `LEFT JOIN` preserves an artist with no tracks. `COUNT(*)` returns one for that null-extended row; `COUNT(t.id)` returns zero. All three artists and all three tracks are visible.
 2. `LIMIT 1` excludes one of two top-scoring tracks. Filtering by `MAX(points)` keeps both. All three score rows are visible.
+3. A `NOT IN` subquery includes a `NULL` rehearsal track ID. Its matching track is excluded; both unmatched tracks produce unknown predicates and are also filtered out. Correlated `NOT EXISTS` keeps the two unrehearsed tracks. All three tracks and both rehearsal records are visible; SQL nulls display as `NULL`, never blank cells. Track IDs are non-null primary keys, and the question explicitly ignores unassigned rehearsals. Filtering nulls out of the subquery is another valid repair for this fixture, not a universal equivalence claim.
 
-The candidate and reference SQL execute against fresh copies of the displayed fixture. Reference output is verified against the hand-authored expected rows every run. Result comparison is positional by column, type-aware, duplicate-aware and order-aware. Column aliases do not affect agreement. Both questions explicitly request ordering. The success label is “本例结果一致”, never a general SQL-equivalence verdict. Truncated output is never declared a match. Static markup duplicates only these small public fixtures and queries; tests enforce parity with the execution core.
+The candidate and reference SQL execute against fresh copies of the displayed fixture. Reference output is verified against the hand-authored expected rows every run. Result comparison is positional by column, type-aware, duplicate-aware and order-aware. Column aliases do not affect agreement. All questions explicitly request ordering. The success label is “本例结果一致”, never a general SQL-equivalence verdict. Truncated output is never declared a match. Static markup duplicates only these small public fixtures and queries; tests enforce parity with the execution core.
 
 ## Runtime and provenance
 
@@ -40,7 +41,7 @@ The research page loads its small route-local controller. **No Worker, SQLite lo
 
 This is a bounded in-browser teaching tool, not an isolation boundary against arbitrary same-origin script execution, a browser compromise, or engine vulnerabilities.
 
-Primary documentation: [sql.js Database API](https://sql.js.org/documentation/Database.html), [SQLite query_only](https://sqlite.org/pragma.html#pragma_query_only), [SQLite hard_heap_limit](https://sqlite.org/pragma.html#pragma_hard_heap_limit), [COUNT](https://sqlite.org/lang_aggfunc.html), [LIMIT](https://sqlite.org/lang_select.html#the_limit_clause).
+Primary documentation: [sql.js Database API](https://sql.js.org/documentation/Database.html), [SQLite query_only](https://sqlite.org/pragma.html#pragma_query_only), [SQLite hard_heap_limit](https://sqlite.org/pragma.html#pragma_hard_heap_limit), [COUNT](https://sqlite.org/lang_aggfunc.html), [LIMIT](https://sqlite.org/lang_select.html#the_limit_clause), [IN / NOT IN](https://sqlite.org/lang_expr.html#the_in_and_not_in_operators), [EXISTS](https://sqlite.org/lang_expr.html#the_exists_operator).
 
 ## Verification
 

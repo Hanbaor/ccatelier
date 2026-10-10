@@ -3,8 +3,8 @@ const {JSDOM}=require('jsdom');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve,reject;return{promise:new Promise((a,b)=>{resolve=a;reject=b}),get resolve(){return resolve},get reject(){return reject}}};
 const root=path.resolve(__dirname,'..');
-async function setup(){
- const dom=new JSDOM(fs.readFileSync(path.join(root,'public/research/index.html'),'utf8'),{url:'https://ccatelier.test/lab/research/',pretendToBeVisual:true});
+async function setup(html=fs.readFileSync(path.join(root,'public/research/index.html'),'utf8')){
+ const dom=new JSDOM(html,{url:'https://ccatelier.test/lab/research/',pretendToBeVisual:true});
  const {initResearchSql}=await import('../source/atelier/js/research-sql.js'),calls=[],requests=[];let stops=0;
  const runner={run(caseId,sql){const request=deferred();requests.push(request);calls.push({caseId,sql});return request.promise},stop(){stops++}};
  const controller=initResearchSql(dom.window.document,{runnerFactory:()=>runner});
@@ -23,6 +23,29 @@ test('lab is idle until Run, runs edited SQL, marks differences, repairs and res
   s.panel().querySelector('[data-sql-reset]').click();assert.equal(s.calls.length,2);assert.equal(s.panel().querySelector('[data-sql-editor]').value,SQL_CASES[0].candidate);
   s.doc.querySelector('[data-sql-select="top-ties"]').click();assert.equal(s.panel().dataset.sqlCase,'top-ties');assert.equal(s.calls.length,2);
  }finally{s.dom.window.close()}
+});
+
+test('NULL exclusion case displays its missing rows and only executes after explicit Run',async()=>{
+ const {getSqlCase,runFixtureQuery}=await import('../source/atelier/js/research-sql-core.mjs'),fixture=getSqlCase('null-exclusion');
+ const SQL=await require('../source/atelier/vendor/sql.js/1.14.2/sql-wasm.js')({wasmBinary:fs.readFileSync(path.join(root,'source/atelier/vendor/sql.js/1.14.2/sql-wasm.wasm'))});
+ const html=require('ejs').render(fs.readFileSync(path.join(root,'custom/redefine/nijika/research.ejs'),'utf8'),{url_for:value=>'/'+value,partial:()=>''});
+ const s=await setup(html);
+ try{
+  s.doc.querySelector('[data-sql-select="null-exclusion"]').click();assert.equal(s.calls.length,0);
+  assert.equal(s.panel().querySelector('[data-sql-fixture="rehearsals"] tbody tr:last-child td:last-child').textContent,'NULL');
+  s.doc.querySelector('[data-sql-run]').click();assert.deepEqual(s.calls[0],{caseId:fixture.id,sql:fixture.candidate});
+  s.requests[0].resolve(runFixtureQuery(SQL,fixture.id,s.calls[0].sql));await flush();
+  assert.match(s.status().textContent,/多出 0 行.*缺少 2 行/);assert.equal(s.panel().querySelectorAll('[data-diff="missing"]').length,2);
+  assert.equal(s.panel().querySelector('[data-sql-actual] .sql-result-empty').textContent,'0 行');
+  s.panel().querySelector('[data-sql-use-reference]').click();assert.equal(s.calls.length,1);
+  s.doc.querySelector('[data-sql-run]').click();s.requests[1].resolve(runFixtureQuery(SQL,fixture.id,s.calls[1].sql));await flush();
+  assert.equal(s.status().textContent,'本例结果一致。');
+  const field=s.panel().querySelector('[data-sql-editor]');field.value='SELECT track_id FROM rehearsals ORDER BY id';field.dispatchEvent(new s.dom.window.Event('input',{bubbles:true}));
+  s.doc.querySelector('[data-sql-run]').click();s.requests[2].resolve(runFixtureQuery(SQL,fixture.id,s.calls[2].sql));await flush();
+  assert.equal(s.panel().querySelector('[data-sql-actual] tbody tr:last-child td:last-child').textContent,'NULL');
+  s.panel().querySelector('[data-sql-reset]').click();assert.equal(s.calls.length,3);assert.equal(field.value,fixture.candidate);
+  s.doc.querySelector('[data-sql-select="empty-count"]').click();assert.equal(s.calls.length,3);
+ }finally{s.controller.stop();s.dom.window.close()}
 });
 
 test('case changes, edits, stop, pagehide and dialogs invalidate late results',async()=>{
