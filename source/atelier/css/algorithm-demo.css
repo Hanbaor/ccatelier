@@ -1,15 +1,78 @@
-.algorithm-demo{margin:1.5rem 0;border-block:1px solid var(--line, #8884);font-size:.9em}
-.algorithm-demo>summary{padding:.8rem 0;cursor:pointer;font-weight:500}
-.algorithm-demo .algorithm-demo-body{padding:0 0 1rem}
-.algorithm-demo .algorithm-demo-body p{margin:.65rem 0}
-.algorithm-demo [data-demo-controls][hidden],.algorithm-demo [data-demo-fallback][hidden]{display:none}
-.algorithm-demo .algorithm-demo-controls{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.8rem 0}
-.algorithm-demo button,.algorithm-demo select{font:inherit;color:inherit;background:transparent;border:1px solid var(--line, #8884);border-radius:5px;padding:.35rem .65rem;min-height:36px}
-.algorithm-demo button{cursor:pointer}.algorithm-demo button:disabled{opacity:.45;cursor:default}
-.algorithm-demo :is(button,select,summary):focus-visible{outline:2px solid currentColor;outline-offset:3px}
-.algorithm-demo [data-demo-state]{font-family:monospace;overflow-wrap:anywhere}
-.algorithm-demo .algorithm-demo-table{width:100%;max-width:26rem;border-collapse:collapse;margin:.65rem 0}
-.algorithm-demo .algorithm-demo-table :is(th,td){padding:.3rem .7rem;text-align:left;border-bottom:1px solid var(--line, #8884)}
-.algorithm-demo [data-demo-message]{min-height:3em}
-.algorithm-demo .algorithm-demo-note{opacity:.75;font-size:.9em}
+/* Keep this optional walkthrough quiet, and scoped away from article tables. */
+.article-body .algorithm-demo {
+  margin:1.5rem 0;
+  border:0;
+  font-size:.9em;
+  line-height:1.75;
+}
+.article-body .algorithm-demo>summary {
+  box-sizing:border-box;
+  display:list-item;
+  width:fit-content;
+  max-width:100%;
+  min-height:44px;
+  padding:.4rem 0;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font-weight:500;
+  list-style:disclosure-closed inside;
+}
+.article-body .algorithm-demo[open]>summary {
+  background:transparent;
+  list-style-type:disclosure-open;
+}
+.article-body .algorithm-demo>summary::marker {display:revert;font-size:.75em}
+.article-body .algorithm-demo>summary::-webkit-details-marker {display:revert}
+.article-body .algorithm-demo>summary:hover {background:transparent;text-decoration:underline;text-underline-offset:4px}
+.algorithm-demo .algorithm-demo-body {padding:.25rem 0 .5rem;min-width:0}
+.article-body.markdown-body .algorithm-demo .algorithm-demo-body p {margin:.75rem 0;line-height:1.75}
+.article-body.markdown-body .algorithm-demo .algorithm-demo-body>p:first-child {margin-top:0}
+.article-body.markdown-body .algorithm-demo .algorithm-demo-body>p:last-child {margin-bottom:0}
+.algorithm-demo [data-demo-controls][hidden],.algorithm-demo [data-demo-fallback][hidden] {display:none}
+.algorithm-demo [data-demo-controls]>label {display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.algorithm-demo .algorithm-demo-controls {display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:.75rem 0 1rem}
+.algorithm-demo button,.algorithm-demo select {
+  box-sizing:border-box;
+  max-width:100%;
+  min-width:0;
+  font:inherit;
+  color:inherit;
+  background:var(--bg,transparent);
+  border:1px solid var(--line,#8884);
+  border-radius:4px;
+  padding:.35rem .65rem;
+  min-height:40px;
+}
+.algorithm-demo button {cursor:pointer}
+.algorithm-demo button:disabled {opacity:.45;cursor:default}
+.algorithm-demo :is(button,select,summary):focus-visible {outline:2px solid currentColor;outline-offset:3px}
+.algorithm-demo [data-demo-state] {font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+/* Article tables use display:block; restore table layout for the nested caption. */
+.article-body.markdown-body .algorithm-demo-table {
+  display:table;
+  table-layout:fixed;
+  width:100%;
+  max-width:32rem;
+  border:0;
+  border-collapse:collapse;
+  border-radius:0;
+  box-shadow:none;
+  margin:1rem 0;
+  font-size:.875rem;
+  line-height:1.7;
+  overflow:visible;
+}
+.algorithm-demo .algorithm-demo-table caption {caption-side:top;text-align:left;padding:0 0 .5rem;color:var(--muted,inherit);overflow-wrap:anywhere}
+.article-body.markdown-body .algorithm-demo-table :is(th,td) {
+  min-width:0;
+  padding:.45rem .65rem;
+  text-align:left;
+  border:0;
+  border-bottom:1px solid var(--line,#8884);
+  overflow-wrap:anywhere;
+}
+.article-body.markdown-body .algorithm-demo-table th {background:var(--surface,transparent);font-weight:500}
+.algorithm-demo [data-demo-message] {min-height:3.5em}
+.algorithm-demo .algorithm-demo-note {color:var(--muted,inherit);font-size:.9em}
 /* No transitions, timers or autoplay: reduced-motion gets the same discrete steps. */
