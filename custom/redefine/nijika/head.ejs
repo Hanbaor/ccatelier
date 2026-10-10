@@ -10,7 +10,7 @@
   <link rel="alternate" type="application/atom+xml" title="CC Atelier" href="<%= url_for('atom.xml') %>">
   <%- open_graph({title:metadata.title, description:metadata.description, url:metadata.url, image:theme.nijika.cover, twitter_card:'summary_large_image'}).replace(/<meta (?:name="description"|property="og:description")[^>]*>\n?/g,'') %>
   <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
-  <% if (page.nijika === 'cover') { %><link rel="preload" as="image" media="(min-width:601px)" href="<%= url_for('atelier/images/v3/hero.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="100vw"><link rel="preload" as="image" media="(max-width:600px)" href="<%= url_for('atelier/images/v3/about.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/about.webp') %>" imagesizes="100vw"><% } %>
+  <% if (page.nijika === 'cover') { %><link rel="preload" as="image" media="(min-width:601px)" href="<%= url_for('atelier/images/v3/hero.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="(max-width:760px) 92vw, 60vw"><link rel="preload" as="image" media="(max-width:600px)" href="<%= url_for('atelier/images/v3/hero-960.webp') %>" imagesizes="100vw"><% } %>
   <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.ttf') %>" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="<%= url_for('atelier/css/fonts.css') %>">
   <link rel="stylesheet" href="<%= url_for('atelier/css/redefine.css') %>">
@@ -42,6 +42,8 @@
   <% if (page.nijika === 'practice') { %><link rel="stylesheet" href="<%= url_for('atelier/css/practice.css') %>"><% } %>
   <% if (page.nijika === 'projects') { %><link rel="stylesheet" href="<%= url_for('atelier/css/projects.css') %>"><% } %>
   <% if (page.nijika === 'notes' || is_home() || is_post()) { %><link rel="stylesheet" href="<%= url_for('atelier/css/content-catalog.css') %>"><% } %>
+  <% if (['cover','atelier'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/personal-home.css') %>"><% } %>
+  <% if (['about','research'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/personal-pages.css') %>"><% } %>
   <% if (page.nijika === 'admin') { %><meta name="robots" content="noindex,nofollow"><% } %>
   <%- export_config() %>
 </head>

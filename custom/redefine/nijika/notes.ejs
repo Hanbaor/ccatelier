@@ -1,5 +1,7 @@
 <section class="live-archive catalog-v3 content-view" data-archive aria-label="笔记目录">
-  <header class="catalog-heading-v3"><div><h1 tabindex="-1">笔记</h1><p><a href="<%= url_for('series/hot100/') %>">Hot100 <%- partial('nijika/editorial-arrow') %></a></p></div><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width:600px) 100px, 160px" width="1536" height="1024" alt="日光窗边写笔记的虹夏" fetchpriority="high"></header>
+  <header class="catalog-heading-v3">
+    <div><h1 tabindex="-1">笔记</h1><p><a href="<%= url_for('series/hot100/') %>">Hot100 <%- partial('nijika/editorial-arrow') %></a></p></div><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width:600px) 100px, 160px" width="1536" height="1024" alt="日光窗边写笔记的虹夏" decoding="async">
+  </header>
   <div class="archive-app" hidden>
     <div class="archive-discovery">
       <div class="archive-group" role="group" aria-label="文章类型"><button type="button" data-group="writing">笔记</button><button type="button" data-group="hot100">Hot100</button><button type="button" data-group="all">全部</button></div>

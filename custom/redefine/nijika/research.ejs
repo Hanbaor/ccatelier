@@ -23,8 +23,16 @@ const sqlCases = [
 %>
 <link rel="stylesheet" href="<%= url_for('atelier/css/research-sql.css') %>">
 <section class="atelier-room room-research" aria-label="研究">
-  <header class="room-scene research-scene" data-reveal><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) 123px, 240px" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><h1 tabindex="-1">研究</h1></header>
-  <div class="research-focus"><div class="research-topics"><span>Database</span><span>Text-to-SQL</span></div><span class="room-status"><i aria-hidden="true"></i>教学示例</span><a class="room-action" href="<%= url_for('notes/') %>">笔记 <%- partial('nijika/editorial-arrow') %></a></div>
+  <header class="personal-research-opening">
+    <div class="personal-research-copy">
+      <p class="personal-eyebrow">关注的方向</p>
+      <h1 tabindex="-1">研究</h1>
+      <p class="personal-intro">Database · Text-to-SQL</p>
+      <a class="personal-research-link" href="<%= url_for('notes/') %>">阅读笔记 <%- partial('nijika/editorial-arrow') %></a>
+    </div>
+    <figure class="personal-research-art"><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) 92vw, 430px" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"></figure>
+  </header>
+  <p class="personal-research-caption">下面是一个 SQL 教学示例：从小数据出发，观察查询与预期的差别。</p>
   <section class="sql-lab" data-sql-lab aria-labelledby="sql-lab-title">
     <header class="sql-lab-heading"><div><p>QUERY / RESULT</p><h2 id="sql-lab-title">能运行，然后呢？</h2></div><span>SQLite · 浏览器内运行</span></header>
     <div class="sql-case-switch" data-sql-switch hidden aria-label="选择 SQL 教学示例">

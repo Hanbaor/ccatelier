@@ -1,19 +1,22 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 const root=path.join(__dirname,'..');
-test('immersive cover removes brochure decoration and uses a dedicated mobile portrait',()=>{
+test('personal home presents actual writing and a responsive artwork without an entrance gate',()=>{
  const dom=new JSDOM(fs.readFileSync(path.join(root,'public/index.html'),'utf8'));
  try {
   const d=dom.window.document;
-  assert.ok(d.querySelector('.cinema-v3'));
-  assert.equal(d.querySelectorAll('.cinema-copy h1').length,1);
-  assert.equal(d.querySelectorAll('.cinema-copy p').length,1);
-  assert.equal(d.querySelectorAll('.cinema-copy a').length,1);
-  assert.equal(d.querySelectorAll('.entry-index,.entry-running-head,.entry-art-seal,.entry-signature').length,0);
-  assert.match(d.querySelector('.cinema-art source').srcset,/v3\/about/);
-  assert.equal(d.querySelectorAll('.header-navigation a').length,5);
-  assert.equal(d.querySelectorAll('#menu-dialog nav a').length,9);
-  assert.ok(d.querySelector('.cinema-enter svg'),'CTA arrow must be a font-independent SVG');
+  assert.ok(d.querySelector('.personal-home'));
+  assert.equal(d.querySelectorAll('main h1').length,1);
+  assert.equal(d.querySelectorAll('.personal-note').length,3);
+  assert.ok(d.querySelector('.personal-actions a[href="/notes/"]'));
+  assert.ok(d.querySelector('.personal-actions a[href="/about/"]'));
+  assert.equal(d.querySelectorAll('.cinema-v3,.entry-index,.entry-running-head,.entry-art-seal').length,0);
+  assert.match(d.querySelector('.personal-portrait source').srcset,/v3\/hero-960\.webp/);
+  assert.ok(d.querySelector('.personal-primary svg'));
+  assert.equal(d.querySelectorAll('main a a').length,0);
+  assert.ok(d.querySelector('link[href="/atelier/css/personal-home.css"]'));
+  const preload=d.querySelector('link[rel="preload"][as="image"][media="(max-width:600px)"]');
+  assert.equal(preload.getAttribute('href'),d.querySelector('.personal-portrait source').getAttribute('srcset'));
  }finally{dom.window.close();}
 });
 test('reveals keep content available without motion and disconnect on pagehide',async()=>{

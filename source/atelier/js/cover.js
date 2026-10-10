@@ -1,55 +1,25 @@
-import {$, $$, motion, toast, closeDialogs} from './ui.js';
+import {$, motion} from './ui.js';
 
+// The personal homepage uses ordinary links. Navigation never waits for a
+// curtain, audio, or animation; modified clicks and browser history stay native.
 export function initCover() {
-  const cover = $('.cover');
-  if (!cover) return;
-  const photograph = $('#cover-photograph'), img = $('#cover-image'), entry = $('.enter-button');
-  const scenes = {
-    street:{src:cover.dataset.street,alt:'日光排练室里的虹夏，AI 创作的主题同人插画'},
-    stage:{src:cover.dataset.stage,alt:'舞台上专注演奏鼓组的虹夏，AI 创作的主题同人插画'}
-  };
-  let sequence = 0;
-  $$('.photo-index [data-scene]').forEach(button => button.addEventListener('click', async () => {
-    const token = ++sequence, scene = scenes[button.dataset.scene];
-    const candidate = new Image(); candidate.src = scene.src;
-    try { await candidate.decode(); } catch { toast('图片暂时无法载入'); return; }
-    if (token !== sequence) return;
-    if (motion.enabled) { img.style.opacity = '0'; await new Promise(resolve => setTimeout(resolve, 180)); }
-    if (token !== sequence) { img.style.opacity = ''; return; }
-    img.src = scene.src; img.alt = scene.alt;
-    photograph.dataset.scene = button.dataset.scene;
-    $$('.photo-index [data-scene]').forEach(item => {
-      item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button));
-    });
-    img.style.opacity = '';
-  }));
+  const cover = $('.personal-home'), photograph = $('#cover-photograph');
+  if (!cover || !photograph) return;
   let frame = 0;
-  cover.addEventListener('pointermove', event => {
+  const reset = () => {
+    cancelAnimationFrame(frame); frame = 0;
+    photograph.style.removeProperty('--portrait-x');
+  };
+  photograph.addEventListener('pointermove', event => {
     if (!motion.enabled || event.pointerType !== 'mouse' || frame) return;
     frame = requestAnimationFrame(() => {
-      const rect = cover.getBoundingClientRect();
-      photograph.style.setProperty('--px', ((event.clientX - rect.left) / rect.width - .5) * 2);
-      photograph.style.setProperty('--py', ((event.clientY - rect.top) / rect.height - .5) * 2);
+      const rect = photograph.getBoundingClientRect();
+      photograph.style.setProperty('--portrait-x', `${(event.clientX - rect.left - rect.width / 2) / rect.width * 3}px`);
       frame = 0;
     });
   }, {passive:true});
-  cover.addEventListener('pointerleave', () => {
-    cancelAnimationFrame(frame); frame = 0;
-    photograph.style.setProperty('--px', 0); photograph.style.setProperty('--py', 0);
-  });
-  entry.addEventListener('pointermove', event => {
-    if (!motion.enabled || event.pointerType !== 'mouse') return;
-    const rect = entry.getBoundingClientRect();
-    entry.style.setProperty('--mx', `${(event.clientX-rect.left-rect.width/2)*.1}px`);
-    entry.style.setProperty('--my', `${(event.clientY-rect.top-rect.height/2)*.1}px`);
-  });
-  entry.addEventListener('pointerleave', () => { entry.style.setProperty('--mx','0px');entry.style.setProperty('--my','0px'); });
-  let leaving = false;
-  entry.addEventListener('click', event => {
-    if (!motion.enabled || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-    event.preventDefault(); if (leaving) return; leaving = true;
-    closeDialogs(); $('.curtain').classList.add('active');
-    setTimeout(() => location.assign(entry.href), 390);
-  });
-  window.addEventListener('pageshow', () => { leaving=false;$('.curtain').classList.remove('active'); });
+  photograph.addEventListener('pointerleave', reset);
+  document.addEventListener('atelier:motion', reset);
+  window.addEventListener('pagehide', reset);
+  window.addEventListener('pageshow', reset);
 }

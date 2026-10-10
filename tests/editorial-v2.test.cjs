@@ -6,40 +6,27 @@ const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname,'..');
 const page = route => new JSDOM(fs.readFileSync(path.join(root,'public',route),'utf8'));
 
-test('the entry, studio index and notes have distinct editorial compositions and illustrations',()=>{
- const cover=page('index.html'),stage=page('atelier/index.html'),notes=page('notes/index.html');
+test('generated personal home and creative index lead with actual published writing',()=>{
+ const cover=page('index.html'),stage=page('atelier/index.html');
+ const archive=JSON.parse(fs.readFileSync(path.join(root,'public/atelier/data/archive.json'),'utf8'));
+ const writing=archive.posts.filter(post=>post.group==='writing');
  try {
-  assert.ok(cover.window.document.querySelector('.cinema-v3'));
-  assert.equal(cover.window.document.querySelectorAll('.entry-index,.entry-running-head,.entry-art-seal').length,0);
-  assert.ok(cover.window.document.querySelector('.cinema-enter[data-enter][href="/atelier/"]'));
-  assert.ok(cover.window.document.querySelector('.header-navigation a[href="/notes/"]'));
-  const hub=stage.window.document.querySelector('.hub-grid');
-  assert.deepEqual([...hub.querySelectorAll('a.hub-card')].map(card=>({
-   title:card.querySelector('h2').textContent,
-   route:card.getAttribute('href')
-  })),[
-   {title:'笔记',route:'/notes/'},
-   {title:'节奏实验室',route:'/studio/'},
-   {title:'研究',route:'/research/'},
-   {title:'项目',route:'/projects/'}
-  ],'four primary cards lead to published reading, music, research and project experiences');
-  assert.deepEqual([...hub.querySelectorAll('.hub-secondary>a')].map(link=>({
-   title:link.textContent.trim(),route:link.getAttribute('href')
-  })),[
-   {title:'鼓谱排练室',route:'/studio/practice/'},
-   {title:'生活',route:'/life/'},
-   {title:'关于 CC',route:'/about/'}
-  ],'life and about remain lightweight secondary destinations');
-  const practice=hub.querySelector('.hub-practice');
-  assert.equal(practice.getAttribute('href'),'/studio/practice/');
-  assert.equal(practice.textContent.trim(),'鼓谱排练室');
-  assert.equal(hub.querySelectorAll('a a').length,0,'rehearsal is a separate native link, never a nested interactive control');
-  assert.equal(stage.window.document.querySelectorAll('.atelier-room').length,0,'tile names must not inherit secondary-room page styles');
-  assert.ok(notes.window.document.querySelector('.catalog-heading-v3'));
-  assert.equal(notes.window.document.querySelectorAll('.archive-editor-pick').length,0);
-  assert.notEqual(cover.window.document.querySelector('#cover-image').getAttribute('src'),stage.window.document.querySelector('.hub-writing img').getAttribute('src'));
-  assert.match(notes.window.document.querySelector('.catalog-heading-v3 img').src,/v2\/notes\.webp$/);
- }finally{cover.window.close();stage.window.close();notes.window.close();}
+  const c=cover.window.document,d=stage.window.document;
+  assert.ok(c.querySelector('.personal-home'));
+  assert.ok(d.querySelector('.personal-atelier'));
+  assert.equal(c.querySelector('.personal-primary').getAttribute('href'),'/notes/');
+  assert.deepEqual([...c.querySelectorAll('.personal-note h3 a')].map(a=>a.getAttribute('href')),writing.slice(0,3).map(post=>post.path));
+  assert.equal(d.querySelector('.atelier-writing-copy h2 a').getAttribute('href'),writing[0].path);
+  for(const [index,article] of [...c.querySelectorAll('.personal-note')].entries()) {
+   assert.equal(article.querySelector('h3').textContent.trim(),writing[index].title);
+   if(writing[index].excerpt)assert.equal(article.querySelector('p').textContent,writing[index].excerpt);
+  }
+  assert.ok(d.querySelector('.atelier-work-pair a[href="/projects/"]'));
+  assert.ok(d.querySelector('.atelier-interests a[href="/studio/practice/"]'));
+  assert.equal(c.querySelectorAll('.cinema-v3').length,0);
+  assert.equal(d.querySelectorAll('.hub-grid,a a').length,0);
+  assert.ok(c.querySelector('link[href="/atelier/css/personal-home.css"]'));
+ }finally{cover.window.close();stage.window.close();}
 });
 
 test('all curated art uses local optimized files and resolvable responsive renditions',()=>{
@@ -60,7 +47,7 @@ test('all curated art uses local optimized files and resolvable responsive rendi
 
 test('editorial stylesheets parse and are included in the offline shell',()=>{
  const dom=new JSDOM('<html><head></head><body></body></html>');
- try {for(const name of ['editorial.css','rooms-v2.css','immersive.css']) {
+ try {for(const name of ['editorial.css','rooms-v2.css','immersive.css','personal-home.css']) {
   const style=dom.window.document.createElement('style');style.textContent=fs.readFileSync(path.join(root,'source/atelier/css',name),'utf8');dom.window.document.head.append(style);
   assert.ok(style.sheet.cssRules.length>40);
   assert.ok(JSON.parse(fs.readFileSync(path.join(root,'public/atelier/data/offline-shell.json'),'utf8')).includes('/atelier/css/'+name));

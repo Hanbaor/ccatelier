@@ -13,7 +13,7 @@ const sourceRevision = '0f0ca188521f991b726eb132b3b131921c63c253';
 const sourcePrefix = `https://github.com/Hanbaor/ccatelier/blob/${sourceRevision}/`;
 function projects() {return new JSDOM(built('projects/index.html'), {url:`https://ccatelier.test${prefix}projects/`});}
 
-test('projects explains the real site in static HTML with one opening and three restrained sections', () => {
+test('projects presents one illustrated work and keeps technical evidence behind a native disclosure', () => {
   const dom = projects();
   try {
     const doc = dom.window.document, room = doc.querySelector('.project-case');
@@ -21,7 +21,12 @@ test('projects explains the real site in static HTML with one opening and three 
     assert.equal(room.querySelectorAll('h1').length, 1);
     assert.equal(room.querySelector('h1').textContent, 'CC Atelier');
     assert.ok(room.querySelector('.project-summary .project-description'));
-    assert.equal(room.querySelectorAll(':scope > section').length, 3);
+    assert.equal(room.querySelectorAll(':scope > section').length, 1);
+    const implementation = room.querySelector(':scope > details.project-implementation');
+    assert.ok(implementation);
+    assert.equal(implementation.open, false);
+    assert.ok(implementation.querySelector('summary'));
+    assert.equal(implementation.querySelectorAll(':scope > section').length, 2);
     assert.equal(room.querySelectorAll('.project-layers > li').length, 3);
     assert.equal(room.querySelectorAll('.project-decision-list > li').length, 3);
     assert.equal(room.querySelectorAll('img').length, 1);
@@ -131,4 +136,24 @@ test('projects CSS is isolated, uses theme tokens and keyboard focus, and has sm
     assert.match(css, /@media print/);
     assert.doesNotMatch(css, /animation:|opacity:0|visibility:hidden/);
   } finally {dom.window.close();}
+});
+
+test('project action hover uses paired accent tokens with AA contrast in both themes', () => {
+  const css=read('source/atelier/css/projects.css');
+  const hover=[...css.matchAll(/\.project-actions \.room-action:hover\s*\{([^}]+)\}/g)].map(match=>match[1]).join(';');
+  assert.match(hover,/background:var\(--accent\)/);
+  assert.match(hover,/border-color:var\(--accent\)/);
+  assert.match(hover,/color:var\(--accent-ink\)/);
+  assert.doesNotMatch(hover, /var\(--yellow\)|color:\s*#/);
+  const foundation=read('source/atelier/css/immersive.css');
+  const pairs=[...foundation.matchAll(/--accent:(#[\da-f]{6});--accent-ink:(#[\da-f]{6})/gi)];
+  assert.equal(pairs.length,2,'light and dark each declare the paired accent colors');
+  function luminance(hex) {
+    const rgb=hex.slice(1).match(/../g).map(value=>parseInt(value,16)/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4);
+    return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722;
+  }
+  for(const [,background,foreground] of pairs) {
+    const values=[luminance(background),luminance(foreground)].sort((a,b)=>b-a);
+    assert.ok((values[0]+0.05)/(values[1]+0.05)>=4.5,`${foreground} on ${background}`);
+  }
 });

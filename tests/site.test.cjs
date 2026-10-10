@@ -11,13 +11,14 @@ test('Redefine remains the active, pinned theme', () => {
   assert.equal(require('../package.json').dependencies['hexo-theme-redefine'], '2.9.0');
 });
 
-test('the entrance is separate from the real notes and article routes', () => {
+test('the personal homepage leads directly to notes and preserves article routes', () => {
   const cover = read('index.html');
   assert.match(cover, /class="[^"]*on-cover/);
-  assert.match(cover, /href="[^"]*\/atelier\/"[^>]*data-enter/);
-  assert.doesNotMatch(cover, /这是我的第一篇博客文章/);
+  assert.match(cover, /href="[^"]*\/notes\/"[^>]*data-enter/);
+  assert.match(cover, /personal-note-list/);
+  assert.match(cover, /Hello CC Atelier/);
   const notes = read('notes/index.html');
-  assert.match(read('atelier/index.html'), /aria-label="栏目"/);
+  assert.match(read('atelier/index.html'), /atelier-writing-feature/);
   assert.match(notes, /aria-label="笔记目录"/);
   const article = read('2026/09/22/Hello-CC-Atelier/index.html');
   assert.match(article, /这是我的第一篇博客文章/);

@@ -1,4 +1,21 @@
-<section class="cover cinema-v3" aria-label="虹夏主题封面" data-street="<%= url_for(theme.nijika.cover) %>" data-stage="<%= url_for(theme.nijika.stage) %>">
-  <figure class="cinema-art" id="cover-photograph" aria-label="虹夏的舞台"><picture><source media="(max-width: 600px)" srcset="<%= url_for('atelier/images/v3/about-960.webp') %> 960w, <%= url_for('atelier/images/v3/about.webp') %> 1024w" sizes="100vw"><img id="cover-image" src="<%= url_for('atelier/images/v3/hero.webp') %>" srcset="<%= url_for('atelier/images/v3/hero-960.webp') %> 960w, <%= url_for('atelier/images/v3/hero.webp') %> 1916w" sizes="100vw" width="1916" height="821" alt="深蓝与琥珀追光中演奏鼓组的伊地知虹夏，精绘主题同人插画" fetchpriority="high"></picture></figure>
-  <div class="cinema-copy"><h1 class="cinema-title" tabindex="-1" aria-label="CC Atelier"><span>CC<span>.</span></span><em>ATELIER</em></h1><div class="cinema-bottom"><div class="cinema-intro"><p>代码、研究与生活。</p><button type="button" class="livehouse-open" data-live-open hidden><span aria-hidden="true">◉</span> 进入现场</button></div><a class="enter-button cinema-enter" aria-label="进入创作室" href="<%= url_for('atelier/') %>" data-enter><span>探索创作室</span><%- partial('nijika/editorial-arrow') %></a></div></div>
+<% const homeWriting=nijika_writing().slice(0,3); %>
+<section class="cover personal-home" aria-label="CC 的个人网站">
+  <header class="personal-hero">
+    <div class="personal-intro">
+      <p class="personal-kicker">CC 的个人网站</p>
+      <h1 tabindex="-1">CC<span>.</span><small>ATELIER</small></h1>
+      <p class="personal-statement">记录代码、<br>研究与生活。</p>
+      <nav class="personal-actions" aria-label="从这里开始"><a class="enter-button personal-primary" href="<%= url_for('notes/') %>" data-enter>阅读笔记 <%- partial('nijika/editorial-arrow') %></a><a href="<%= url_for('about/') %>">关于 CC <span aria-hidden="true">↗</span></a></nav>
+    </div>
+    <figure class="personal-portrait" id="cover-photograph"><picture><source media="(max-width:600px)" srcset="<%= url_for('atelier/images/v3/hero-960.webp') %>"><img id="cover-image" src="<%= url_for('atelier/images/v3/hero.webp') %>" srcset="<%= url_for('atelier/images/v3/hero-960.webp') %> 960w, <%= url_for('atelier/images/v3/hero.webp') %> 1916w" sizes="(max-width:760px) 92vw, 60vw" width="1916" height="821" alt="舞台追光下演奏鼓组的伊地知虹夏，本站主题同人插画" fetchpriority="high"></picture><figcaption><span>NIJIKA / ON STAGE</span><button type="button" class="livehouse-open" data-live-open hidden>进入现场 <span aria-hidden="true">↗</span></button></figcaption></figure>
+  </header>
+  <section class="personal-writing" aria-labelledby="personal-writing-title">
+    <header class="personal-section-head"><div><p class="personal-kicker">WRITING</p><h2 id="personal-writing-title">最近写下的</h2></div><a href="<%= url_for('notes/') %>">全部笔记 <%- partial('nijika/editorial-arrow') %></a></header>
+    <div class="personal-note-list"><% homeWriting.forEach(post=>{ const details=typeof live_metadata==='function'?live_metadata(post):{}; %><article class="personal-note"><time datetime="<%= date_xml(post.date) %>"><%= date(post.date,'YYYY.MM.DD') %></time><div><h3><a href="<%= url_for(post.path) %>"><%= post.title %><%- partial('nijika/editorial-arrow') %></a></h3><% if(details.excerpt){ %><p><%= details.excerpt %></p><% } %></div></article><% }) %><% if(!homeWriting.length){ %><p class="personal-empty">笔记正在整理中。</p><% } %></div>
+  </section>
+  <section class="personal-project" aria-labelledby="personal-project-title">
+    <a class="personal-project-image" href="<%= url_for('projects/') %>" aria-label="查看 CC Atelier 项目"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= nijika_art_srcset('/atelier/images/v3/projects.webp') %>" sizes="(max-width:760px) 92vw, 55vw" width="1672" height="941" alt="虹夏在电子制作桌前的主题插画" loading="lazy"></a>
+    <div class="personal-project-copy"><p class="personal-kicker">PROJECT / 01</p><h2 id="personal-project-title">CC Atelier</h2><p>一间放下技术笔记、<br>阅读工具与节奏实验的创作室。</p><a href="<%= url_for('projects/') %>">查看项目 <%- partial('nijika/editorial-arrow') %></a></div>
+  </section>
+  <nav class="personal-paths" aria-label="继续探索"><a href="<%= url_for('research/') %>"><span>研究</span><small>Database / Text-to-SQL</small><%- partial('nijika/editorial-arrow') %></a><a href="<%= url_for('studio/') %>"><span>音乐</span><small>编曲、演奏与录音</small><%- partial('nijika/editorial-arrow') %></a><a href="<%= url_for('atelier/') %>"><span>创作室</span><small>笔记、作品与日常</small><%- partial('nijika/editorial-arrow') %></a></nav>
 </section>

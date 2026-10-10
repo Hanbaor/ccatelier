@@ -1,12 +1,17 @@
 /* Volume 03: image, type, space. Decoration never competes with the work. */
 body.nijika {
   --layout-width:1200px;
+  --sans:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  --chinese:var(--sans);
+  --body-size:17px;--body-leading:1.85;
+  --summary-size:16px;--summary-leading:1.8;
+  --meta-size:12px;--meta-leading:1.6;
   --page-gutter:clamp(20px,4vw,56px);
   --page-inset:max(var(--page-gutter),calc((100% - var(--layout-width))/2));
-  --page-start:40px;
+  --page-start:48px;
   --page-end:72px;
-  --page-title:clamp(32px,3.6vw,48px);
-  --section-space:48px;
+  --page-title:clamp(36px,4.4vw,64px);
+  --section-space:88px;
 }
 /* One content axis. Reading keeps its own narrower text column inside this shell. */
 .hub-v3,.live-archive.catalog-v3,.atelier-room,.music-studio,.practice-room,.series-page {
@@ -31,29 +36,33 @@ body.nijika {background-image:none}
 .nijika .surface-noise {display:none}
 body.nijika:not(.on-cover):not([data-section="studio"]) :is(.stage-field,.stage-field-fallback) {display:none}
 body.nijika:not(.on-cover) .site-header {background:var(--bg);backdrop-filter:none;border-bottom:0;box-shadow:none}
-.site-header,body[data-section="atelier"] .site-header {height:68px;max-width:none;padding-inline:var(--page-inset);border-bottom:0;background:var(--bg);gap:22px}
+.site-header,body[data-section="atelier"] .site-header {height:76px;max-width:none;padding-inline:var(--page-inset);border-bottom:0;background:var(--bg);gap:22px}
 .site-header .brand {min-width:48px;font-size:31px;letter-spacing:-2px}
 .header-navigation {gap:24px;margin-inline:auto}
-.header-navigation a {padding:0 4px;font-size:14px;min-height:44px;color:var(--text)}
-.header-navigation a:hover,.header-navigation a[aria-current=page] {color:var(--ink)}
+.header-navigation a {padding:0 4px;font-size:14px;min-height:44px;min-width:44px;justify-content:center;color:var(--text);border-radius:0;transition:color .2s ease}
+.header-navigation a:hover,.header-navigation a[aria-current=page] {color:var(--ink);background:none}
 .site-header .brand>span {color:var(--accent)}
 .header-navigation a[aria-current=page]:after {left:4px;right:4px;bottom:0;height:2px;background:var(--accent)}
 .header-controls {gap:9px;margin-left:0}
-.theme-toggle-icon {display:grid;place-items:center;width:40px;min-width:40px;height:40px;min-height:40px;border:1px solid transparent;border-radius:50%;color:var(--text)}
-.theme-toggle-icon:hover {border-color:var(--line);color:var(--yellow)}
+.theme-toggle-icon {display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;border:0;border-radius:0;color:var(--text);transition:color .2s ease}
+.theme-toggle-icon:hover {color:var(--ink)}
 .theme-toggle-icon svg {grid-area:1/1;width:19px;height:19px;stroke-width:1.5}
 .theme-toggle-icon[aria-checked=true] .theme-moon,.theme-toggle-icon[aria-checked=false] .theme-sun {display:none}
-.site-header .icon-button,.site-header .menu-open {height:40px;min-height:40px;min-width:40px;width:40px}
+.site-header .icon-button,.site-header .menu-open {height:44px;min-height:44px;min-width:44px;width:44px;color:var(--text)}
 .menu-open>span {display:none}
-.on-cover .site-header {position:absolute;top:20px;left:24px;right:24px;width:auto;max-width:none;height:60px;padding-inline:24px;border:1px solid #ffffffcc;border-radius:12px;background:#fffffff2;backdrop-filter:blur(20px);z-index:55;box-shadow:0 5px 30px #03132112}
-.on-cover:not(.light) .site-header {background:#111114ed;border-color:#ffffff26;box-shadow:0 6px 35px #0002}
+.on-cover .site-header {position:relative;inset:auto;width:100%;max-width:none;height:76px;padding-inline:var(--page-inset);border:0;border-radius:0;background:var(--bg);backdrop-filter:none;z-index:15;box-shadow:none}
+.on-cover:not(.light) .site-header {background:var(--bg);box-shadow:none}
 .on-cover .site-header .brand {color:var(--ink)}
 .on-cover .site-header .brand>span {color:var(--accent)}
-.site-footer,body[data-section="atelier"] .site-footer {max-width:none;padding-inline:var(--page-inset);padding-block:24px;min-height:80px;gap:16px;border-top:0}
-.copyright {font-size:12px}
-.footer-after-links {font-size:12px;gap:17px}
+.site-footer,.on-cover .site-footer,body[data-section="atelier"] .site-footer {max-width:none;padding-inline:var(--page-inset);padding-block:24px;min-height:80px;gap:16px;border-top:0}
+.site-footer .copyright {font:var(--meta-size)/var(--meta-leading) var(--sans);color:var(--muted);letter-spacing:0}
+.footer-after-links {font:var(--meta-size)/var(--meta-leading) var(--sans);gap:12px;margin-right:0}
+.footer-after-links>a,.footer-after-links>button {display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+.site-footer .footer-after-links>button {width:44px;min-height:44px}
+.site-header :is(a,button):focus-visible,.site-footer :is(a,button):focus-visible {outline:2px solid var(--ink);outline-offset:4px}
+.site-header .icon-button:hover,.site-footer .icon-button:hover {background:none;color:var(--ink)}
 .utility-controls {gap:1px}
-.utility-controls .icon-button {width:38px;min-width:38px;height:38px;min-height:38px}
+.utility-controls .icon-button {width:44px;min-width:44px;height:44px;min-height:44px;color:var(--muted)}
 
 /* A panoramic stage, with a single brand treatment across the lower plane. */
 .cover.cinema-v3 {position:relative;display:block;width:100%;max-width:none;margin:0;padding:0;height:100svh;min-height:0;overflow:hidden;background:#08131e;isolation:isolate}
@@ -172,7 +181,7 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 .menu-v3-layout>img {display:block;width:100%;height:100%;min-height:0;max-height:510px;object-fit:cover;object-position:center top;border-radius:3px}
 
 /* Motion is opt-in through the existing setting and never hides no-JS content. */
-.immersive-motion [data-reveal] {opacity:0;transform:translateY(22px);clip-path:inset(3% 0 0);transition:opacity .6s ease,transform .65s cubic-bezier(.16,1,.3,1),clip-path .65s cubic-bezier(.16,1,.3,1)}
+.immersive-motion [data-reveal] {opacity:0;transform:translateY(12px);clip-path:inset(3% 0 0);transition:opacity .28s ease,transform .32s ease,clip-path .32s ease}
 .immersive-motion [data-reveal].is-visible {opacity:1;transform:none;clip-path:inset(0)}
 @media(hover:hover) and (pointer:fine) {
 }
@@ -184,17 +193,17 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
 }
 @media(max-width:760px) {
   .site-header,body[data-section="atelier"] .site-header {height:64px;padding-inline:var(--page-gutter);gap:12px}
-  body.nijika {--page-start:28px;--page-end:48px;--section-space:32px}
+  body.nijika {--page-start:28px;--page-end:48px;--section-space:48px}
   .header-navigation {display:flex;margin:0 auto 0 0;gap:0;min-width:0}
-  .header-navigation a {display:none!important}
-  .header-navigation a[aria-current=page] {display:flex!important;font-size:12px;padding:0;white-space:nowrap}
+  .site-header .header-navigation a {display:none}
+  .site-header .header-navigation a[aria-current=page] {display:flex;font-size:12px;padding:0;white-space:nowrap}
   .header-controls {margin-left:auto;gap:3px}
   .hub-grid {gap:24px}
   .hub-research,.hub-projects {grid-template-columns:100px minmax(0,1fr);gap:16px}
   .hub-research h2,.hub-projects h2 {font-size:23px}
   .hub-recent {display:block}
   .hub-recent>h2 {padding:0;margin-bottom:20px}
-  .on-cover .site-header {left:16px;right:16px;top:15px;width:auto;height:56px;padding-inline:17px;border-radius:9px}
+  .on-cover .site-header {inset:auto;width:100%;height:64px;padding-inline:var(--page-gutter);border-radius:0}
   .on-cover .header-navigation {display:none}
   .cover.cinema-v3 {min-height:0}
   .cinema-title {font-size:min(23vw,27vh);gap:3vw;left:5%;right:4%;bottom:111px}
@@ -202,9 +211,9 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .cinema-bottom {padding-inline:25px;gap:20px}
   .cinema-bottom>p {font-size:12px;letter-spacing:.02em}
   .cinema-v3 .cinema-enter {min-width:184px;gap:28px;font-size:12px}
-  .site-footer,body[data-section="atelier"] .site-footer {padding:19px var(--page-gutter);gap:10px}
+  .site-footer,.on-cover .site-footer,body[data-section="atelier"] .site-footer {padding:19px var(--page-gutter);gap:10px}
   .utility-controls {padding-top:6px;width:auto;border-top:0;gap:0;margin-left:auto}
-  .footer-after-links {margin-left:auto;font-size:11px;gap:14px}
+  .footer-after-links {margin-left:auto;font-size:12px;gap:8px}
   .nijika .menu-v3 {padding:23px;width:calc(100vw - 30px)}
   .menu-v3-layout {gap:25px;grid-template-columns:1fr .85fr}
   .menu-v3-layout>nav>a {font-size:21px;min-height:57px}
@@ -245,11 +254,11 @@ body:not(.motion-off) .cinema-title {animation:cinema-title-rise .7s .12s cubic-
   .menu-v3-layout>img {object-position:center top;max-height:392px;opacity:.92}
   .menu-v3-head h2 {font-size:26px}
   .menu-v3-head {margin-bottom:17px}
-  .footer-after-links>button {width:32px;min-height:32px}
-  .utility-controls {width:100%;justify-content:flex-end;border-top:1px solid var(--line);padding-top:6px}
+  .site-footer .copyright {width:100%}
+  .footer-after-links {margin-left:0;gap:0}
+  .utility-controls {width:auto;justify-content:flex-end;border:0;padding-top:0}
 }
 @media(max-width:360px) {
-  .on-cover .site-header {left:12px;right:12px;padding-inline:15px}
   .cinema-title {font-size:76px;left:6%}
   .cinema-bottom {padding-inline:18px;gap:10px}
   .cinema-v3 .cinema-enter {min-width:150px;padding-inline:14px;font-size:11px}

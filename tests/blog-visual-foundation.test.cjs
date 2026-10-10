@@ -26,17 +26,17 @@ test('reading pages install no cursor listeners, particles, light controls or GP
   assert.deepEqual(calls,['.reading-page'],`${module} returns before any DOM or event setup`);
  }
  const effects=read('source/atelier/css/effects.css');
- assert.match(effects,/body\[data-cursor=true\]:is\(\.on-cover,\[data-section="studio"\]\):not\(:has\(\.reading-page\)\)/);
+ assert.match(effects,/body\[data-cursor=true\]\[data-section="studio"\]:not\(:has\(\.reading-page\)\)/);
  assert.match(effects,/body:has\(\.reading-page\) :is\(\.cursor-ring,\.click-effects\) \{display:none\}/);
 });
-test('common chrome is opaque and quiet while the illustrated cover retains its own contrast layer',()=>{
+test('common chrome is opaque and the personal home uses a normal-flow header',()=>{
  const dom=new JSDOM(`<style>${css}</style><style>${read('source/atelier/css/effects.css')}</style>`);
  assert.equal(dom.window.document.styleSheets.length,2);
  assert.match(css,/\.nijika \.surface-noise \{display:none\}/);
  assert.match(css,/body.nijika:not\(\.on-cover\) \.site-header \{background:var\(--bg\);backdrop-filter:none;border-bottom:0/);
  assert.match(css,/\.header-navigation a \{[^}]*font-size:14px[^}]*color:var\(--text\)/);
- assert.match(css,/\.on-cover \.site-header \{[^}]*background:#fffffff2/);
- assert.match(css,/\.on-cover:not\(\.light\) \.site-header \{background:#111114ed/);
+ assert.match(css,/\.on-cover \.site-header \{position:relative;inset:auto;[^}]*border-radius:0;background:var\(--bg\);backdrop-filter:none;[^}]*box-shadow:none/);
+ assert.match(css,/\.on-cover:not\(\.light\) \.site-header \{background:var\(--bg\);box-shadow:none/);
  assert.match(css,/\.cinema-v3 \.cinema-enter:hover \{background:var\(--accent\);color:var\(--accent-ink\)\}/);
  for(const file of ['source/atelier/js/theme.js','custom/redefine/nijika/head.ejs']){
   const content=read(file);assert.match(content,/#ffffff/);assert.match(content,/#111114/);assert.doesNotMatch(content,/#f5f0e6|#101110/);

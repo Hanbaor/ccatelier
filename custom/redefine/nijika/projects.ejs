@@ -2,18 +2,20 @@
 <section class="atelier-room room-projects project-case" aria-labelledby="project-title">
   <header class="project-intro">
     <div class="project-summary">
-      <p class="project-context">项目 / 本站实现</p>
+      <p class="project-context">个人作品 · 网站</p>
       <h1 id="project-title" tabindex="-1">CC Atelier</h1>
-      <p class="project-lead">把技术笔记、阅读工具和节奏实验，放进同一间创作室。</p>
-      <p class="project-description">基于 Hexo / Redefine 的静态站点。文章保留独立地址，搜索、阅读记录与声音交互由浏览器逐层增强。</p>
+      <p class="project-lead">一间写代码、记笔记，也留给兴趣的创作室。</p>
+      <p class="project-description">基于 Hexo / Redefine。以静态文章为底，慢慢加入搜索、阅读工具与声音实验。</p>
       <div class="project-actions">
         <a class="room-action" href="<%= url_for('notes/') %>">浏览笔记 <%- partial('nijika/editorial-arrow') %></a>
         <a class="project-text-link" href="https://github.com/Hanbaor/ccatelier/tree/nijika-dot" target="_blank" rel="noopener noreferrer">查看源码 <%- partial('nijika/editorial-arrow') %></a>
       </div>
     </div>
-    <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:760px) 94vw, (max-width:1400px) 54vw, 730px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"></figure>
+    <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:1280px) 92vw, 1200px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"></figure>
   </header>
 
+  <details class="project-implementation">
+    <summary>看看实现细节<span>静态路由、搜索与离线保存</span></summary>
   <section class="project-section project-architecture" aria-labelledby="project-architecture-title">
     <h2 id="project-architecture-title">实现结构</h2>
     <ol class="project-layers" aria-label="静态内容、浏览器增强与共享后端的职责">
@@ -48,6 +50,8 @@
       </li>
     </ol>
   </section>
+
+  </details>
 
   <section class="project-section project-reading" aria-labelledby="project-reading-title">
     <h2 id="project-reading-title">从文章试起</h2>

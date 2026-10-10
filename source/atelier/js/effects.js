@@ -1,7 +1,7 @@
 import {$, motion} from './ui.js';
 export function initEffects() {
   if(document.querySelector('.reading-page')) return;
-  if(!document.body.matches('.on-cover,[data-section="studio"]')) return;
+  if(!document.body.matches('[data-section="studio"]')) return;
   const ring=$('.cursor-ring'),layer=$('.click-effects');
   const fine=matchMedia('(hover: hover) and (pointer: fine)');
   let frame=0,x=0,y=0;

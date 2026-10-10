@@ -1,5 +1,22 @@
-<% const counts=after_hours_counts(); const notes=nijika_writing().slice(0,3); %>
-<section class="atelier-room room-about" aria-label="关于 CC">
-  <div class="about-scene"><header class="about-core"><h1 tabindex="-1"><small>关于</small>CC<span>.</span></h1><p>记录代码、研究与生活。</p><div class="about-interests" aria-label="关注的方向"><span>AI Agent</span><span>Database</span><span>Text-to-SQL</span></div><div class="about-actions"><a class="room-action" href="<%= theme.nijika.github %>" target="_blank" rel="noopener noreferrer">GitHub <%- partial('nijika/editorial-arrow') %></a><a class="room-action" href="<%= url_for('guestbook/') %>">留言 <%- partial('nijika/editorial-arrow') %></a></div><div class="about-counts"><div><strong><%= counts.writing %></strong><span>篇手记</span></div><div><strong><%= counts.series %></strong><span>道练习</span></div><div><strong><%= counts.tags %></strong><span>个标签</span></div></div></header><figure class="about-portrait-scene" data-reveal><img src="<%= url_for('atelier/images/v3/about.webp') %>" srcset="<%= url_for('atelier/images/v3/about-960.webp') %> 960w, <%= url_for('atelier/images/v3/about.webp') %> 1024w" sizes="(max-width: 760px) 94vw, 55vw" alt="舞台灯光中的虹夏主题肖像插画" width="1024" height="1536" fetchpriority="high"></figure></div>
-  <section class="about-notebook" aria-labelledby="about-notebook-title"><h2 id="about-notebook-title">最近写下的</h2><% notes.forEach(post=>{ %><a class="about-note" href="<%= url_for(post.path) %>"><span><%= post.title %></span><%- partial('nijika/editorial-arrow') %></a><% }) %></section>
+<% const notes=nijika_writing().slice(0,3); %>
+<section class="atelier-room room-about personal-about" aria-labelledby="about-title">
+  <div class="personal-about-opening">
+    <header class="personal-about-copy">
+      <p class="personal-eyebrow">关于</p>
+      <h1 id="about-title" tabindex="-1">CC<span>.</span></h1>
+      <p class="personal-intro">记录代码、研究与生活。</p>
+      <p class="personal-directions">关注 AI Agent、Database 与 Text-to-SQL。<br>这里放着学习中的笔记，也放着动手做的小实验。</p>
+      <nav class="personal-links" aria-label="与 CC 联系">
+        <a href="<%= theme.nijika.github %>" target="_blank" rel="noopener noreferrer">GitHub <%- partial('nijika/editorial-arrow') %></a>
+        <a href="<%= url_for('guestbook/') %>">留言 <%- partial('nijika/editorial-arrow') %></a>
+      </nav>
+    </header>
+    <figure class="personal-about-art"><img src="<%= url_for('atelier/images/v3/about.webp') %>" srcset="<%= url_for('atelier/images/v3/about-960.webp') %> 960w, <%= url_for('atelier/images/v3/about.webp') %> 1024w" sizes="(max-width:760px) 70vw, 400px" alt="舞台灯光中的虹夏主题肖像插画" width="1024" height="1536" fetchpriority="high"></figure>
+  </div>
+  <% if (notes.length) { %>
+  <section class="personal-about-notes" aria-labelledby="about-notebook-title">
+    <h2 id="about-notebook-title">最近写下的</h2>
+    <div><% notes.forEach(post=>{ %><a href="<%= url_for(post.path) %>"><span><%= post.title %></span><%- partial('nijika/editorial-arrow') %></a><% }) %></div>
+  </section>
+  <% } %>
 </section>

@@ -6,8 +6,9 @@ import {element,action,root} from './archive-store.js';
 // Audio uniforms come only from actual Web Audio playback; ambient motion is separate.
 export function initStageEngine(){
   if(document.querySelector('.reading-page')) return;
-  // Match the visible stage scenes in immersive.css; reading routes need no GPU or controls.
-  if(!document.body.matches('.on-cover,[data-section="studio"]')) return;
+  // The personal homepage stays idle; only the music room has an ambient stage.
+  // Entering the separate livehouse remains an explicit, independently loaded action.
+  if(!document.body.matches('[data-section="studio"]')) return;
  const lightButton=action('◒',()=>{},'icon-button lighting-open');lightButton.setAttribute('aria-label','打开舞台调光台');$('.utility-controls')?.prepend(lightButton);
  const canvas=element('canvas','stage-field');canvas.setAttribute('aria-hidden','true');document.body.prepend(canvas);
  const fallback=element('div','stage-field-fallback');fallback.setAttribute('aria-hidden','true');document.body.prepend(fallback);

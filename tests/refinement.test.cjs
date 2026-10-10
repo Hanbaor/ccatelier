@@ -7,10 +7,18 @@ const root = path.resolve(__dirname, '..');
 const read = route => fs.readFileSync(path.join(root, 'public', route), 'utf8');
 
 test('editorial styles load after refinements and quick navigation identifies the active section', () => {
-  for (const route of ['index.html', 'atelier/index.html', 'notes/index.html', 'lounge/index.html', 'studio/index.html', 'about/index.html']) {
+  for (const route of ['index.html', 'atelier/index.html', 'notes/index.html', 'lounge/index.html', 'studio/index.html', 'about/index.html', 'research/index.html']) {
     const dom = new JSDOM(read(route));
     try {
-      const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].filter(style => !['/livehouse.css','/navigation-scenes.css','/practice.css','/content-catalog.css'].some(name => style.href.endsWith(name)));
+      const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].filter(style => !['/livehouse.css','/navigation-scenes.css','/practice.css','/content-catalog.css','/research-sql.css'].some(name => style.href.endsWith(name)));
+      const expectedPersonal = ['index.html','atelier/index.html'].includes(route) ? 'personal-home.css' : ['about/index.html','research/index.html'].includes(route) ? 'personal-pages.css' : null;
+      const personalStyles = styles.filter(style => /\/personal-(home|pages)\.css$/.test(style.href));
+      assert.equal(personalStyles.length, expectedPersonal ? 1 : 0, 'only the matching personal composition is loaded');
+      if (expectedPersonal) {
+        assert.ok(styles.at(-1).href.endsWith('/'+expectedPersonal));
+        assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/'+expectedPersonal));
+        styles.pop();
+      }
       assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/immersive\.css$/);
       assert.match(styles.at(-2).getAttribute('href'), /atelier\/css\/rooms-v2\.css$/);
       assert.ok(styles.some(style=>style.href.endsWith('/refinement.css')));
@@ -22,7 +30,7 @@ test('editorial styles load after refinements and quick navigation identifies th
         {label:'音乐',href:'/studio/'}, {label:'项目',href:'/projects/'}, {label:'研究',href:'/research/'}
       ]);
       const active = [...nav.querySelectorAll('[aria-current="page"]')];
-      if (['atelier/index.html','notes/index.html','studio/index.html'].includes(route)) {
+      if (['atelier/index.html','notes/index.html','studio/index.html','research/index.html'].includes(route)) {
         assert.equal(active.length, 1);
         assert.equal(active[0].getAttribute('href'), '/' + route.replace('index.html',''));
       } else {
