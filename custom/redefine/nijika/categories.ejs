@@ -1,6 +1,29 @@
-<section class="content-view archive-page">
+<section class="content-view archive-page category-directory">
   <header class="archive-heading"><div><h1 tabindex="-1">分类</h1><p class="archive-count"><%= site.categories.length %> 个分类</p></div><a class="archive-return" href="<%= url_for('notes/') %>">返回笔记</a></header>
   <nav class="taxonomy-nav" aria-label="浏览文章"><a href="<%= url_for('archives/') %>">时间</a><a href="<%= url_for('categories/') %>" aria-current="page">分类</a><a href="<%= url_for('tags/') %>">标签</a></nav>
-  <div class="taxonomy-list"><% site.categories.each(category => { %><a href="<%= url_for(category.path) %>"><span><%= category.name %></span><small><%= category.length %> 篇</small></a><% }) %></div>
+  <div class="category-directory-entries">
+    <% site.categories.each((category, index) => {
+      // Hexo's category.posts is already drawn from the public site.posts collection.
+      // Copy before sorting so this view never changes another index's order.
+      const posts = [];
+      if (category.posts) category.posts.each(post => { if (post.published !== false) posts.push(post); });
+      const recent = posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || String(a.path).localeCompare(String(b.path))).slice(0, 3);
+    %>
+    <article class="taxonomy-list category-directory-entry" aria-labelledby="category-title-<%= index %>">
+      <a class="category-directory-link" href="<%= url_for(category.path) %>">
+        <div class="category-directory-label"><h2 id="category-title-<%= index %>"><%= category.name %></h2><small><%= category.length %> 篇</small></div>
+        <span class="category-directory-open">进入分类 <span aria-hidden="true">↗</span></span>
+      </a>
+      <% if (recent.length) { %>
+      <div class="category-directory-preview">
+        <p class="category-directory-caption">最近发布</p>
+        <ul><% recent.forEach(post => { %>
+          <li><a href="<%= url_for(post.path) %>"><span><%= post.title %></span><time datetime="<%= date_xml(post.date) %>"><%= date(post.date, 'YYYY.MM.DD') %></time></a></li>
+        <% }) %></ul>
+      </div>
+      <% } else { %><p class="category-directory-empty"><%= category.length ? '查看该分类全部文章。' : '这个分类还没有文章。' %></p><% } %>
+    </article>
+    <% }) %>
+  </div>
   <% if (!site.categories.length) { %><p class="empty-hint">文章分类将在这里出现。</p><% } %>
 </section>

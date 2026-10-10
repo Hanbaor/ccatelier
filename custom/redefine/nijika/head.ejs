@@ -50,6 +50,7 @@
   <% if (page.nijika === 'notes' || is_home() || is_post()) { %><link rel="stylesheet" href="<%= url_for('atelier/css/content-catalog.css') %>"><% } %>
   <% if (['cover','atelier'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/personal-home.css') %>"><% } %>
   <% if (['about','research'].includes(page.nijika)) { %><link rel="stylesheet" href="<%= url_for('atelier/css/personal-pages.css') %>"><% } %>
+  <% if (page.nijika === 'categories') { %><link rel="stylesheet" href="<%= url_for('atelier/css/category-directory.css') %>"><% } %>
   <% if (page.nijika === 'admin') { %><meta name="robots" content="noindex,nofollow"><% } %>
   <%- export_config() %>
 </head>

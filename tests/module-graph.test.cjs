@@ -82,3 +82,16 @@ test('source comments stay lazy and appear in each actual comment route graph',(
  assert.equal(guestbook.bytes-result.initial.bytes,fs.statSync(path.join(source,'atelier/js/community-comments.js')).size);
  assert.match(fs.readFileSync(path.join(source,'atelier/js/community.js'),'utf8'),/import\('\.\/community-comments\.js'\)/);
 });
+
+test('Hot100 filter is counted once on its own route and never in the global entry graph',()=>{
+ const source=path.resolve(__dirname,'../source'),result=report(source),series=result.routes.find(row=>row.route==='/series/hot100/');
+ assert.ok(series);assert.ok(!result.initial.files.some(file=>file.path.endsWith('/series-filter.js')));assert.ok(result.initial.bytes<100000);
+ assert.equal(series.files.filter(file=>file.path.endsWith('/series-filter.js')).length,1);
+ const beforeFilter=graph(source,['atelier/js/main.js','atelier/js/notebook.js']);
+ assert.equal(series.bytes-beforeFilter.bytes,fs.statSync(path.join(source,'atelier/js/series-filter.js')).size);
+ assert.equal(series.files.filter(file=>file.path.endsWith('/notebook.js')).length,1,'the retained introduction already initializes notebook tools');
+ for(const row of result.routes.filter(row=>row.route!=='/series/hot100/'))assert.ok(!row.files.some(file=>file.path.endsWith('/series-filter.js')),row.route);
+ const template=fs.readFileSync(path.join(__dirname,'../custom/redefine/nijika/series.ejs'),'utf8'),ejs=require('ejs');
+ const html=ejs.render(template,{page:{seriesPosts:[],introHtml:''},live_catalog_counts:()=>({withCode:0,analysisPending:0}),url_for:v=>'/lab/'+v,nijika_count:v=>v});
+ const dom=new (require('jsdom').JSDOM)(html);try{assert.ok(dom.window.document.querySelector('[data-hot100-filter]'));assert.equal(dom.window.document.querySelector('[data-series-controls]').hidden,true);}finally{dom.window.close();}
+});
