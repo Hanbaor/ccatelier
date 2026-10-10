@@ -4,7 +4,6 @@ import {initSearch} from './search.js';
 import {initEffects} from './effects.js';
 import {initRhythm} from './rhythm.js';
 import {initReading} from './reading.js';
-import {initBackstage} from './backstage.js';
 import {initCommunity, initModeration} from './community.js';
 import {initAfterHours} from './after-hours.js';
 import {initQueue} from './queue.js';
@@ -22,7 +21,6 @@ initSearch();
 initEffects();
 initRhythm();
 initReading();
-initBackstage();
 initCommunity();
 initModeration();
 initAfterHours();
@@ -36,14 +34,34 @@ initRouteFeatures();
 
 // The concert bundle is fetched only when someone actually enters the stage.
 if (document.querySelector('[data-live-open]')) {
- let livehouse;
+ let livehouse, entryButton, entryEpoch = 0;
+ // A finished import may be reused, but an abandoned entrance must not reopen UI.
+ const cancelEntry = () => {
+  entryEpoch++;
+  if (entryButton) entryButton.disabled = false;
+  entryButton = null;
+ };
+ document.addEventListener('atelier:dialog-open', cancelEntry);
+ document.addEventListener('visibilitychange', () => { if (document.hidden) cancelEntry(); });
+ window.addEventListener('pagehide', cancelEntry);
  document.querySelectorAll('[data-live-open]').forEach(button => {
   button.hidden = false;
   button.addEventListener('click', async () => {
+   cancelEntry();
+   if (document.hidden) return;
+   const token = entryEpoch;
+   entryButton = button;
    button.disabled = true;
-   try { livehouse ||= import('./livehouse.js').then(module => module.initLivehouse()); (await livehouse).open(button); }
-   catch { livehouse = null; button.textContent = '载入失败，点击重试'; }
-   finally { button.disabled = false; }
+   const request = livehouse ||= import('./livehouse.js').then(module => module.initLivehouse());
+   try {
+    const controller = await request;
+    if (token === entryEpoch && !document.hidden) controller.open(button);
+   }
+   catch {
+    if (livehouse === request) livehouse = null;
+    if (token === entryEpoch) button.textContent = '载入失败，点击重试';
+   }
+   finally { if (token === entryEpoch) cancelEntry(); }
   });
  });
 }

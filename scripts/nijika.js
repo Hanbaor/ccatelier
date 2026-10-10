@@ -108,9 +108,9 @@ hexo.extend.helper.register('nijika_list_title', function () {
 });
 // Responsive assets are curated; custom images keep their original source.
 hexo.extend.helper.register('nijika_art_srcset', function (source) {
-  const widths={v2:{hero:1672,stage:1672,notes:1536,research:1536,life:1536,lounge:1536},v3:{hero:1916,projects:1672,about:1024,guestbook:1916}};
-  const match=String(source || '').match(/\/atelier\/images\/(v[23])\/([a-z]+)\.webp$/);
+  const widths={v2:{hero:1672,stage:1672,notes:1536,research:1536,life:1536,lounge:1536},v3:{hero:1916,projects:1672,about:1024,guestbook:1916},v5:{'practice-room':1536}};
+  const match=String(source || '').match(/^\/atelier\/images\/(v[235])\/([a-z-]+)\.webp$/);
   const width=match && widths[match[1]][match[2]];
-  if (!width) return '';
+  if (!Number.isInteger(width)) return '';
   return this.url_for(source.replace(/\.webp$/, '-960.webp')) + ' 960w, ' + this.url_for(source) + ' ' + width + 'w';
 });

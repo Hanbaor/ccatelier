@@ -68,3 +68,56 @@ test('retry never duplicates a partially initialized feature',async()=>{
  const size=doc.querySelector('[data-reader-size]');size.value='22';size.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await record.ready;
  doc.querySelector('[data-find-next]').click();assert.ok(doc.querySelector('[role=status] button'),'a failed control must not replace its retry button');fail=false;doc.querySelector('[role=status] button').click();await record.ready;assert.equal(size.value,'22');assert.equal(clicks,1);dom.window.close();
  });
+
+test('backstage is discovered once by DOM at root and prefixed URLs, with bounded import retry',async()=>{
+ const {initRouteFeatures}=await import('../source/atelier/js/route-features.js');
+ for(const prefix of ['/','/lab/'])for(const present of [false,true]){
+  const dom=new JSDOM(present?'<main data-backstage-scene><a href="#native">Native link</a></main>':'<main></main>',{url:'https://ccatelier.test'+prefix+'atelier/'});
+  const doc=dom.window.document;let loads=0,inits=0,fail=true;
+  const loaders={backstage:async()=>{loads++;if(fail)throw Error('offline');return {initBackstage(){inits++;}};}};
+  try{
+   const result=await initRouteFeatures({root:doc,loaders});
+   assert.equal(loads,present?1:0);assert.equal(inits,0);
+   if(!present){assert.deepEqual(result,[]);continue;}
+   assert.equal(result[0].status,'failed');assert.equal(doc.querySelector('a').textContent,'Native link');
+   await initRouteFeatures({root:doc,loaders});assert.equal(loads,1,'repeated boot must not duplicate pending/failed records');
+   fail=false;doc.querySelector('[data-feature-status=backstage] button').click();await flush();
+   assert.equal(loads,2);assert.equal(inits,1);assert.equal(doc.querySelector('[data-feature-status=backstage]'),null);
+   await initRouteFeatures({root:doc,loaders});assert.equal(loads,2);assert.equal(inits,1);
+  }finally{dom.window.close();}
+ }
+});
+
+test('lazy backstage retains real fine-pointer, touch and reduced-motion guards',async t=>{
+ const dom=page('<main data-backstage-scene></main>'),{document}=dom.window,saved=new Map(),frames=new Map(),pointerChanges=[];
+ let fine=true,nextFrame=0;
+ const fineMedia={get matches(){return fine;},addEventListener(type,callback){pointerChanges.push(callback);}};
+ const replacements={window:dom.window,document,matchMedia:query=>query.includes('pointer: fine')?fineMedia:{matches:false,addEventListener(){}},requestAnimationFrame:callback=>{const id=++nextFrame;frames.set(id,callback);return id;},cancelAnimationFrame:id=>frames.delete(id)};
+ for(const [name,value] of Object.entries(replacements)){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{configurable:true,writable:true,value});}
+ t.after(()=>{dom.window.close();for(const [name,descriptor] of saved){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}});
+ const {motion}=await import('../source/atelier/js/ui.js');const priorMotion=motion.enabled;t.after(()=>{motion.enabled=priorMotion;});
+ const {initRouteFeatures}=await import('../source/atelier/js/route-features.js');
+ const scene=document.querySelector('main');scene.getBoundingClientRect=()=>({left:0,top:0,width:100,height:100});
+ const move=(pointerType='mouse')=>{const event=new dom.window.MouseEvent('pointermove',{clientX:80,clientY:20,bubbles:true});Object.defineProperty(event,'pointerType',{value:pointerType});scene.dispatchEvent(event);};
+ const draw=()=>{const batch=[...frames.values()];frames.clear();batch.forEach(callback=>callback());};
+ motion.enabled=true;const result=await initRouteFeatures({root:document});assert.equal(result[0].status,'ready');
+ move();move();assert.equal(frames.size,1);draw();assert.equal(scene.style.getPropertyValue('--spot-x'),'80%');
+ scene.dispatchEvent(new dom.window.Event('pointerleave'));assert.equal(scene.style.getPropertyValue('--spot-x'),'');
+ move('touch');assert.equal(frames.size,0);
+ fine=false;move();assert.equal(frames.size,0);
+ fine=true;motion.enabled=false;move();assert.equal(frames.size,0);
+ motion.enabled=true;move();assert.equal(frames.size,1);document.dispatchEvent(new dom.window.Event('atelier:motion'));assert.equal(frames.size,0);
+ move();draw();fine=false;pointerChanges.forEach(callback=>callback());assert.equal(scene.style.getPropertyValue('--portrait-x'),'');
+ fine=true;move();dom.window.dispatchEvent(new dom.window.Event('blur'));assert.equal(frames.size,0);
+});
+
+test('source first-load graph excludes backstage while preserving the JS budget and bootstrap order',()=>{
+ const {graph}=require('../tools/module-graph.cjs');
+ const result=graph(path.resolve(__dirname,'../source'),['atelier/js/main.js']);
+ assert.ok(result.bytes<100000);assert.ok(!result.files.some(file=>file.path.endsWith('/backstage.js')));
+ const main=fs.readFileSync(path.join(__dirname,'../source/atelier/js/main.js'),'utf8');
+ assert.doesNotMatch(main,/initBackstage/);
+ for(const name of ['initSettings','initDialogs'])assert.ok(main.indexOf(name+'();')<main.indexOf('initRouteFeatures();'));
+ const routes=fs.readFileSync(path.join(__dirname,'../source/atelier/js/route-features.js'),'utf8');
+ assert.match(routes,/load:\(\)=>import\('\.\/backstage\.js'\)/);
+});
