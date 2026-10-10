@@ -94,3 +94,23 @@ test('chapter copy uses decorative SVGs with named buttons and preserves encoded
   dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();
  }
 });
+
+
+test('active table-of-contents links reset the legacy negative margin without clipping text',()=>{
+ const stage=fs.readFileSync(path.join(root,'source/atelier/css/stage.css'),'utf8');
+ const reader=fs.readFileSync(path.join(root,'source/atelier/css/reader.css'),'utf8');
+ const legacy=stage.match(/\.reading-toc a\[aria-current=true\]\{[^}]+\}/)[0];
+ const reset=reader.match(/\.reading-studio \.chapter-rail a\[aria-current=true\]\{[^}]+\}/)[0];
+ assert.match(legacy,/margin-left:-14px/);assert.match(reset,/margin-left:0/);
+ const dom=new JSDOM('<style>'+legacy+reset+'</style><section class="reading-studio"><aside class="reading-toc chapter-rail"><a aria-current="true">题目要求</a></aside></section>');
+ try{assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('a')).marginLeft,'0px');assert.equal(dom.window.document.querySelector('a').textContent,'题目要求');}finally{dom.window.close();}
+ assert.equal((reset.split('{')[0].match(/\.[\w-]+|\[[^\]]+\]/g)||[]).length,3,'scoped reset outranks legacy specificity (0,2,1)');
+});
+
+test('small-screen directory spacing is tighter while its toggle retains a 44px target',()=>{
+ const css=fs.readFileSync(path.join(root,'source/atelier/css/refinement.css'),'utf8');
+ const mobile=css.slice(css.indexOf('@media(max-width:760px) {'));
+ assert.match(mobile,/\.reading-studio \.chapter-rail \{order:1;width:100%;padding:0;margin-bottom:8px\}/);
+ assert.match(mobile,/\.reading-studio \.chapter-rail summary \{min-height:44px;margin:0;padding:0\}/);
+ assert.match(mobile,/\.reading-studio \.reading-opener \{margin-bottom:16px\}/);
+});
