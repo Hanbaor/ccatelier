@@ -47,6 +47,10 @@ node tests/fixture-build.cjs
 | 公共导航与样式加载 | `custom/redefine/nijika/header.ejs`、`footer.ejs`、`head.ejs` |
 | 阅读与栏目样式 | `source/atelier/css/reader.css`、`content.css`、`projects.css`、`personal-pages.css`；其余按页面查 `head.ejs` |
 | 浏览器入口与按需交互 | `source/atelier/js/main.js`、`route-features.js`；具体功能在同目录模块中 |
+| 音乐工作室 / 分享 / MIDI | `source/atelier/js/studio.js`、`studio-core.mjs`、`studio-share.mjs`、`studio-midi.mjs`；声音渲染在 `audio-engine.js` |
+| Hot100 筛选与状态 | `custom/redefine/nijika/series.ejs`、`source/atelier/js/series-filter.js`、`tools/content-catalog.cjs` |
+| SQL 教学实验 | `custom/redefine/nijika/research.ejs`、`source/atelier/js/research-sql.js` 及同目录 `research-sql-*` 模块 |
+| 本地字体交付 | `source/atelier/css/fonts.css`、`source/atelier/fonts/`、`tools/local-font-woff2.py` |
 | 现场演出工程 | `source/atelier/js/livehouse-director.js`、`performance-core.mjs`、`performance-transport.mjs`、`performance-store.mjs` |
 | 正式文章与内容索引 | `source/_posts/`、`source/_data/hot100.json`、`tools/content-catalog.cjs` |
 | 留言、掌声与统计 | `worker/index.mjs`、`worker/migrations/`；本地配置 `wrangler.local.jsonc` |
@@ -61,6 +65,34 @@ node tests/fixture-build.cjs
 文章继续用 Hexo Markdown 编写；frontmatter 的 `categories`、`tags`、可选 `cover` 会进入相应页面。保留了原有 `Hello-CC-Atelier.md` 及链接。Hexo 自带教程移到了 `source/_drafts/hello-world.md`，不会作为个人文章发布。
 
 设置 `nijika.cursor: false` 可恢复系统鼠标，`nijika.motion: false` 可关闭默认动效。
+
+## 当前功能的维护边界
+
+### 音乐工作室：分享与导出
+
+`/studio/` 的六轨音序器支持 16 / 32 步。分享链接把当前编排与曲名写入 URL 的 `#rhythm=v1.` 片段，不包含本机资料库中的其他项目，也不创建云端项目。接收方打开后只载入编排，需手动播放；可撤销回到载入前状态，不自动保存到本机资料库。打开分享弹窗不会写剪贴板，需点击“复制链接”；失败时选中链接供 Ctrl+C / ⌘C 手动复制。无效、损坏或不支持的版本不会替换当前编排。
+
+- MIDI：导出标准 MIDI 文件（Format 0，单鼓轨、通道 10），支持当前 16 / 32 步及 1 / 2 / 4 轮，保留 BPM、swing 对应的音符时序和力度，遵循静音 / 独奏。用于 DAW 中继续编辑，接收端需配置 GM 鼓组音源；不包含本站合成音色、尾音、效果或混音参数，不能据此还原本站声音。
+- WAV：将当前编排渲染成可直接播放的 44.1 kHz / 16 bit 立体声音频，使用所选轮数，适合试听与分享成品声音。
+- JSON：保存当前项目的可编辑编排及合成、混音参数，供本站重新导入与备份；不是音频，也不是整个本机资料库的备份。
+
+修改分享编码、鼓音映射或时间规则后，检查 `tests/studio-share.test.cjs`、`tests/studio-midi.test.cjs`、`tests/studio-core.test.cjs`，并手动验证接收不发声、复制失败回退及音频导出。
+
+### Hot100：筛选与内容状态
+
+`/series/hot100/` 支持标题 / 本站题单序号 / 专题搜索，与难度、“仅含代码”组合筛选；序号不是 LeetCode 题号。筛选条件保存在查询参数中，支持分享与前进 / 后退；无 JavaScript 时仍展示完整题单和原生链接。
+
+题数、“已有代码”和“解析待补”由实际文章自动统计，勿在模板另写固定数字。“已有代码”只表示存在代码，不代表全部通过正确性验证。`tools/content-catalog.cjs` 的 `exerciseState` 排除已知占位文字，并对 `source/_posts/hot100/028.md` 的既有空 `addTwoNumbers` 实现按 Hexo 来源路径和代码区段哈希精确识别，不计入“已有代码”并保留原文；不因出现 `Solution` 类就认定实现完整。修改该代码或新增代码区段会退出此特例，之后仍按普通内容存在规则统计，不自动获得正确性保证。
+
+维护时检查 `tests/series-filter.test.cjs`、`tests/content-catalog-source.test.cjs` 与 `tests/content-catalog.test.cjs`；不要为改变统计而补写原作者未完成的解答或改动迁移来源。
+
+### SQL：教学比较与有限反例
+
+`/research/` 使用浏览器内 SQLite（sql.js + Worker）运行内置小数据上的候选 / 参考查询。只读 SELECT / WITH，列按位置比较，值类型、重复次数与行顺序均参与判断；一次结果一致只对当前数据成立。支持草稿 JSON 导入 / 导出，导入不自动执行；查询不自动保存或上传。首次执行按需加载本地 SQLite 资源，需 WebAssembly / Worker，离线可用性不保证。
+
+“缩小反例”只删除当前数据集中的行，按保留行数从少到多搜索，最多 64 个子集，整体限时 1.5 秒。接受的确定性查询子集要求顶层 ORDER BY 和白名单函数，拒绝随机数、时间、连接状态及数据库元数据。只有更少行的全部子集均已比较，才能对这些行的子集给出最小性结论；错误、截断、超时或重复执行不一致时不作此结论。未找到反例不代表对其他数据成立，也不是普适 SQL 等价性证明。只保留声明的 schema 约束，不补充业务外键；排序键并列时不保证跨环境顺序，两次输出一致也不能证明确定性。
+
+查询还受字符数、行列数、单元格长度与内存上限约束，具体值以 `research-sql-core.mjs` 和页面说明为准。执行计划仅展示实际 SELECT 包装的 SQLite 访问路径，不证明正确或更快。反例重放 SQL 应在新的临时 SQLite 数据库中执行。维护入口与边界见 `research-sql-core.mjs`、`research-sql-worker.js`、`research-sql-deterministic.mjs`、`research-sql-minimize.mjs`、`research-sql-snapshot.mjs`；回归见 `tests/research-sql*.test.cjs`。
 
 ## 与 Redefine 的关系
 
@@ -88,6 +120,8 @@ node tests/fixture-build.cjs
 | `nijika-live-archive.png` | AI 辅助同人插画，用于新版封面与后台宽屏主视觉 |
 
 图像版权归原权利人；来源标注不改变其权利。字体为本地 Barlow Condensed 和 DM Sans，OFL 许可文件随字体保存在 `source/atelier/fonts/`。图标、发饰形指针、唱片与光效由 SVG/CSS 实现。
+
+字体交付采用四个 WOFF2 字重文件：Barlow Condensed 600，以及 DM Sans 400 / 500 / 600；保留原始 TTF 回退和 OFL 文件，不做字形裁剪。`tools/local-font-woff2.py` 默认校验四个文件，附加 `--write` 时从 TTF 重新转换后校验；比较解压后的字体表、字形和度量，不以压缩文件哈希代替一致性验证。Python、fontTools 与 Brotli 仅在重新转换或运行这项字体校验时需要，不是网站运行时依赖，也不是普通 Hexo 构建的前置条件。交付路径、预加载与 `/lab/` 子目录兼容性由 `tests/local-font-delivery.test.cjs` 检查。
 
 
 ## 完整本地预览
