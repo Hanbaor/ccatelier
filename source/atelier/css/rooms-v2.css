@@ -107,6 +107,7 @@
 .room-lounge .pixel-stage-card {margin:0 0 17px;border-radius:3px;box-shadow:none;transform:rotate(-1deg);max-width:none}
 .room-lounge .pixel-stage-card img {aspect-ratio:1672/941;width:100%;height:auto;object-fit:cover;image-rendering:auto}
 .room-lounge .pixel-stage-bottom {font:12px var(--chinese);letter-spacing:0;padding:12px 17px}
+.room-lounge .pixel-stage-bottom>.editorial-arrow {width:14px;height:14px;margin-left:auto}
 .room-lounge .after-solid-button {border-radius:3px;min-height:48px;font-size:13px}
 .room-lounge .focus-card {grid-column:span 6;background:#202b2b;color:#e8edd9;border-color:#354544;padding:28px 33px}
 .room-lounge .focus-amp {margin:0;padding:0;border:0;box-shadow:none;background:none;border-radius:0;color:#e8d5a7}

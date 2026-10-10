@@ -191,30 +191,23 @@ h1,h2 {text-wrap:balance}
 .archive-empty {padding:70px 24px;border:1px dashed var(--line);border-radius:var(--ui-radius);background:var(--surface)}
 
 /* Reading hierarchy: the article title precedes its optional tools in DOM order. */
-.reading-studio {width:100%;max-width:1200px;margin-inline:auto;padding:36px var(--page-gutter) 80px}
-.reading-studio .reader-columns {display:grid;grid-template-columns:150px minmax(0,840px);column-gap:32px;row-gap:0;max-width:1022px;margin-inline:auto;justify-content:center}
+.reading-studio {width:100%;max-width:1040px;margin-inline:auto;padding:32px var(--page-gutter) 64px}
+.reading-studio .reader-columns {display:grid;grid-template-columns:136px minmax(0,720px);column-gap:24px;row-gap:0;max-width:880px;margin-inline:auto;justify-content:center}
 .reader-frontmatter {grid-column:2;grid-row:1;min-width:0}
 .reading-studio .chapter-rail {grid-column:1;grid-row:1 / span 2;top:110px;margin:0;max-height:calc(100svh - 140px);padding-right:10px}
 .reader-paper {grid-column:2;grid-row:2}
-.reading-studio .reading-opener {padding-bottom:24px}
-.reading-studio .reading-opener h1 {font-size:clamp(30px,3.1vw,44px);line-height:1.45;letter-spacing:-.035em;margin-block:16px 22px}
-.reading-studio .reading-meta {font-size:12px;gap:18px;letter-spacing:.02em;flex-wrap:wrap}
-.reading-studio .article-toolbox {padding-block:10px;margin-bottom:16px}
+.reading-studio .reading-opener {padding:0;margin:0 0 24px;border:0}
+.reading-studio .reading-opener h1 {font-size:38px;font-weight:650;line-height:1.3;letter-spacing:-.02em;margin:0 0 12px}
+.reading-studio .reading-meta {font-size:14px;line-height:1.6;gap:6px 14px;letter-spacing:0;flex-wrap:wrap}
+.reading-studio .article-toolbox {grid-column:1/-1;padding:0;margin:0;border:0;background:none;position:static}
 .reading-studio .article-toolbox button {min-height:40px;font-size:12px;border-radius:5px}
 .reading-studio .reading-switches {flex-wrap:wrap;gap:6px 18px;margin-top:0}
 .reading-studio .reading-switches>button {border:0}
 .reading-studio .reading-resume {margin:0 0 0 auto;padding:6px 0;background:none;border:0;color:var(--yellow)}
-.reader-more {min-width:0}
-.reader-more>summary {display:flex;align-items:center;gap:8px;min-height:40px;list-style:none;cursor:pointer;color:var(--muted);font-size:12px}
-.reader-more>summary::after {content:'+'}
-.reader-more[open]>summary::after {content:'−'}
-.reader-more>summary:focus-visible {outline:2px solid var(--yellow);outline-offset:3px}
-.reader-more[open] {flex-basis:100%}
-.reader-more .article-toolbox-main {padding-block:6px}
 .reading-studio .article-body.markdown-body>:is(h1,h2,h3,h4,h5,h6):first-child,
 .reading-studio .article-body.markdown-body>[data-feature-status]:first-child+:is(h1,h2,h3,h4,h5,h6) {margin-top:0}
-.chapter-rail summary {min-height:44px;font-size:13px}
-.chapter-rail a {font-size:12px;line-height:1.65;padding:6px 7px}
+.reading-studio .chapter-rail summary {min-height:36px;font-size:13px;margin-bottom:8px;border:0;letter-spacing:0}
+.reading-studio .chapter-rail a {font-size:13px;line-height:1.65;padding:5px 0;border:0;background:none}
 .chapter-rail summary span {font-size:10px}
 .reader-find {gap:10px}
 .reader-find input {font-size:13px;min-height:40px;padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
@@ -229,25 +222,58 @@ h1,h2 {text-wrap:balance}
 .reader-speech p {font-size:11px;line-height:1.8}
 .reading-studio .article-body.markdown-body {color:var(--text)}
 .reading-studio .article-body.markdown-body :is(h1,h2,h3,h4,h5,h6) {scroll-margin-top:110px}
-.reading-studio .article-body.markdown-body p {margin-block:1.2em}
+.reading-studio .article-body.markdown-body p {margin-block:0 1.1em}
 .reading-studio .article-body.markdown-body a {text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--yellow) 45%,transparent)}
-.reading-studio .article-body.markdown-body blockquote {border-radius:0 var(--ui-radius) var(--ui-radius) 0;padding:16px 24px}
+.reading-studio .article-body.markdown-body blockquote {border:0;border-radius:4px;padding:16px 20px;background:var(--surface)}
 .reading-studio .article-body.markdown-body .code-container {border-radius:var(--ui-radius);padding-top:44px}
 .reading-studio .code-container .copy-code,.code-workbench-open {min-height:34px;top:5px;font-size:11px}
 .code-workbench-open {right:72px}
 .reading-studio .code-container pre,.reading-studio .article-body.markdown-body figure.highlight {font-size:13px;line-height:1.85}
-.chapter-copy {min-width:36px;min-height:36px;opacity:.7}
-.neighbor-posts {gap:24px}
-.neighbor-posts a {flex:1;padding:18px;border:1px solid var(--line);border-radius:var(--ui-radius);max-width:50%}
-.neighbor-posts span {font-size:14px;line-height:1.7}
-.reading-focused .reading-studio .reader-columns {display:block;max-width:840px}
+.chapter-copy {min-width:32px;min-height:32px;opacity:0}
+.reading-studio .neighbor-posts {display:flex;gap:24px;margin:28px 0 16px;padding:0;border:0}
+.reading-studio .neighbor-posts a {flex:1;min-width:0;padding:0;border:0;background:none;max-width:50%;gap:4px}
+.reading-studio .neighbor-posts small {font-size:12px;color:var(--muted)}
+.reading-studio .neighbor-posts span {font-size:15px;line-height:1.6}
+.reading-focused .reading-studio .reader-columns {display:block;max-width:720px}
 .reading-focused .reader-frontmatter {display:contents}
 
-.reading-studio .reader-columns.reader-no-toc {display:block;max-width:840px}
+.reading-studio .reader-columns.reader-no-toc {display:block;max-width:720px}
 
 /* A duplicate opening title keeps its historic hash without a second visible heading. */
 .reading-studio .reader-title-anchor {display:block;height:0;margin:0;padding:0;scroll-margin-top:110px}
 .reading-studio .article-body.markdown-body>.reader-title-anchor+:is(h1,h2,h3,h4,h5,h6) {margin-top:0}
+
+.reading-studio .reading-nav {border:0;padding:0;margin:0 0 12px}
+.reading-studio .reading-nav>a {font-size:13px;color:var(--muted)}
+.reading-studio .article-body.markdown-body :is(h1,h2,h3) {border:0;padding-bottom:0;color:var(--ink);font-family:var(--chinese)}
+.reading-studio .reader-paper .article-body.markdown-body h2 {font-size:25px;line-height:1.45;font-weight:600;font-family:var(--chinese)}
+.reading-studio .reader-paper .article-body.markdown-body h3 {font-size:21px;line-height:1.5;font-weight:600;font-family:var(--chinese)}
+.reading-studio .article-tags {gap:12px;margin:24px 0 8px}
+.reading-studio .article-tags>a {min-height:28px;font-size:13px}
+.reading-studio .article-source {border:0;padding:0;margin:12px 0 6px;font-size:13px}
+.reading-studio .article-footer {border:0;padding:0;margin:6px 0 0}
+.reading-studio .article-footer>a {font-size:12px}
+.reading-studio .reader-options,.reading-studio .reader-comments {border:0;margin:8px 0 0;padding:0}
+.reading-studio .reader-options>summary,.reading-studio .reader-comments>summary {display:flex;align-items:center;gap:8px;min-height:40px;list-style:none;cursor:pointer;font-size:14px;color:var(--muted)}
+.reading-studio .reader-comments>summary::after {content:'+'}
+.reading-studio .reader-comments[open]>summary::after {content:'−'}
+.reading-studio .reader-comments>summary:focus-visible {outline:2px solid var(--yellow);outline-offset:3px}
+.reading-studio .reader-comments .encore-comments {margin-top:12px}
+.reading-studio .reading-meta .exercise-readiness {margin:0;padding:0;font-size:13px}
+.reading-studio .article-body.markdown-body>.exercise-summary {display:inline;font-size:14px;line-height:1.7;margin:0 12px 0 0;color:var(--text)}
+.reading-studio .article-body.markdown-body>.exercise-meta-details {display:inline-block;vertical-align:top;margin:0;font-size:14px;line-height:1.7;color:var(--muted)}
+.reading-studio .exercise-meta-details>summary {padding:0;cursor:pointer}
+.reading-studio .exercise-meta-details[open] {display:block;margin:8px 0 20px}
+.reading-studio .exercise-meta-details[open]>p {margin:6px 0;font-size:14px}
+.reading-studio .article-body.markdown-body>.exercise-meta-details+h2 {margin-top:24px}
+
+.reading-studio .article-body.markdown-body :is(pre,code) {color:var(--text)}
+.reading-studio .article-body.markdown-body :not(pre)>code {color:var(--text);background:var(--surface)}
+.reading-studio .article-body.markdown-body :is(.code-container,figure.highlight,pre) {background:var(--surface);border-color:var(--line)}
+.reading-studio .article-body.markdown-body figure.highlight :is(.keyword,.string,.number,.literal,.built_in,.title,.type,.params,.attr,.variable,.symbol) {color:var(--text)}
+.reading-studio .article-body.markdown-body figure.highlight :is(.comment,.quote,.gutter) {color:var(--muted)}
+.reading-studio .article-body.markdown-body :is(th,td) {color:var(--text);border-color:var(--line)}
+.reading-studio .article-body.markdown-body blockquote p {color:var(--text)}
 
 /* Secondary rooms share the same quality of finish. */
 .after-page-heading {padding-bottom:36px}
@@ -323,7 +349,7 @@ h1,h2 {text-wrap:balance}
   .site-header .current-chapter {display:none}
   .site-header,body[data-section="atelier"] .site-header {gap:16px}
   .header-navigation a {padding-inline:10px;font-size:12px}
-  .reading-studio .reader-columns {grid-template-columns:140px minmax(0,840px);column-gap:24px}
+  .reading-studio .reader-columns {grid-template-columns:136px minmax(0,720px);column-gap:24px}
   .archive-results {grid-template-columns:repeat(2,minmax(0,1fr))}
   .archive-intro {grid-template-columns:minmax(0,1.6fr) minmax(180px,1fr)}
   .archive-graph-invite {grid-column:1/-1;min-height:64px;display:flex;align-items:center;justify-content:center;gap:20px;border:1px solid var(--line)!important;border-radius:var(--ui-radius)}
@@ -332,9 +358,9 @@ h1,h2 {text-wrap:balance}
   .header-navigation a:last-child {display:none}
   .live-stage .gig-heading h1 {font-size:100px}
   .archive-layout {grid-template-columns:155px minmax(0,1fr);gap:24px}
-  .reading-studio .reader-columns {grid-template-columns:minmax(0,840px);column-gap:0}
+  .reading-studio .reader-columns {grid-template-columns:minmax(0,720px);column-gap:0}
   .reader-frontmatter {grid-column:1;grid-row:1}
-  .reading-studio .chapter-rail {grid-column:1;grid-row:2;position:static;max-height:none;margin-bottom:24px;border-bottom:1px solid var(--line)}
+  .reading-studio .chapter-rail {grid-column:1;grid-row:2;position:static;max-height:none;margin-bottom:12px;border:0}
   .reader-paper {grid-column:1;grid-row:3}
   .chapter-rail details>ol {max-height:230px}
   .project-layout {gap:30px}
@@ -371,10 +397,9 @@ h1,h2 {text-wrap:balance}
   .reader-paper {order:3;width:100%}
   .reader-tools-grid {border:0;padding:0}
   .reader-typesetting input {width:60px}
-  .reading-studio .reading-opener h1 {font-size:32px;line-height:1.5}
-  .reading-studio .reading-meta {font-size:12px;gap:12px}
-  .reading-studio .article-toolbox {margin-bottom:16px}
-  .reader-more>summary {min-height:44px}
+  .reading-studio .reading-opener h1 {font-size:34px;line-height:1.3}
+  .reading-studio .reading-meta {font-size:13px;gap:4px 12px}
+  .reading-studio .article-toolbox {margin:0}
   .reading-studio .article-toolbox button {min-height:44px;font-size:12px}
   .reader-find input,.encore-form input,.encore-form input[name=nickname],.encore-form textarea,.archive-search input,.studio-project-name input,.note-editor textarea {font-size:16px}
   .reader-find button {min-width:40px;min-height:40px}
@@ -487,8 +512,8 @@ h1,h2 {text-wrap:balance}
   .constellation-bottom label {white-space:normal;font-size:12px}
   .reading-studio .reading-nav {font-size:12px;gap:12px}
   .reading-nav>button {font-size:12px;min-height:44px}
-  .reading-studio .reading-opener h1 {font-size:30px}
-  .reading-studio .reading-meta {font-size:11px;gap:12px}
+  .reading-studio .reading-opener h1 {font-size:34px}
+  .reading-studio .reading-meta {font-size:13px;gap:4px 12px}
   .reading-studio .article-toolbox-main {gap:8px}
   .reading-studio .article-toolbox-main>button {padding:10px;font-size:11px;flex:1}
   .reading-studio .reading-switches {gap:6px 14px}
@@ -566,7 +591,7 @@ h1,h2 {text-wrap:balance}
   .live-archive,.after-page,.music-studio,.series-page,.project-page,.empty-page,.archive-page,.index-page,.reading-studio {padding-inline:18px}
   .archive-group button {padding:8px;font-size:12px}
   .archive-mast h1 {font-size:31px}
-  .reading-studio .reading-opener h1 {font-size:27px}
+  .reading-studio .reading-opener h1 {font-size:30px}
   .live-stage .gig-heading h1 {font-size:38px}
   .backstage {padding-inline:18px}
   .profile-copy h1 {font-size:34px}

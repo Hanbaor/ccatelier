@@ -25,9 +25,9 @@ test('ordinary article clicks never change font size; explicit controls stay syn
     }
     const shortcut = document.querySelector('button[data-reader-size-cycle]');
     shortcut.click();
-    assert.equal(size(), '19px', 'one deliberate click increases by exactly one step');
+    assert.equal(size(), '20px', 'one deliberate click increases by exactly one step');
     const slider = document.querySelector('[data-reader-size]');
-    assert.equal(slider.value, '19');
+    assert.equal(slider.value, '20');
     slider.value = '20';
     slider.dispatchEvent(new window.Event('input', {bubbles:true}));
     assert.equal(size(), '20px');

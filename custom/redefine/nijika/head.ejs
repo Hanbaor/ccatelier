@@ -1,7 +1,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f5f0e6"><meta name="color-scheme" content="light dark">
-  <script>try{const light=localStorage.getItem('cc-theme')!=='dark';document.documentElement.classList.toggle('dark',!light);document.documentElement.style.colorScheme=light?'light':'dark';document.querySelector('meta[name="theme-color"]').content=light?'#f5f0e6':'#101110'}catch{}</script>
+  <meta name="theme-color" content="#ffffff"><meta name="color-scheme" content="light dark">
+  <script>try{const light=localStorage.getItem('cc-theme')!=='dark';document.documentElement.classList.toggle('dark',!light);document.documentElement.style.colorScheme=light?'light':'dark';document.querySelector('meta[name="theme-color"]').content=light?'#ffffff':'#111114'}catch{}</script>
   <title><%= page.nijika === 'cover' ? config.title : (page.title || nijika_list_title()) + ' · ' + config.title %></title>
   <meta name="description" content="<%= page.description || config.description %>">
   <link rel="canonical" href="<%= full_url_for(page.path || '') %>">

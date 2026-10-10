@@ -64,12 +64,57 @@ function readerTitleAnchor(content,title){
     return space+'<span class="reader-title-anchor"'+(id?' id="'+escapeHTML(id)+'"':'')+' aria-hidden="true"></span>';
   });
 }
+// Only the imported Hot100 opening is compacted; retain all other bytes and
+// decline unfamiliar attributes, markup, links or malformed template shapes.
+function readerExerciseMetadata(content,page){
+  if(page.series!=='hot100')return content;
+  const significant=node=>(node.children||[]).filter(child=>child.type!=='text'||child.data.trim());
+  const closed=node=>{
+    if(!Number.isInteger(node?.endIndex))return false;
+    const end='</'+node.name+'>',raw=content.slice(node.startIndex,node.endIndex+1);
+    if(!raw.endsWith(end))return false;
+    let cursor=node.startIndex+raw.indexOf('>')+1;
+    for(const child of node.children||[]){if(child.startIndex!==cursor)return false;cursor=child.endIndex+1;}
+    return cursor===node.endIndex+1-end.length;
+  };
+  const bare=(node,name)=>node?.type==='tag'&&node.name===name&&Object.keys(node.attribs).length===0&&closed(node);
+  const text=node=>node?.children?.every(child=>child.type==='text'&&!content.slice(child.startIndex,child.endIndex+1).includes('<'))?node.children.map(child=>child.data).join(''):null;
+  const shape=(node,name,names)=>bare(node,name)&&significant(node).length===names.length&&significant(node).every((child,i)=>bare(child,names[i]));
+  const nodes=significant(parseDocument(content,{withStartIndices:true,withEndIndices:true}));
+  const [opening,table]=nodes;
+  if(!shape(opening,'p',['span'])||!shape(table,'table',['thead','tbody'])||!/^\s*$/.test(content.slice(opening.endIndex+1,table.startIndex)))return content;
+  const title=text(significant(opening)[0]);
+  if(!/^LeetCode #[1-9]\d* · [A-Za-z0-9][\x20-\x7e]*$/.test(title||''))return content;
+  const [head,body]=significant(table);
+  if(!shape(head,'thead',['tr'])||!shape(significant(head)[0],'tr',['th','th'])||!shape(body,'tbody',['tr','tr','tr','tr']))return content;
+  if(significant(significant(head)[0]).map(text).join('\0')!=='项目\0内容')return content;
+  const rows=significant(body),labels=['难度','专题','标签','题目链接'];
+  if(rows.some((row,i)=>!shape(row,'tr',['td','td'])||text(significant(row)[0])!==labels[i]))return content;
+  const values=rows.map(row=>significant(row)[1]);
+  if(!shape(values[0],'td',['font'])||significant(values[3]).length!==1)return content;
+  const link=significant(values[3])[0];
+  if(link.type!=='tag'||link.name!=='a'||!closed(link))return content;
+  const difficulty=text(significant(values[0])[0]),topic=text(values[1]),tags=text(values[2]);
+  if(!['简单','中等','困难'].includes(difficulty)||!topic?.trim()||!tags?.trim())return content;
+  const attrs=link.attribs;
+  // A link is the only template element with permitted attributes. The shape
+  // check below is separate so unknown attributes cannot be silently discarded.
+  if(text(link)!=='打开 LeetCode 原题'||!/^https:\/\/leetcode\.cn\/problems\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(attrs.href||''))return content;
+  if(Object.keys(attrs).some(key=>!['href','class','target','rel'].includes(key))||
+    ('class'in attrs&&attrs.class!=='link')||('target'in attrs&&attrs.target!=='_blank')||
+    ('rel'in attrs&&!/^(?:noopener|noreferrer)(?: (?:noopener|noreferrer))*$/.test(attrs.rel)))return content;
+  const target=attrs.target?' target="_blank" rel="noopener noreferrer"':'';
+  const compact='<p class="exercise-summary">'+escapeHTML(difficulty)+' · '+escapeHTML(topic)+' · <a href="'+escapeHTML(attrs.href)+'"'+target+'>原题</a></p>\n'+
+    '<details class="exercise-meta-details"><summary>题目信息</summary><p>'+escapeHTML(title)+'</p><p>标签：'+escapeHTML(tags)+'</p></details>';
+  return content.slice(0,opening.startIndex)+compact+content.slice(table.endIndex+1);
+}
 function articleContent(page,{reading=false}={}){
   let content=String(page.content||'');const state=exerciseState(page);
   // The raw section must equal the known empty template. Never discard partial work.
   if(state?.codePlaceholder)content=removeRenderedSection(content,'代码实现');
   if(state?.analysisPlaceholder)content=removeRenderedSection(content,'个人解析');
   content=reading?readerTitleAnchor(content,page.title):content.replace(/^(\s*)<h1\b[^>]*>([\s\S]*?)<\/h1>/i,(all,space,title)=>plain(title)===plain(page.title)?space:all);
+  if(reading)content=readerExerciseMetadata(content,page);
   return content.replace(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(all,level,body)=>plain(body)||/<(?:img|svg|video)\b/i.test(body)?all:'');
 }
 module.exports={plain,section,exerciseState,metadata,articleContent,CODE_PLACEHOLDER,ANALYSIS_PLACEHOLDER};

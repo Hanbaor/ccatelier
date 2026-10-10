@@ -57,10 +57,11 @@ test('all 100 generated exercise articles have one honest readiness note and ret
    assert.doesNotMatch(body.textContent,/在这里填写你的代码|在这里补充：/);
    assert.ok(body.querySelector('h2[id="题目要求"]'));
    assert.equal(Boolean(body.querySelector('h2[id="代码实现"]')),n<=30);
-   if(n<=30){assert.match(readiness[0].textContent,/尚未做正确性校验/);assert.match(body.textContent,/class Solution/);}
-   else assert.match(readiness[0].textContent,/代码尚未补充/);
+   if(n<=30){assert.match(readiness[0].textContent,/代码未校验/);assert.match(body.textContent,/class Solution/);}
+   else assert.match(readiness[0].textContent,/代码待补/);
    assert.equal(body.querySelector('h2[id="个人解析"]'),null);
-   assert.ok(d.querySelector('.chapter-library').getAttribute('href').includes('group=hot100')); 
+   assert.equal(d.querySelector('.chapter-library'),null);
+   assert.equal(d.querySelector('.reading-nav a').getAttribute('href'),prefix+'series/hot100/');
    assert.equal(body.querySelector('a[href$="series/hot100/"]').getAttribute('href'),prefix+'series/hot100/');
   }finally{dom.window.close();}
  }

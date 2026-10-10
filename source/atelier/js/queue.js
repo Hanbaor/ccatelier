@@ -4,13 +4,13 @@ import {validateQueue} from './notebook-core.mjs';
 import {readShelf} from './reading-state.mjs';
 import {makeDialog} from './live-dialog.js';
 export function initQueue(){
- const {dialog,open}=makeDialog('queue-dialog','阅读队列 / SETLIST'),list=element('div'),tools=element('div','live-dialog-tools'),status=element('p','live-status','仅保存在这台浏览器，可以导出备份。'),history=element('div','queue-history');
+ const {dialog,open}=makeDialog('queue-dialog','阅读队列'),list=element('div'),tools=element('div','live-dialog-tools'),status=element('p','live-status','仅保存在这台浏览器，可以导出备份。'),history=element('div','queue-history');
  const fileLabel=element('label','live-file-label','导入队列 '),file=element('input');file.type='file';file.accept='.json,application/json';fileLabel.append(file);
  tools.append(action('导出队列',()=>download('cc-reading-queue.json',JSON.stringify({version:1,queue:getQueue()},null,2))),fileLabel,action('加入旧收藏',()=>{const saved=readShelf(storage.get('cc-saved'));for(const item of saved)queueAction({type:'add',item});status.textContent='已合并 '+saved.length+' 条收藏；重复文章只保留一份。';}));
  dialog.append(status,history,tools,list);
  file.addEventListener('change',async()=>{try{saveQueue(validateQueue(await readImport(file.files[0]),root));status.textContent='队列已导入。';render();}catch(error){status.textContent=error.message;}file.value='';});
  function render(){const q=getQueue(),focused=document.activeElement,focusedRow=focused?.closest('.queue-row'),focusState=focusedRow&&list.contains(focusedRow)?{path:focusedRow.dataset.queuePath,action:focused.dataset.queueAction,index:[...list.children].indexOf(focusedRow)}:null;list.replaceChildren();$$('[data-queue-count]').forEach(n=>{n.textContent=q.filter(p=>!p.completed).length;});
-  if(!q.length)list.append(element('p','live-status','在唱片架或文章末尾点「加入队列」，排好接下来想读的文章。'));
+  if(!q.length)list.append(element('p','live-status','在笔记目录或文章末尾的「阅读工具」中加入队列。'));
   q.forEach((p,i)=>{const row=element('div','queue-row'+(p.completed?' completed':'')),link=element('a','',p.title);row.dataset.queuePath=p.path;link.href=p.path;const recent=readShelf(storage.get('cc-recent')).find(n=>n.path===p.path);link.append(element('small','',p.completed?'已读 · '+new Date(p.completed).toLocaleDateString():recent?.progress?'读到 '+Math.round(recent.progress*100)+'%':'待阅读'));
    const buttons=element('div');for(const [label,delta] of [['↑',-1],['↓',1]]){const b=action(label,()=>queueAction({type:'move',path:p.path,delta}));b.dataset.queueAction=delta<0?'up':'down';b.setAttribute('aria-label',(delta<0?'上移：':'下移：')+p.title);b.disabled=delta<0?i===0:i===q.length-1;buttons.append(b);}const done=action(p.completed?'重读':'读完',()=>queueAction({type:p.completed?'undone':'done',path:p.path}));done.dataset.queueAction='done';const remove=action('×',()=>queueAction({type:'remove',path:p.path}));remove.dataset.queueAction='remove';remove.setAttribute('aria-label','从队列移除：'+p.title);buttons.append(done,remove);row.append(element('span','',String(i+1).padStart(2,'0')),link,buttons);list.append(row);
   });

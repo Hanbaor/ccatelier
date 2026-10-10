@@ -17,7 +17,10 @@ test('article template removes the entire right rail and keeps optional controls
    assert.equal(doc.querySelector('.reader-workbench'),null);
    assert.equal(columns.children.length,chapters?3:2);
    assert.deepEqual([...columns.children].map(n=>n.className),chapters?['reader-frontmatter','reading-toc chapter-rail','reader-paper']:['reader-frontmatter','reader-paper']);
-   assert.equal(options.open,false);assert.equal(options.closest('article'),doc.querySelector('.reader-paper'));
+   assert.equal(options.open,false);
+   assert.equal(doc.querySelector('.reader-frontmatter button'),null);
+   assert.equal(doc.querySelector('.reader-encore,.reader-related,.chapter-meter,.chapter-library'),null);
+   assert.equal(doc.querySelector('.reader-comments').open,false);assert.equal(options.closest('article'),doc.querySelector('.reader-paper'));
    if(chapters)assert.equal(doc.querySelector('.chapter-rail details').open,false,'mobile and no-script baseline is closed');else assert.ok(columns.classList.contains('reader-no-toc'));
    assert.equal(doc.querySelector('.reader-paper').getAttribute('aria-labelledby'),'article-title');
    if(chapters)assert.ok(doc.getElementById(doc.querySelector('.chapter-rail a').hash.slice(1)));
@@ -33,7 +36,7 @@ test('reader restores saved preferences and works without any optional tool cont
    assert.doesNotThrow(initReader);
    const studio=doc.querySelector('.reading-studio');assert.equal(studio.style.getPropertyValue('--reader-size'),'21px');assert.equal(studio.style.getPropertyValue('--reader-leading'),'2.2');assert.equal(studio.style.getPropertyValue('--reader-width'),'580px');
    assert.equal(doc.querySelector('.chapter-rail details').open,true);
-   doc.querySelector('[data-reader-size-cycle]').click();assert.equal(studio.style.getPropertyValue('--reader-size'),'17px');
+   doc.querySelector('[data-reader-size-cycle]').click();assert.equal(studio.style.getPropertyValue('--reader-size'),'23px');
   }finally{dom.window.dispatchEvent(new dom.window.Event('pagehide'));dom.window.close();}
  }
 });
@@ -43,7 +46,7 @@ test('small-screen table of contents remains user-controlled after initializatio
 });
 test('reading styles have two real columns, compact nesting and no sidebar selectors',()=>{
  const reader=fs.readFileSync(path.join(root,'source/atelier/css/reader.css'),'utf8'),refinement=fs.readFileSync(path.join(root,'source/atelier/css/refinement.css'),'utf8');
- assert.match(reader,/grid-template-columns:150px minmax\(0,840px\)/);assert.match(refinement,/grid-template-columns:150px minmax\(0,840px\)/);assert.doesNotMatch(reader+refinement,/reader-workbench/);assert.match(reader,/padding-left:8px!important/);assert.match(reader,/scrollbar-color:var\(--line\) transparent/);
+ assert.match(reader,/grid-template-columns:136px minmax\(0,720px\)/);assert.match(refinement,/grid-template-columns:136px minmax\(0,720px\)/);assert.doesNotMatch(reader+refinement,/reader-workbench/);assert.match(reader,/padding-left:8px!important/);assert.match(reader,/scrollbar-color:var\(--line\) transparent/);
 });
 test('chapter copy uses decorative SVGs with named buttons and preserves encoded copy and reading text',async t=>{
  const dom=setup(render()),doc=dom.window.document;

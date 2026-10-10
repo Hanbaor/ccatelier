@@ -7,7 +7,7 @@ export function initTheme({storage, notify=()=>{}}) {
     document.body.classList.toggle('dark-mode',!light);
     document.documentElement.classList.toggle('dark',!light);
     document.documentElement.style.colorScheme=light?'light':'dark';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',light?'#f5f0e6':'#101110');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',light?'#ffffff':'#111114');
     for(const control of controls) {
       control.setAttribute('role','switch');
       control.setAttribute('aria-label','日光模式');

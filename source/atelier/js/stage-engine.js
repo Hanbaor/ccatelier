@@ -5,6 +5,7 @@ import {element,action,root} from './archive-store.js';
 // A single low-resolution GPU pass draws light, dust and the latest pressure wave.
 // Audio uniforms come only from actual Web Audio playback; ambient motion is separate.
 export function initStageEngine(){
+  if(document.querySelector('.reading-page')) return;
  const lightButton=action('◒',()=>{},'icon-button lighting-open');lightButton.setAttribute('aria-label','打开舞台调光台');$('.utility-controls')?.prepend(lightButton);
  const canvas=element('canvas','stage-field');canvas.setAttribute('aria-hidden','true');document.body.prepend(canvas);
  const fallback=element('div','stage-field-fallback');fallback.setAttribute('aria-hidden','true');document.body.prepend(fallback);

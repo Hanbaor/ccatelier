@@ -39,7 +39,8 @@ test('article title and tools precede optional panels and retain an accessible a
       const doc = dom.window.document;
       const columns = doc.querySelector('.reader-columns');
       assert.ok(columns.firstElementChild.classList.contains('reader-frontmatter'));
-      assert.ok(columns.firstElementChild.querySelector('[data-article-tools]'));
+      assert.equal(columns.firstElementChild.querySelector('[data-article-tools]'),null);
+      assert.ok(doc.querySelector('.reader-options [data-article-tools]'));
       assert.equal(doc.querySelector('.reader-paper').getAttribute('aria-labelledby'), 'article-title');
       assert.equal(doc.querySelectorAll('#article-title').length, 1);
       assert.ok(doc.querySelector('.reader-paper .article-body'));
@@ -75,7 +76,7 @@ test('small-screen readers start with optional panels collapsed and controls sti
     assert.equal(document.querySelector('.reader-options').open, false);
     const shortcut = document.querySelector('[data-reader-size-cycle]');
     shortcut.click();
-    assert.equal(document.querySelector('[data-reader-size]').value,'19');
-    assert.equal(document.querySelector('.reading-studio').style.getPropertyValue('--reader-size'),'19px');
+    assert.equal(document.querySelector('[data-reader-size]').value,'20');
+    assert.equal(document.querySelector('.reading-studio').style.getPropertyValue('--reader-size'),'20px');
   } finally {window.dispatchEvent(new window.Event('pagehide'));window.close();}
 });

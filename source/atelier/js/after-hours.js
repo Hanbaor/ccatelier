@@ -12,10 +12,10 @@ function readingTools() {
   const old=loadList('recent').find(p=>p.path===path);
   saveList('recent',remember(loadList('recent'),{...item,progress:old?.progress||0}));
   const bookmark=$('[data-bookmark]');
-  function showBookmark(){const saved=loadList('saved').some(p=>p.path===path);bookmark.setAttribute('aria-pressed',String(saved));bookmark.textContent=saved?'★ 已收进歌单':'☆ 收进歌单';}
+  function showBookmark(){const saved=loadList('saved').some(p=>p.path===path);bookmark.setAttribute('aria-pressed',String(saved));bookmark.textContent=saved?'已收藏':'收藏';}
   showBookmark();bookmark.addEventListener('click',()=>{
     const list=loadList('saved'),exists=list.some(p=>p.path===path);saveList('saved',exists?list.filter(p=>p.path!==path):remember(list,item,100));showBookmark();
-    toast(exists?'已移出阅读歌单':storage.persistent?'已保存在这台浏览器的阅读歌单':'浏览器禁止存储，收藏仅在当前页面有效');
+    toast(exists?'已取消收藏':storage.persistent?'已收藏在这台浏览器':'浏览器禁止存储，收藏仅在当前页面有效');
   });
   $('[data-copy-link]').addEventListener('click',()=>copy(location.origin+path));
   const focus=$('[data-focus-reading]');
@@ -23,7 +23,7 @@ function readingTools() {
   focus.addEventListener('click',()=>setFocus(!document.body.classList.contains('reading-focused')));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setFocus(false);});
   const resume=$('[data-reading-resume]');
-  if(old?.progress>.05 && old.progress<.97){resume.hidden=false;resume.textContent=`继续上次的阅读 · ${Math.round(old.progress*100)}% ↓`;resume.addEventListener('click',()=>{window.scrollTo({top:window.scrollY+body.getBoundingClientRect().top+old.progress*Math.max(0,body.scrollHeight-innerHeight*.6),behavior:motion.enabled?'smooth':'instant'});resume.hidden=true;});}
+  if(old?.progress>.05 && old.progress<.97){resume.hidden=false;resume.textContent=`继续阅读 · ${Math.round(old.progress*100)}% ↓`;resume.addEventListener('click',()=>{window.scrollTo({top:window.scrollY+body.getBoundingClientRect().top+old.progress*Math.max(0,body.scrollHeight-innerHeight*.6),behavior:motion.enabled?'smooth':'instant'});resume.hidden=true;});}
   let dirty=false;
   const persist=()=>{if(!dirty)return;dirty=false;const progress=Math.max(0,Math.min(1,-body.getBoundingClientRect().top/Math.max(1,body.scrollHeight-innerHeight*.6)));saveList('recent',remember(loadList('recent'),{...item,progress}));};
   window.addEventListener('scroll',()=>{dirty=true;},{passive:true});let interval=setInterval(persist,2000);window.addEventListener('pagehide',()=>{persist();clearInterval(interval);});window.addEventListener('pageshow',event=>{if(event.persisted){showBookmark();interval=setInterval(persist,2000);}});
@@ -35,7 +35,7 @@ function discovery() {
   $$('[data-random-post]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;try{const posts=(await index()).filter(p=>p.group===button.dataset.randomPost&&p.path!==path);if(!posts.length){toast('这一面暂时还没有文章');return;}location.assign(posts[Math.floor(Math.random()*posts.length)].path);}catch{toast('歌单暂时没加载好，再试一次吧。');}finally{button.disabled=false;}}));
   const list=$('[data-reading-list]');if(!list)return;
   function render(key){const entries=loadList(key);list.replaceChildren();$('[data-saved-count]').textContent=String(loadList('saved').length).padStart(2,'0');
-    if(!entries.length){const p=document.createElement('p');p.className='community-empty';p.textContent=key==='saved'?'在文章里点「收进歌单」，留待下次。':'读过的文章，会在这里留下足迹。';list.append(p);}
+    if(!entries.length){const p=document.createElement('p');p.className='community-empty';p.textContent=key==='saved'?'在文章末尾展开「阅读工具」并收藏，留待下次。':'读过的文章，会在这里留下足迹。';list.append(p);}
     entries.forEach((entry,i)=>{const row=document.createElement('div');row.className='reading-shelf-row';const number=document.createElement('span');number.textContent=String(i+1).padStart(2,'0');const link=document.createElement('a');link.href=entry.path;link.textContent=entry.title;row.append(number,link);if(key==='saved'){const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label','移除收藏：'+entry.title);remove.addEventListener('click',()=>{saveList('saved',loadList('saved').filter(p=>p.path!==entry.path));render(key);});row.append(remove);}list.append(row);});
     $$('[data-reading-list-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.readingListTab===key)));
   }render('saved');$$('[data-reading-list-tab]').forEach(button=>button.addEventListener('click',()=>render(button.dataset.readingListTab)));

@@ -1,5 +1,6 @@
 import {$, motion} from './ui.js';
 export function initEffects() {
+  if(document.querySelector('.reading-page')) return;
   const ring=$('.cursor-ring'),layer=$('.click-effects');
   const fine=matchMedia('(hover: hover) and (pointer: fine)');
   let frame=0,x=0,y=0;

@@ -20,6 +20,7 @@ function render(prefix, source) {
   if (source) theme.nijika.pixel_art = source;
   const context = {theme, url_for: value => prefix + String(value).replace(/^\//, '')};
   context.nijika_art_srcset = helpers.nijika_art_srcset.bind(context);
+  context.partial = name => read(`custom/redefine/${name}.ejs`);
   return new JSDOM(ejs.render(read('custom/redefine/nijika/lounge.ejs'), context));
 }
 
@@ -40,7 +41,19 @@ for (const prefix of ['/', '/lab/']) {
       assert.equal(image.getAttribute('loading'), 'lazy');
       assert.equal(image.hasAttribute('fetchpriority'), false);
       assert.equal(doc.querySelector('.pixel-stage-card').getAttribute('href'), `${prefix}studio/`);
-      assert.ok(doc.querySelector('#sound-desk .rhythm-open'));
+      const link = doc.querySelector('.pixel-stage-card');
+      assert.equal(link.getAttribute('aria-label'), '打开节奏实验室');
+      const bottom = link.querySelector('.pixel-stage-bottom');
+      assert.equal(bottom.textContent.trim(), '节奏实验室');
+      const arrow = bottom.querySelector(':scope > svg.editorial-arrow');
+      assert.ok(arrow, 'stage caption uses the shared font-independent arrow');
+      assert.equal(arrow.namespaceURI, 'http://www.w3.org/2000/svg');
+      assert.equal(arrow.getAttribute('aria-hidden'), 'true');
+      assert.equal(arrow.getAttribute('focusable'), 'false');
+      assert.equal(arrow.getAttribute('viewBox'), '0 0 24 24');
+      assert.equal(arrow.querySelector('path').getAttribute('d'), 'M5 19 19 5M5 5h14v14');
+      assert.equal(bottom.querySelector('b'), null);
+      assert.equal(doc.querySelector('#sound-desk .rhythm-open').textContent, '打开鼓机 ↗');
       for (const candidate of image.getAttribute('srcset').split(', ')) {
         const url = candidate.split(' ')[0];
         assert.ok(fs.existsSync(path.join(root, 'source', url.slice(prefix.length))));
@@ -89,4 +102,11 @@ test('sizes accounts for the actual shell, grid gaps, card padding and image-lin
   }
   assert.ok(declaredWidth(390) * 2 <= 960, 'the existing 960w candidate covers the mobile DPR2 slot');
   assert.ok(declaredWidth(1920) * 2 > 960, 'the full-size candidate remains available for larger DPR2 slots');
+});
+
+
+test('lounge caption SVG preserves the right-aligned flex layout at a quiet size', () => {
+  assert.match(read('source/atelier/css/rooms-v2.css'), /\.room-lounge \.pixel-stage-bottom>\.editorial-arrow \{width:14px;height:14px;margin-left:auto\}/);
+  assert.match(read('source/atelier/css/daylight.css'), /\.pixel-stage-top,\.pixel-stage-bottom\{display:flex;align-items:center;/);
+  assert.match(read('source/atelier/css/editorial.css'), /\.editorial-arrow \{[^}]*fill:none;stroke:currentColor;stroke-width:1\.5/);
 });
