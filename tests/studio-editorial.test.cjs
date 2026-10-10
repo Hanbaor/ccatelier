@@ -22,7 +22,7 @@ test('music overview has a shared page grid, accessible real destinations and a 
   dom.window.close();
  }
  const css=read('source/atelier/css/studio.css');
- assert.match(css,/\.music-studio\.studio-editorial\{width:min\(var\(--layout-width\),calc\(100% - 2 \* var\(--page-gutter\)\)\)/);
+ assert.match(css,/\.music-studio\.studio-editorial\.content-view\{width:min\(var\(--layout-width\),calc\(100% - 2 \* var\(--page-gutter\)\)\)/);
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
@@ -52,8 +52,10 @@ test('starter notation matches real presets; load, undo, repeat and stop never i
  assert.equal(document.querySelector('[data-project-name]').value,'慢半拍');
  assert.equal(starts,0);
  document.querySelector('[data-studio-undo]').click();
+ assert.match(document.querySelector('[data-starter-status]').textContent,/已撤销。当前编排：「放学后的排练」/);
+ assert.doesNotMatch(document.querySelector('[data-starter-status]').textContent,/慢半拍/);
  assert.equal(document.querySelector('[data-studio-track="0"][data-studio-step="1"]').getAttribute('aria-pressed'),'true');
- document.querySelector('[data-studio-redo]').click();assert.equal(document.querySelector('[data-bpm]').value,'86');
+ document.querySelector('[data-studio-redo]').click();assert.equal(document.querySelector('[data-bpm]').value,'86');assert.match(document.querySelector('[data-starter-status]').textContent,/已重做。当前编排：「慢半拍」/);
  document.querySelector('[data-studio-play]').click();await new Promise(resolve=>setImmediate(resolve));assert.equal(starts,1);
  const stopped=stops;card('blank').click();assert.ok(stops>stopped);assert.equal(document.querySelector('[data-studio-play]').getAttribute('aria-pressed'),'false');
  card('blank').click();assert.equal(starts,1);assert.equal(document.querySelectorAll('[data-studio-step][aria-pressed="true"]').length,0);
@@ -69,4 +71,44 @@ test('starter notation matches real presets; load, undo, repeat and stop never i
  picker.value='indie';picker.dispatchEvent(new window.Event('change'));verifySteps(16);assert.equal(document.querySelector('[data-project-name]').value,'放学后的排练');
  picker.value='indie';picker.dispatchEvent(new window.Event('change'));verifySteps(16);assert.equal(starts,1,'repeated explicit preset loading remains silent');
  window.dispatchEvent(new window.Event('pagehide'));assert.equal(starts,1);
+});
+
+// JSDOM does not implement viewport layout or selector specificity correctly.
+// Resolve the affected width declaration from CSSOM in the actual rendered head
+// order, then evaluate its inherited shared dimensions. This tests cascade, not pixels.
+function selectorList(value){let depth=0,start=0,out=[];for(let i=0;i<value.length;i++){if(value[i]==='('||value[i]==='[')depth++;if(value[i]===')'||value[i]===']')depth--;if(value[i]===','&&!depth){out.push(value.slice(start,i).trim());start=i+1;}}out.push(value.slice(start).trim());return out;}
+function weight(selector){
+ let bonus=0;
+ selector=selector.replace(/:(is|not|has)\(([^()]*)\)/g,(_,name,args)=>{bonus+=Math.max(...selectorList(args).map(weight));return '';}).replace(/:where\([^()]*\)/g,'');
+ return bonus+(selector.match(/#[\w-]+/g)||[]).length*10000+(selector.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+/g)||[]).length*100+(selector.replace(/#[\w-]+|\.[\w-]+|\[[^\]]*\]|:[\w-]+/g,'').match(/\b[a-z][\w-]*\b/gi)||[]).length;
+}
+const {parse:parseCSS}=require('rrweb-cssom');
+function studioSheets(){
+ const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'studio'},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>true,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
+ const head=new JSDOM(html),files=[...head.window.document.querySelectorAll('link[rel="stylesheet"]')].map(link=>link.getAttribute('href').slice(1));head.window.close();
+ return files.map(file=>({file,rules:parseCSS(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules}));
+}
+function resolveCSS(sheets,node,property,width,{oldMusicSelector=false}={}){
+ let result={value:'',weight:-1,priority:-1};
+ function visit(rules,file){for(const rule of rules){
+  if(rule.cssRules){if(rule.media){const condition=rule.media.mediaText;if(/print|prefers-reduced-motion/.test(condition))continue;if([...condition.matchAll(/\((min|max)-width:\s*(\d+)px\)/g)].some(([,bound,n])=>bound==='max'?width>+n:width<+n))continue;}visit(rule.cssRules,file);continue;}
+  if(!rule.selectorText||!rule.style.getPropertyValue(property))continue;
+  for(let selector of selectorList(rule.selectorText)){
+   if(oldMusicSelector&&file.endsWith('/studio.css'))selector=selector.replace('.music-studio.studio-editorial.content-view','.music-studio.studio-editorial');
+   let matches=false;try{matches=node.matches(selector);}catch{continue;}if(!matches)continue;
+   const score=weight(selector),priority=rule.style.getPropertyPriority(property)==='important'?1:0;
+   if(priority>result.priority||priority===result.priority&&score>=result.weight)result={value:rule.style.getPropertyValue(property),weight:score,priority,file,selector};
+  }
+ }}
+ for(const sheet of sheets)visit(sheet.rules,sheet.file);return result;
+}
+for(const width of [360,398,768,1170,1440])for(const theme of ['light','dark'])test(`actual studio stylesheet cascade preserves shared page gutters at ${width}px ${theme}`,()=>{
+ const dom=fixture(),doc=dom.window.document;doc.body.className='nijika '+theme;doc.body.dataset.section='studio';const host=doc.querySelector('[data-studio]'),sheets=studioSheets();
+ assert.ok(sheets.findIndex(s=>s.file.endsWith('/stage-engine.css'))>sheets.findIndex(s=>s.file.endsWith('/studio.css')),'legacy full-bleed rule really loads later');
+ const legacy=resolveCSS(sheets,host,'width',width,{oldMusicSelector:true});assert.equal(legacy.value,'100%','test reproduces the reported full-width failure without the specificity fix');assert.equal(legacy.file,'atelier/css/stage-engine.css');
+ const computed=resolveCSS(sheets,host,'width',width);assert.equal(computed.file,'atelier/css/studio.css');assert.equal(computed.selector,'.music-studio.studio-editorial.content-view');assert.equal(computed.value,'min(var(--layout-width),calc(100% - 2 * var(--page-gutter)))');
+ const layout=resolveCSS(sheets,doc.body,'--layout-width',width),gutter=resolveCSS(sheets,doc.body,'--page-gutter',width);assert.equal(layout.value,'1200px');assert.equal(gutter.value,'clamp(20px,4vw,56px)');
+ const gutterPixels=Math.max(20,Math.min(width*.04,56)),computedWidth=Math.min(parseFloat(layout.value),width-2*gutterPixels),inset=(width-computedWidth)/2;
+ assert.ok(inset+1e-6>=gutterPixels);assert.ok(computedWidth<width);assert.equal(computedWidth,width===1440?1200:width-2*gutterPixels);
+ dom.window.close();
 });

@@ -50,3 +50,50 @@ test('curated article destinations exist in published content',()=>{
  const posts=fs.readdirSync(path.join(root,'source/_posts/csdn'));
  for(const [,id] of matches){assert.ok(posts.some(file=>read('source/_posts/csdn/'+file).includes('writing/csdn-'+id+'/')),id);}
 });
+
+// JSDOM has no layout engine. Evaluate actual route CSS cascade (including media
+// queries), then the CSS replaced-image sizing equation. Browser QA separately
+// observed the negative control as 523.156 x 1024px at a 1170px viewport.
+const {parse:parseCSS}=require('rrweb-cssom');
+function selectorParts(value){let depth=0,start=0,result=[];for(let i=0;i<value.length;i++){if(value[i]==='('||value[i]==='[')depth++;if(value[i]===')'||value[i]===']')depth--;if(value[i]===','&&!depth){result.push(value.slice(start,i).trim());start=i+1;}}result.push(value.slice(start).trim());return result;}
+function specificity(selector){let score=0;selector=selector.replace(/:(is|not|has)\(([^()]*)\)/g,(_,name,args)=>{score+=Math.max(...selectorParts(args).map(specificity));return '';}).replace(/:where\([^()]*\)/g,'');return score+(selector.match(/#[\w-]+/g)||[]).length*10000+(selector.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+/g)||[]).length*100+(selector.replace(/#[\w-]+|\.[\w-]+|\[[^\]]*\]|:[\w-]+/g,'').match(/\b[a-z][\w-]*\b/gi)||[]).length;}
+function notesSheets(doc){
+ const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'notes'},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>false,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
+ const head=new JSDOM(html),files=[...head.window.document.querySelectorAll('link[rel="stylesheet"]'),...doc.querySelectorAll('link[rel="stylesheet"]')].map(n=>n.getAttribute('href').slice(1));head.window.close();
+ return files.map(file=>({file,rules:parseCSS(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules}));
+}
+function cascade(sheets,node,property,width,withoutAuto=false){
+ let answer={value:'',priority:-1,weight:-1};
+ function visit(rules,file){for(const rule of rules){
+  if(rule.cssRules){if(rule.media){const condition=rule.media.mediaText;if(/print|prefers-reduced-motion/.test(condition))continue;if([...condition.matchAll(/\((min|max)-width:\s*(\d+)px\)/g)].some(([,bound,n])=>bound==='max'?width>+n:width<+n))continue;}visit(rule.cssRules,file);continue;}
+  if(!rule.selectorText||!rule.style.getPropertyValue(property))continue;
+  if(withoutAuto&&file.endsWith('/editorial-index.css')&&property==='height'&&rule.selectorText==='.notes-editorial-heading figure img')continue;
+  for(const selector of selectorParts(rule.selectorText)){let matches=false;try{matches=node.matches(selector);}catch{continue;}if(!matches)continue;const weight=specificity(selector),priority=rule.style.getPropertyPriority(property)==='important'?1:0;if(priority>answer.priority||priority===answer.priority&&weight>=answer.weight)answer={value:rule.style.getPropertyValue(property),weight,priority,file,selector};}
+ }}for(const sheet of sheets)visit(sheet.rules,sheet.file);return answer;
+}
+for(const width of [390,600,700,701,900,1170,1180])test(`notes hero has a bounded uncropped landscape image at ${width}px across actual route CSS`,async()=>{
+ const dom=render('notes'),d=dom.window.document;d.body.className='nijika light';d.body.dataset.section='notes';const sheets=notesSheets(d),image=d.querySelector('.notes-editorial-heading figure img'),heading=d.querySelector('.notes-editorial-heading');
+ assert.ok(sheets.some(s=>s.file==='atelier/css/stage-engine.css'));
+ assert.equal(sheets.at(-1).file,'atelier/css/editorial-index.css');
+ const dimensions=await require('sharp')(path.join(root,'source',image.getAttribute('src'))).metadata();
+ assert.equal(dimensions.width/dimensions.height,1.5,'the picture itself is 3:2');
+ assert.equal(cascade(sheets,image,'width',width).value,'100%');
+ assert.equal(cascade(sheets,image,'height',width).value,'auto');
+ assert.equal(cascade(sheets,image,'aspect-ratio',width).value,'3 / 2');
+ assert.equal(cascade(sheets,image,'object-fit',width).value,'contain');
+ assert.equal(cascade(sheets,image,'min-height',width).value,'0');
+ assert.equal(cascade(sheets,image,'height',width,true).value,'','negative control exposes HTML presentational height, not an unrelated CSS height');
+ const gutter=Math.max(20,Math.min(width*.04,56));
+ const layout=Math.min(1200,width-2*gutter),columns=cascade(sheets,heading,'grid-template-columns',width).value,gap=parseFloat(cascade(sheets,heading,'gap',width).value);
+ assert.equal(columns,width<=700?'1fr':'1fr 1.05fr');
+ const imageWidth=width<=700?layout:(layout-gap)*1.05/2.05;
+ const displayedHeight=imageWidth/(dimensions.width/dimensions.height);
+ assert.ok(displayedHeight>=190&&displayedHeight<=430,`${imageWidth} x ${displayedHeight}`);
+ assert.ok(displayedHeight<imageWidth,'landscape instead of the reported vertical strip');
+ assert.ok(Number(image.getAttribute('height'))>2*displayedHeight,'removing auto recreates the >2x oversized image');
+ // Contain preserves the whole source rectangle, including face and both hands.
+ const scale=Math.min(imageWidth/dimensions.width,displayedHeight/dimensions.height);
+ assert.ok(Math.abs(dimensions.height*scale-displayedHeight)<.001);
+ assert.ok(Math.abs(dimensions.width*scale-imageWidth)<.001);
+ dom.window.close();
+});

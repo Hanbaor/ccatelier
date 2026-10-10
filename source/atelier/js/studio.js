@@ -17,7 +17,7 @@ export function initStudio(){
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
  function paintPosition(){const step=active>=0&&active<project.steps?active:-1;$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));}
  function render(){
-  updateOverview();paintPosition();$('[data-studio-preset]').value='';
+  updateOverview();paintPosition();$('[data-studio-preset]').value='';setStarterStatus('当前编排：「'+project.name+'」。按下播放试听。');
   const restoreStepFocus=grid.contains(document.activeElement)&&document.activeElement.hasAttribute('data-studio-step');stepFocus.step=Math.min(stepFocus.step,project.steps-1);
   $('[data-project-name]').value=project.name;$('[data-bpm]').value=project.bpm;$('[data-swing]').value=Math.round(project.swing*100);$('[data-swing-output]').textContent=Math.round(project.swing*100)+'%';$('[data-master]').value=Math.round(project.master*100);$('[data-step-count]').value=project.steps;
   grid.style.setProperty('--steps',project.steps);grid.style.minWidth=project.steps===32?'1100px':'';grid.replaceChildren();
@@ -43,7 +43,8 @@ export function initStudio(){
  function updateOverview(){
   const overview=host.querySelector('[data-studio-overview]');if(overview)overview.textContent=project.bpm+' BPM · '+project.steps+' 步进 · '+project.tracks.reduce((n,t)=>n+t.steps.filter(v=>v>0).length,0)+' 个音符';
  }
- function loadStarter(key){stop();project=preset(key);saveHistory();render();status.textContent='预设已载入；可通过撤销回到刚才的编排。';const notice=host.querySelector('[data-starter-status]');if(notice)notice.textContent='已载入「'+project.name+'」。按下播放试听；撤销可找回上一份编排。';}
+ function setStarterStatus(message){const notice=host.querySelector('[data-starter-status]');if(notice)notice.textContent=message;}
+ function loadStarter(key){stop();project=preset(key);saveHistory();render();status.textContent='预设已载入；可通过撤销回到刚才的编排。';setStarterStatus('已载入「'+project.name+'」。按下播放试听；撤销可找回上一份编排。');}
  $('[data-studio-preset]').addEventListener('change',e=>{if(e.target.value)loadStarter(e.target.value);});
  for(const button of $$('[data-studio-starter]',host)){
   const sample=preset(button.dataset.studioStarter),preview=button.querySelector('[data-starter-pattern]');
@@ -51,7 +52,7 @@ export function initStudio(){
   button.disabled=false;button.addEventListener('click',()=>loadStarter(button.dataset.studioStarter));
  }
 
- $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();});
+ $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();render();setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();render();setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
  let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
  document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
  $('[data-project-export]').addEventListener('click',()=>download('cc-rhythm-project.json',JSON.stringify(validateProject(project),null,2)));
