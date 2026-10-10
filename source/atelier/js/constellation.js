@@ -23,7 +23,7 @@ export function createConstellation(host,onTag){
   for(const n of nodes){if(drag?.node===n)continue;n.vx=(n.vx+n.fx)*.72;n.vy=(n.vy+n.fy)*.72;n.x+=Math.max(-8,Math.min(8,n.vx));n.y+=Math.max(-8,Math.min(8,n.vy));}
  }
  function tick(){frame=0;if(!active||host.hidden||document.hidden)return;if(steps>0){simulate();steps--;}draw();if(steps>0&&motion.enabled)frame=requestAnimationFrame(tick);}
- function wake(count=100){steps=count;cancelAnimationFrame(frame);frame=0;if(!motion.enabled){for(let i=0;i<Math.min(count,180);i++)simulate();draw();}else if(active&&!document.hidden)frame=requestAnimationFrame(tick);}
+ function wake(count=100){steps=count;cancelAnimationFrame(frame);frame=0;if(!motion.enabled){for(let i=0;i<Math.min(count,180);i++)simulate();steps=0;draw();}else if(active&&!document.hidden)frame=requestAnimationFrame(tick);}
  function choose(id){connections.select(posts,posts.some(p=>p.path===id)?id:'');selected=id;neighbors=new Set([id]);for(const e of edges){if(e.a.id===id)neighbors.add(e.b.id);if(e.b.id===id)neighbors.add(e.a.id);}select.value=id;detail.replaceChildren();const n=nodes.find(n=>n.id===id);if(!n){detail.append(element('span','','选择一颗星，循着关联继续阅读。'));draw();return;}
   detail.append(element('strong','',n.label));
   if(n.kind==='tag'){detail.append(element('span','',n.count+' 篇关联文章'),action('浏览这个主题 ↗',()=>onTag(n.label)));}

@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {JSDOM}=require('jsdom');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-function setup({section='notes',article=false,enabled=true,webgl=true,magnet=false}={}) {
+function setup({section='notes',article=false,enabled=true,webgl=true,magnet=false,storedSettings=null}={}) {
  const css=read('source/atelier/css/immersive.css').split('\n').find(x=>x.includes('stage-field'))+'\n'+read('source/atelier/css/stage-engine.css')+'\n'+read('source/atelier/css/effects.css');
  const dom=new JSDOM(`<style>${css}</style><body class="nijika ${section==='cover'?'on-cover':''}" data-section="${section}" data-cursor="true"><main class="${article?'reading-page':'content-view'}"><a href="#">文章</a>${magnet?'<button data-magnetic>互动</button>':''}</main><div class="utility-controls"></div><div class="cursor-ring"></div><div class="click-effects"></div></body>`);
  const w=dom.window,d=w.document,raf=new Map(),motion={enabled},counts={contexts:0,draws:0,timers:0,uniforms:{}};let hidden=false,id=0,now=0;
@@ -10,7 +10,7 @@ function setup({section='notes',article=false,enabled=true,webgl=true,magnet=fal
  w.HTMLCanvasElement.prototype.getContext=()=>{counts.contexts++;return webgl?gl:null;};
  const element=(tag,cls,text)=>{const el=d.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
  const action=(s,fn,c)=>{const b=element('button',c,s);b.addEventListener('click',fn);return b;};
- const ctx={document:d,window:w,innerWidth:1200,innerHeight:800,performance:{now:()=>now},$:s=>d.querySelector(s),$$:s=>[...d.querySelectorAll(s)],motion,storage:{get:()=>null,set:()=>true},root:'/',element,action,makeDialog:(id)=>{const dialog=element('dialog');dialog.id=id;d.body.append(dialog);return{dialog,open:()=>dialog.setAttribute('open','')};},MutationObserver:class{observe(){}},requestAnimationFrame:fn=>{raf.set(++id,fn);return id;},cancelAnimationFrame:id=>raf.delete(id),matchMedia:()=>({matches:true,addEventListener(){}}),setTimeout:()=>++counts.timers};
+ const ctx={document:d,window:w,innerWidth:1200,innerHeight:800,performance:{now:()=>now},$:s=>d.querySelector(s),$$:s=>[...d.querySelectorAll(s)],motion,storage:{get:()=>storedSettings,set:()=>true},root:'/',element,action,makeDialog:(id)=>{const dialog=element('dialog');dialog.id=id;d.body.append(dialog);return{dialog,open:()=>dialog.setAttribute('open','')};},MutationObserver:class{observe(){}},requestAnimationFrame:fn=>{raf.set(++id,fn);return id;},cancelAnimationFrame:id=>raf.delete(id),matchMedia:()=>({matches:true,addEventListener(){}}),setTimeout:()=>++counts.timers};
  for(const [file,fn] of [['effects','initEffects'],['stage-engine','initStageEngine']])vm.runInNewContext(read('source/atelier/js/'+file+'.js').replace(/^import .*;\s*$/gm,'').replace('export function '+fn,'function '+fn)+'\n'+fn+'();',ctx);
  return {w,d,raf,counts,close:()=>w.close(),tick(n=1){for(let i=0;i<n;i++){now+=16;const tasks=[...raf.values()];raf.clear();tasks.forEach(fn=>fn(now));}},visibility(value){hidden=value;d.dispatchEvent(new w.Event('visibilitychange'));},motion(value){motion.enabled=value;d.dispatchEvent(new w.Event('atelier:motion'));},click(){d.querySelector('a').dispatchEvent(new w.MouseEvent('pointerdown',{bubbles:true,button:0}));}};
 }
@@ -49,8 +49,9 @@ test('WebGL fallback is idle and magnetic interaction wakes, converges, leaves a
 test('context loss switches to idle fallback and preserves active and future magnetic interaction',()=>{
  const s=setup({section:'studio',magnet:true});try{
   s.tick();moveMagnet(s);s.tick();const before=s.counts.draws;
+  assert.equal(s.d.querySelector('.lighting-links span').textContent,'光场已就绪');
   s.d.querySelector('canvas').dispatchEvent(new s.w.Event('webglcontextlost',{cancelable:true}));
-  s.tick(60);assert.equal(s.counts.draws,before);assert.equal(s.raf.size,0);assert.equal(s.d.body.classList.contains('has-stage-engine'),false);assert.equal(s.d.querySelector('[data-magnetic]').style.translate,'6.00px 3.60px');
+  s.tick(60);assert.equal(s.counts.draws,before);assert.equal(s.raf.size,0);assert.equal(s.d.body.classList.contains('has-stage-engine'),false);assert.equal(s.d.querySelector('.lighting-links span').textContent,'当前设备使用柔光背景');assert.equal(s.d.querySelector('[data-magnetic]').style.translate,'6.00px 3.60px');
   s.w.dispatchEvent(new s.w.Event('resize'));s.tick(60);assert.equal(s.raf.size,0);s.visibility(true);s.visibility(false);s.tick(60);assert.equal(s.raf.size,0);
   moveMagnet(s,50,20);assert.equal(s.raf.size,1);s.tick(60);assert.equal(s.raf.size,0);assert.equal(s.d.querySelector('[data-magnetic]').style.translate,'3.00px 1.80px');s.click();assert.equal(s.counts.timers,1);
  }finally{s.close();}
@@ -66,5 +67,22 @@ test('personal homepage stays idle across motion preferences, input and lifecycl
    assert.equal(s.d.querySelector('.click-effects').childElementCount,0);
    assert.equal(s.d.querySelector('[data-magnetic]').style.translate,'');
   }finally{s.close();}
+ }
+});
+
+for(const intensity of [0,.6,1])for(const webgl of [false,true])test(`saved brightness ${intensity} applies immediately to ${webgl?'context-loss':'initial'} fallback and survives lifecycle return`,()=>{
+ const s=setup({section:'studio',webgl,storedSettings:JSON.stringify({intensity,dust:.5,speed:.4})});try{
+  const fallback=s.d.querySelector('.stage-field-fallback'),input=s.d.querySelector('.light-fader input');
+  assert.equal(input.value,String(intensity*100));assert.equal(Number(fallback.style.opacity),intensity*.2);
+  if(webgl){s.tick();assert.equal(s.counts.uniforms.intensity,intensity);s.d.querySelector('canvas').dispatchEvent(new s.w.Event('webglcontextlost',{cancelable:true}));}
+  assert.equal(fallback.hidden,false);assert.equal(s.d.querySelector('.lighting-links span').textContent,'当前设备使用柔光背景');assert.equal(Number(s.w.getComputedStyle(fallback).opacity),intensity*.2);s.tick(60);assert.equal(s.raf.size,0);
+  s.visibility(true);s.visibility(false);s.w.dispatchEvent(new s.w.Event('pagehide'));s.w.dispatchEvent(new s.w.Event('pageshow'));s.w.dispatchEvent(new s.w.Event('resize'));s.motion(false);s.motion(true);s.tick(60);
+  assert.equal(Number(fallback.style.opacity),intensity*.2);assert.equal(s.raf.size,0);
+  input.value='25';input.dispatchEvent(new s.w.Event('input'));assert.equal(Number(fallback.style.opacity),.05);s.tick(60);assert.equal(s.raf.size,0);
+ }finally{s.close();}
+});
+test('default and invalid saved lighting settings initialize fallback at default brightness',()=>{
+ for(const storedSettings of [null,'invalid',JSON.stringify({intensity:2,dust:.5,speed:.4})]){
+  const s=setup({section:'studio',webgl:false,storedSettings});try{assert.equal(s.d.querySelector('.light-fader input').value,'60');assert.equal(Number(s.d.querySelector('.stage-field-fallback').style.opacity),.12);s.tick(60);assert.equal(s.raf.size,0);}finally{s.close();}
  }
 });

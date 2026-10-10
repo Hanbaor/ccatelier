@@ -13,6 +13,8 @@ export function initStageEngine(){
  const canvas=element('canvas','stage-field');canvas.setAttribute('aria-hidden','true');document.body.prepend(canvas);
  const fallback=element('div','stage-field-fallback');fallback.setAttribute('aria-hidden','true');document.body.prepend(fallback);
  let settings={intensity:.6,dust:.5,speed:.4};try{const p=JSON.parse(storage.get('cc-stage-engine'));if(p&&['intensity','dust','speed'].every(k=>Number.isFinite(p[k])&&p[k]>=0&&p[k]<=1))settings=p;}catch{}
+ function syncFallback(){fallback.style.opacity=settings.intensity*.2;}
+ syncFallback();
  let gl;try{gl=canvas.getContext('webgl',{alpha:true,antialias:false,depth:false,powerPreference:'low-power',premultipliedAlpha:false});}catch{}
  const vertex='attribute vec2 position;void main(){gl_Position=vec4(position,0.,1.);}';
  const fragment=`precision mediump float;
@@ -43,12 +45,12 @@ export function initStageEngine(){
  window.addEventListener('pointerdown',e=>{if(!motion.enabled||e.target.closest('.article-body,input,textarea'))return;ripple={x:e.clientX/innerWidth,y:e.clientY/innerHeight,at:performance.now()};},{passive:true});
  document.addEventListener('atelier:beat',e=>{beat=Math.max(beat,Number(e.detail?.energy)||0);});document.addEventListener('atelier:spectrum',e=>{spectrum=Math.max(0,Math.min(1,Number(e.detail?.energy)||0));});document.addEventListener('atelier:audio-stop',()=>{spectrum=0;beat=0;});
  document.addEventListener('visibilitychange',wake);document.addEventListener('atelier:motion',()=>{for(const m of magnets){m.x=m.y=m.tx=m.ty=0;m.el.style.translate='';}wake();});window.addEventListener('resize',resize,{passive:true});window.addEventListener('pagehide',()=>{cancelAnimationFrame(frame);frame=0;});window.addEventListener('pageshow',wake);
- canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;gl=null;canvas.hidden=true;fallback.hidden=false;document.body.classList.remove('has-stage-engine');wake();});
+ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;gl=null;canvas.hidden=true;syncFallback();fallback.hidden=false;stageStatus.textContent='当前设备使用柔光背景';document.body.classList.remove('has-stage-engine');wake();});
  const desk=makeDialog('lighting-dialog','舞台调光台'),intro=element('p','live-status','把灯光调到舒服的位置。鼓点和音频会带动光场，阅读时灯光自动收敛。'),presets=element('div','light-presets');
  for(const [key,label] of [['amber','暖金 / NIJIKA'],['rose','朱红 / ENCORE'],['moon','月蓝 / AFTER HOURS']]){const b=action(label,()=>{document.body.dataset.stageLight=key;storage.set('cc-light',key);sync();wake();});b.dataset.lightPreset=key;presets.append(b);}
  desk.dialog.append(intro,presets);
- for(const [key,label] of [['intensity','灯光亮度'],['dust','星尘密度'],['speed','流动速度']]){const l=element('label','light-fader',label),input=element('input'),out=element('output','',Math.round(settings[key]*100)+'%');input.type='range';input.min=0;input.max=100;input.value=Math.round(settings[key]*100);input.addEventListener('input',()=>{settings[key]=Number(input.value)/100;out.textContent=input.value+'%';fallback.style.opacity=settings.intensity*.2;if(!frame)wake();});input.addEventListener('change',()=>{if(!storage.set('cc-stage-engine',JSON.stringify(settings)))intro.textContent='当前设置无法跨页面保存，可以继续在这一页使用。';});l.append(input,out);desk.dialog.append(l);}
- const foot=element('div','lighting-links');const studio=element('a','','去节奏实验室，亲手点亮舞台 ↗');studio.href=root+'studio/';foot.append(studio,element('span','',gl?'光场已就绪':'当前设备使用柔光背景'));desk.dialog.append(foot);
+ for(const [key,label] of [['intensity','灯光亮度'],['dust','星尘密度'],['speed','流动速度']]){const l=element('label','light-fader',label),input=element('input'),out=element('output','',Math.round(settings[key]*100)+'%');input.type='range';input.min=0;input.max=100;input.value=Math.round(settings[key]*100);input.addEventListener('input',()=>{settings[key]=Number(input.value)/100;out.textContent=input.value+'%';syncFallback();if(!frame)wake();});input.addEventListener('change',()=>{if(!storage.set('cc-stage-engine',JSON.stringify(settings)))intro.textContent='当前设置无法跨页面保存，可以继续在这一页使用。';});l.append(input,out);desk.dialog.append(l);}
+ const foot=element('div','lighting-links'),stageStatus=element('span','',gl?'光场已就绪':'当前设备使用柔光背景');const studio=element('a','','去节奏实验室，亲手点亮舞台 ↗');studio.href=root+'studio/';foot.append(studio,stageStatus);desk.dialog.append(foot);
  function sync(){$$('[data-light-preset]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lightPreset===(document.body.dataset.stageLight||'amber'))));}
  document.addEventListener('click',e=>{if(e.target.closest('.lighting-open')){sync();desk.open();}});
  new MutationObserver(()=>{if(!motion.enabled)wake();}).observe(document.body,{attributes:true,attributeFilter:['class','data-stage-light']});resize();
