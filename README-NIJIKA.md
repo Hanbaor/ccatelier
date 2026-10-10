@@ -1,10 +1,12 @@
 # CC Atelier · Nijika
 
-在 Hexo / Redefine 上定制的虹夏 Live House 博客。入口封面、创作室与阅读区分开，所有文章使用真实静态 URL。开发分支为 `nijika`，基于 `main` 的 `b9c4357`；此实现没有部署到线上。
+CC 的个人网站，基于 Hexo / Redefine，记录代码、研究与生活。首页直接呈现近期笔记、项目与个人入口；虹夏主题插画和声音实验作为兴趣内容保留，文章使用真实静态 URL。
+
+当前开发分支为 `nijika-dot`，线上预览：[nijika-dot 预览站](https://nijika-dot-ccatelier.1242163592.workers.dev/)。生产域名仍由 `_config.yml` 的 `url` 指定为 `https://ccatelier.top`，不要为分支预览改动它。以下维护说明以当前源码为准；末尾记录为历史快照，不代表当前发布状态。
 
 ## 开发与验证
 
-本轮视觉精修：顶部「日光 / 夜场」拨片在所有页面可用，模式在刷新和页面间保持；日光模式使用暖纸色、深棕文字与独立封面。字号由阅读工作台统一管理，仅点字号按钮或滑杆时变化。新增水彩手账、套色演出海报和像素小舞台，分别用于笔记、节奏实验室及后台小屋；[图片与完整生成提示](docs/design/nijika-daylight-art.md)。
+使用 Node 24（具体版本见 `package.json`）。修改后运行自动测试与 fixture 构建；界面改动还需检查桌面和手机布局、键盘操作及减少动态效果。自动测试不能替代真实浏览器的画面与音频检查。
 
 ```sh
 npm ci
@@ -38,17 +40,27 @@ node tests/fixture-build.cjs
 
 | 内容 | 位置 |
 | --- | --- |
-| 博客标题、域名、文章设置 | `_config.yml` |
-| 主题、图像、GitHub 链接、动效默认值 | `_config.redefine.yml` |
-| 模板覆盖的注册入口 | `scripts/nijika.js` |
-| 封面、菜单、各栏目、阅读模板 | `custom/redefine/` |
-| 全局构图 / 文章适配 / 特效 | `source/atelier/css/stage.css`（新构图） / `atelier.css` / `content.css` / `effects.css` |
-| 搜索、动效、阅读工具、节奏台 | `source/atelier/js/` |
-| 正式文章 | `source/_posts/` |
+| 标题、生产域名、文章设置 | `_config.yml`；主题素材与默认动效在 `_config.redefine.yml` |
+| 视图覆盖与路由注册 | `scripts/nijika.js`；其余生成逻辑见 `scripts/` |
+| 首页 / 创作室 | `custom/redefine/nijika/cover.ejs` / `stage.ejs`；样式 `source/atelier/css/personal-home.css` |
+| 项目 / 研究 / 生活 / 关于 | `custom/redefine/nijika/` 下同名 EJS；页面 frontmatter 在 `source/` 下对应目录的 `index.md` |
+| 公共导航与样式加载 | `custom/redefine/nijika/header.ejs`、`footer.ejs`、`head.ejs` |
+| 阅读与栏目样式 | `source/atelier/css/reader.css`、`content.css`、`projects.css`、`personal-pages.css`；其余按页面查 `head.ejs` |
+| 浏览器入口与按需交互 | `source/atelier/js/main.js`、`route-features.js`；具体功能在同目录模块中 |
+| 现场演出工程 | `source/atelier/js/livehouse-director.js`、`performance-core.mjs`、`performance-transport.mjs`、`performance-store.mjs` |
+| 正式文章与内容索引 | `source/_posts/`、`source/_data/hot100.json`、`tools/content-catalog.cjs` |
+| 留言、掌声与统计 | `worker/index.mjs`、`worker/migrations/`；本地配置 `wrangler.local.jsonc` |
+| 回归验证 | `tests/*.test.cjs`、`tests/fixture-build.cjs`；迁移检查 `tests/test_migration.py` |
 
-文章继续用 Hexo Markdown 编写；frontmatter 的 `categories`、`tags`、可选 `cover` 会进入相应页面。保留了原有 `Hello-CC-Atelier.md` 及链接。Hexo 自带教程移到了 `_drafts/hello-world.md`，不会作为个人文章发布。
+首页与创作室的近期文章直接取正式文章数据，不要在模板中另写一份列表。项目页源码包含 CC Atelier、EduRAG 与 Transformer 课程实践；更新介绍时核对真实仓库与实现，源码变化不等同于已发布。研究、生活与关于页也只维护有依据的内容。
 
-项目、研究、生活与关于页目前沿用已确认的内容和留白状态。增加真实项目或个人信息时，修改对应的 `custom/redefine/nijika/*.ejs`；这些栏目没有伪造的文章。设置 `nijika.cursor: false` 可恢复系统鼠标，`nijika.motion: false` 可关闭默认动效。
+样式是分层加载的；修改前先检查 `head.ejs` 的顺序与路由条件。`backstage.css`、`live-art.css`、`rooms-v2.css` 保留给适用页面及未知模板回退，不应重新无条件加载。相关回归见 `tests/route-styles.test.cjs`、`tests/home-navigation.test.cjs`、`tests/personal-pages.test.cjs` 和 `tests/projects-coursework.test.cjs`。
+
+现场导演把鼓点、灯光与 2.5D 景别放在同一工程中；定位播放、暂停续播和本机保存由 `performance-*` 模块配合现场模块实现。维护时同时检查 `tests/performance-core.test.cjs` 与 `tests/livehouse-interaction.test.cjs`，并手动验证播放、拖动定位、暂停和恢复。工程仅保存在当前浏览器，可导出 JSON 备份；录音与排练数据独立保留。
+
+文章继续用 Hexo Markdown 编写；frontmatter 的 `categories`、`tags`、可选 `cover` 会进入相应页面。保留了原有 `Hello-CC-Atelier.md` 及链接。Hexo 自带教程移到了 `source/_drafts/hello-world.md`，不会作为个人文章发布。
+
+设置 `nijika.cursor: false` 可恢复系统鼠标，`nijika.motion: false` 可关闭默认动效。
 
 ## 与 Redefine 的关系
 
@@ -58,9 +70,9 @@ node tests/fixture-build.cjs
 
 集成脚本也修正了 SearchDB 与 Hexo 8 自定义 permalink 拼接时产生的重复斜线，避免搜索链接被误解析成外站地址。修改 `custom/` 模板或 `scripts/` 后重新启动开发服务；文章和 `source/` 样式改动由 Hexo 监听。
 
-项目定制层负责独立封面、整套布局、文章展示、全屏目录、搜索弹窗、日夜模式、指针与点击反馈、阅读进度、图片查看、代码复制和可选节奏台。没有加载上游整站主脚本，以免两套导航、弹窗和主题控制互相覆盖。
+项目定制层负责个人首页、栏目布局、文章展示与浏览器交互。没有加载上游整站主脚本，以免两套导航、弹窗和主题控制互相覆盖。
 
-音乐不会自动播放。节奏台由 Web Audio 合成鼓点，关闭弹窗、切换后台或离开页面即停止；不包含音乐录音。动效遵循系统“减少动态效果”，也可在页脚手动关闭并记住偏好。手机保留系统指针行为。无 JavaScript 时保留原生页面链接、底部导航和完整标签页正文。
+音乐不会自动播放。节奏台由 Web Audio 合成鼓点，关闭弹窗、切换后台或离开页面即停止。动效遵循系统“减少动态效果”，也可在页脚手动关闭并记住偏好。手机保留系统指针行为。无 JavaScript 时保留原生页面链接、底部导航和完整标签页正文。
 
 ## 图像与字体来源
 
@@ -78,7 +90,23 @@ node tests/fixture-build.cjs
 图像版权归原权利人；来源标注不改变其权利。字体为本地 Barlow Condensed 和 DM Sans，OFL 许可文件随字体保存在 `source/atelier/fonts/`。图标、发饰形指针、唱片与光效由 SVG/CSS 实现。
 
 
-## 舞台档案与文章迁移（2026-09-24）
+## 完整本地预览
+
+使用 Node 24、`npm ci` 后生成页面。先创建仅本机保存的 `.dev.vars`，放入随机、至少 24 字符的 `ADMIN_SECRET`；如文件已存在，不要覆盖已有口令。它已被 Git 忽略，不能放进 EJS、Hexo 配置或 `public/`。
+
+```sh
+node node_modules/hexo/bin/hexo generate
+node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --local --config wrangler.local.jsonc
+node node_modules/wrangler/bin/wrangler.js dev --config wrangler.local.jsonc --port 4319 --ip 127.0.0.1 --show-interactive-dev-session=false
+```
+
+打开 `http://127.0.0.1:4319/`，后台在 `/admin/`，管理口令是本机 `.dev.vars` 的 `ADMIN_SECRET` 值。修改模板、脚本或素材后重新运行 Hexo generate。本地 SQLite 数据保存在被 Git 忽略的 `.wrangler/state/`，重启预览仍保留。本地页面明确标注“本地预览数据”；4318 是纯静态预览，完整互动请使用 4319。
+
+## 历史演进记录
+
+以下保留当时的设计、迁移与验收记录。栏目布局、功能入口和部署状态可能已改变；日常维护与本地预览以上文和当前源码为准。历史发布命令仅供追溯，不能当作现有站点的部署步骤直接执行。
+
+## 历史：舞台档案与文章迁移（2026-09-24）
 
 - `/`：独立入场封面；`/atelier/`：舞台构图与栏目入口；`/notes/`：全部文章的留声档案，支持筛选普通手记和 Hot100。
 - `/series/hot100/`：17 个专题、100 道题；`/hot100/001/` 至 `/hot100/100/` 是独立文章。
@@ -101,7 +129,7 @@ python tools/audit_migration.py --cache .nijika-import
 批量导入时先停止旧的 Hexo 监听服务，生成后可用 `node node_modules/hexo/bin/hexo server -p 4318 --static` 检查构建结果，避免大量文件写入反复触发旧进程。
 
 
-## After Hours 后台小屋（2026-09-24）
+## 历史：After Hours 后台小屋（2026-09-24）
 
 - `/lounge/`：随机手记 / Hot100、阅读歌单与最近阅读、五枚栏目印章、可下载 SVG 票根、每日原创小签、鼓机、25/5 分钟专注计时、三种灯光和三角挂件。
 - 文章页：收藏、掌声、分享链接、专注阅读、三档字号、阅读时长估计、页面访问数、断点续读、独立留言。
@@ -112,18 +140,6 @@ python tools/audit_migration.py --cache .nijika-import
 
 收藏、最近阅读、阅读进度、票根、灯光、字号和计时仅保存在浏览器 localStorage。存储受限时给出不能持久化的提示，当前页面使用内存降级；不伪称跨页面保存。鼓机只在主动操作后发声，关闭、切到后台或离开页面即停止。倒计时按实际结束时间计算，刷新、休眠或后退恢复不会重置剩余时长，到时不自动播放声音。
 
-### 完整本地预览
-
-使用 Node 24、`npm ci` 后生成页面。先创建仅本机保存的 `.dev.vars`，放入随机、至少 24 字符的 `ADMIN_SECRET`；本轮开发已创建该文件，不要覆盖已有口令。它已被 Git 忽略，不能放进 EJS、Hexo 配置或 `public/`。
-
-```sh
-node node_modules/hexo/bin/hexo generate
-node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --local --config wrangler.local.jsonc
-node node_modules/wrangler/bin/wrangler.js dev --config wrangler.local.jsonc --port 4319 --ip 127.0.0.1 --show-interactive-dev-session=false
-```
-
-打开 `http://127.0.0.1:4319/`，后台在 `/admin/`，管理口令是本机 `.dev.vars` 的 `ADMIN_SECRET` 值。修改模板、脚本或素材后重新运行 Hexo generate。本地 SQLite 数据保存在被 Git 忽略的 `.wrangler/state/`，重启预览仍保留。本地页面明确标注“本地预览数据”；4318 是旧的纯静态预览，完整互动请使用 4319。
-
 ### 数据口径与实现
 
 - 访客是随机 HttpOnly / SameSite Cookie 区分的浏览器，不是真实人数。数据库只保存其加盐哈希；清除 Cookie、换浏览器会再次计入。
@@ -132,7 +148,7 @@ node node_modules/wrangler/bin/wrangler.js dev --config wrangler.local.jsonc --p
 - 评论每 10 分钟每 IP 最多 3 条；后台登录最多 5 次。修改管理口令会使现有管理会话失效，也会改变访客哈希口径。
 - 共享统计、留言与掌声依赖同域 `/api/*`；主内容和本地阅读功能仍可独立使用。每日小签是本站原创，不冒充角色台词。
 
-### 发布边界
+### 当时的发布边界（历史）
 
 本轮没有部署、创建线上数据库或写入线上数据。`wrangler.jsonc` 已通过 `deploy --dry-run` 校验。正式发布前需在自己的 Cloudflare 账号创建 `ccatelier-community` D1，填入返回的真实 `database_id`，应用迁移并通过 Worker Secret 设置管理口令，再部署；不要将 `wrangler.local.jsonc` 的本地占位 ID 用于线上。
 
@@ -160,7 +176,7 @@ node node_modules/wrangler/bin/wrangler.js deploy --dry-run --outdir .nijika-qa/
 
 功能参考：[Anzhiyu 的随机阅读、留言和音乐房](https://github.com/anzhiyu-c/hexo-theme-anzhiyu/blob/dev/_config.yml)、[Heo 的博客更新记录](https://blog.zhheo.com/update/)、[Reimu 的角色主题与发现交互](https://github.com/D-Sketon/hexo-theme-reimu)。只借鉴功能想法，界面与实现按 CC Atelier 的后台主题重新设计。
 
-## Live Archive 深度升级（2026-09-24）
+## 历史：Live Archive 深度升级（2026-09-24）
 
 - 全站：WebGL 追光、星尘与点击涟漪，真实音序与分析器驱动灯光；页脚调光台可选暖金、朱红、月蓝并调整强度。系统减少动态、后台停帧、阅读降噪均生效。
 - `/notes/`：109 篇全文检索，组合筛选和可分享查询，唱片架/曲目表/真实文章主题星图，阅读队列与完成轨迹。

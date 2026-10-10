@@ -38,6 +38,12 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
  }
  function hit(type){if(!dialog.open||document.hidden)return;audio.hit(type);pulse(type);recorder.capture(type);hits++;summarizeHits(sound?'即兴演奏 · '+hits+' 拍':'静音试奏 · '+hits+' 拍');}
  function clearVisuals(){visualTimers.forEach(clearTimeout);visualTimers.clear();padTimers.forEach(clearTimeout);padTimers.clear();pads.forEach(p=>p.classList.remove('is-hit'));rings=[];energy=0;stage?.clear();}
+ function syncPauseControl(){
+  if(!pauseButton)return;const active=transportClock.state==='playing';
+  // Keep keyboard focus in the transport before removing its focused control.
+  if(!active&&dialog.open&&document.activeElement===pauseButton)showButton.focus({preventScroll:true});
+  pauseButton.disabled=!active;pauseButton.hidden=!active;pauseButton.textContent='暂停';pauseButton.setAttribute('aria-label','暂停演出');
+ }
  function paintPerformance(render=false){
   const beat=transportClock.position,frame=evaluateAt(project,beat,{motion:animated()});
   section=frame.section;if(transportClock.state==='playing'||transportClock.state==='paused')scene.textContent=sections[section];dialog.dataset.liveScene=section;
@@ -48,12 +54,11 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
   if(transportClock.state!=='stopped'){
    pads.forEach((pad,type)=>{const hit=frame.strikes[type];pad.classList.toggle('performance-hit',animated()&&hit.elapsed<180&&hit.velocity>0);});
   }
-  pauseButton&&(pauseButton.disabled=!['playing','paused'].includes(transportClock.state));
-  if(pauseButton){pauseButton.textContent=transportClock.state==='paused'?'继续':'暂停';pauseButton.setAttribute('aria-label',transportClock.state==='paused'?'继续演出':'暂停演出');}
+  syncPauseControl();
   return frame;
  }
  function stopShow(message='演出已停止'){
-  playing=false;generation++;clearInterval(scheduler);scheduler=0;transportClock.stop();clearVisuals();pads.forEach(p=>p.classList.remove('performance-hit'));showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');if(pauseButton)pauseButton.disabled=true;if(message)say(message);
+  playing=false;generation++;clearInterval(scheduler);scheduler=0;transportClock.stop();clearVisuals();pads.forEach(p=>p.classList.remove('performance-hit'));showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='再来一场';dialog.classList.remove('livehouse-playing');syncPauseControl();if(message)say(message);
  }
  function silence(){soundGeneration++;clearHitSummary();transportClock.clock(()=>performance.now()/1000);sound=false;soundButton.disabled=false;audio.stop();syncSound();}
  function transport(){
@@ -116,7 +121,7 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
  const recorder=initLiveRecorder({dialog,audio,isSoundEnabled:()=>sound,silence,pulse,beforeStart(){clearHitSummary();if(transportClock.state!=='stopped'){const wasPlaying=playing;stopShow('演出已停止，舞台留给你的节奏');if(wasPlaying)silence();}clearVisuals();}});
  const director=initDirector({dialog,getProject:()=>project,change(value){recorder.cancel();project=value;transportClock.replace(project);playing=false;clearInterval(scheduler);scheduler=0;clearVisuals();showButton.setAttribute('aria-pressed','false');$('span',showButton).textContent='继续演出';dialog.classList.remove('livehouse-playing');paintPerformance();wake();},seek(beat){recorder.cancel();transportClock.seek(beat);if(transportClock.state==='stopped'||transportClock.state==='ended')transportClock.pause();clearVisuals();paintPerformance();wake();},onToggle(open){if(open){const recording=$('[data-live-recorder]',dialog);recording.open=false;}resize();}});
  const recordingPanel=$('[data-live-recorder]',dialog);recordingPanel.addEventListener('toggle',()=>{if(recordingPanel.open)$('[data-live-director]',dialog)?.removeAttribute('open');resize();});
- pauseButton?.addEventListener('click',pauseShow);
+ pauseButton?.addEventListener('click',()=>{if(transportClock.state==='playing')pauseShow();});syncPauseControl();
  showButton.addEventListener('click',toggleShow);soundButton.addEventListener('click',toggleSound);$('[data-live-close]',dialog).addEventListener('click',()=>dialog.close());
  $('[data-live-volume]',dialog).addEventListener('input',e=>audio.setVolume(Number(e.target.value)/100));motionButton.addEventListener('click',()=>{localMotion=!localMotion;clearVisuals();syncMotion();});
  pads.forEach((pad,type)=>{

@@ -555,7 +555,7 @@ test('director is folded and full performance edits, undo and independent save r
 });
 test('pause resume and seek preserve a single clock and cancel scheduled audio buses without closing opt-in',async t=>{
  const f=await livehouse(t);f.open();f.sound.click();await settle();f.show.click();f.advance(1200);const oldBus=f.contexts[0].gains.filter(n=>n.connections.includes(f.contexts[0].gains[0])).at(-1);const pause=f.find('[data-live-pause]');pause.click();assert.equal(oldBus.disconnects,1);const at=f.find('[data-director-seek]').value;assert.equal(f.intervals.size,0);f.advance(3000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);assert.equal(f.contexts[0].state,'running');
- const scrub=f.find('[data-director-seek]');scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));assert.equal(f.find('.livehouse-timeline').getAttribute('aria-valuenow'),'32');pause.click();assert.equal(f.intervals.size,1);f.advance(500);assert.ok(Number(scrub.value)>32);assert.equal(f.contexts.length,1);f.sound.click();assert.equal(f.contexts[0].state,'closed');f.advance(500);assert.ok(Number(scrub.value)>33);assert.deepEqual(f.errors,[]);
+ const scrub=f.find('[data-director-seek]');scrub.value='32';scrub.dispatchEvent(new f.window.Event('input'));assert.equal(f.find('.livehouse-timeline').getAttribute('aria-valuenow'),'32');f.show.click();assert.equal(f.intervals.size,1);f.advance(500);assert.ok(Number(scrub.value)>32);assert.equal(f.contexts.length,1);f.sound.click();assert.equal(f.contexts[0].state,'closed');f.advance(500);assert.ok(Number(scrub.value)>33);assert.deepEqual(f.errors,[]);
 });
 test('a paused director yields to recording and close cancels all work without erasing saved projects',async t=>{
  const f=await livehouse(t);f.open();f.find('[data-director-track="notes"][data-director-bar="8"]').click();f.find('[data-live-record]').click();assert.equal(f.intervals.size,1);f.advance(120);assert.match(f.find('[data-live-record-position]').textContent,/预备/);f.close();assert.equal(f.intervals.size,0);assert.equal(f.frames.size,0);f.open();assert.equal(f.find('[data-live-pause]').disabled,true);assert.equal(f.sound.getAttribute('aria-pressed'),'false');assert.deepEqual(f.errors,[]);
@@ -580,4 +580,27 @@ for(const motionEnabled of [true,false])test('late optional renderer immediately
 });
 test('a reopened edited opening light reaches the optional renderer without auto-striking beat zero',async t=>{
  const snapshots=[];const f=await livehouse(t,{loadStage:async()=>({async createLiveStage(){return {setVisible(){},setMotion(){},setTimeline(strikes,light){snapshots.push({strikes,light});},clear(){},dispose(){},resize(){}};}})});f.open();await settle();const color=f.find('select[aria-label="灯光"]');color.value='rose';color.dispatchEvent(new f.window.Event('change'));f.close();snapshots.length=0;f.open();await settle();assert.equal(snapshots.length,1);assert.equal(snapshots[0].strikes,null);assert.deepEqual(snapshots[0].light.color,[210,150,164]);assert.equal(f.contexts.length,0);
+});
+
+
+test('paused transport has one resume action and moves focus before hiding the pause button',async t=>{
+ const f=await livehouse(t);f.open();const pause=f.find('[data-live-pause]');assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);
+ f.show.click();f.advance(1000);assert.equal(pause.hidden,false);assert.equal(pause.disabled,false);assert.equal(pause.textContent,'暂停');assert.equal(f.show.textContent.trim(),'停止演出');
+ pause.focus();pause.click();assert.equal(f.document.activeElement,f.show);assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);assert.equal(pause.getAttribute('aria-label'),'暂停演出');assert.equal(f.show.textContent.trim(),'继续演出');assert.equal(f.show.getAttribute('aria-pressed'),'false');assert.equal(f.intervals.size,0);
+ const at=f.find('[data-director-seek]').value;f.advance(2000);f.frame();assert.equal(f.find('[data-director-seek]').value,at);pause.click();pause.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,detail:0}));assert.equal(f.intervals.size,0,'secondary control cannot resume even if an obsolete activation arrives');
+ f.show.click();assert.equal(f.document.activeElement,f.show);assert.equal(pause.hidden,false);assert.equal(pause.disabled,false);assert.equal(f.show.textContent.trim(),'停止演出');assert.equal(f.show.getAttribute('aria-pressed'),'true');assert.equal(f.intervals.size,1);f.advance(500);assert.ok(Number(f.find('[data-director-seek]').value)>Number(at));
+ f.show.click();assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);assert.equal(f.intervals.size,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+
+for(const key of ['Enter',' '])test('native '+JSON.stringify(key)+' activation keeps pause/resume focus and labels consistent',async t=>{
+ const f=await livehouse(t);f.open();f.show.click();const pause=f.find('[data-live-pause]');pause.focus();
+ // jsdom does not synthesize a native button click after keyboard events.
+ // Model that browser-default activation explicitly with a zero-detail click.
+ assert.equal(f.key(pause,key).defaultPrevented,false);pause.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,detail:0}));
+ assert.equal(f.document.activeElement,f.show);assert.equal(pause.hidden,true);assert.equal(pause.disabled,true);assert.equal(f.show.textContent.trim(),'继续演出');assert.equal(f.show.getAttribute('aria-pressed'),'false');assert.equal(f.intervals.size,0);
+ assert.equal(f.key(f.show,key).defaultPrevented,false);f.show.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,detail:0}));assert.equal(f.document.activeElement,f.show);assert.equal(pause.hidden,false);assert.equal(pause.disabled,false);assert.equal(pause.textContent,'暂停');assert.equal(f.show.textContent.trim(),'停止演出');assert.equal(f.intervals.size,1);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('pausing from an unfocused control does not steal focus from another transport control',async t=>{
+ const f=await livehouse(t);f.open();f.show.click();f.sound.focus();f.find('[data-live-pause]').click();assert.equal(f.document.activeElement,f.sound);assert.equal(f.find('[data-live-pause]').hidden,true);assert.equal(f.intervals.size,0);assert.deepEqual(f.errors,[]);
 });
