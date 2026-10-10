@@ -1,7 +1,7 @@
 import {$, $$, toast,storage} from './ui.js';
 
 export function initRhythm() {
-  let audioContext, master, noiseBuffer, sequenceTimer, playing = false, beat = 0;
+  let audioContext, master, noiseBuffer, sequenceTimer, playing = false, starting = false, generation = 0, beat = 0;
   const defaults={kick:[0,6,8],snare:[4,12],hat:[0,2,4,6,8,10,12,14]};
   let pattern;try{pattern=JSON.parse(storage.get('cc-drum-pattern'));}catch{}
   if(!pattern || !['kick','snare','hat'].every(t=>Array.isArray(pattern[t])&&pattern[t].every(n=>Number.isInteger(n)&&n>=0&&n<16)))pattern=structuredClone(defaults);
@@ -44,9 +44,9 @@ export function initRhythm() {
     source.addEventListener('ended',()=>{source.disconnect();gain.disconnect();},{once:true});
     const pad = $(`[data-drum="${type}"]`); pad.classList.add('hit'); setTimeout(()=>pad.classList.remove('hit'),110);
   }
-  $$('[data-drum]').forEach(button => button.addEventListener('click',async()=>{if(await readyAudio() && $('#rhythm-dialog').open) drum(button.dataset.drum);}));
+  $$('[data-drum]').forEach(button => button.addEventListener('click',async()=>{const token=generation;if(await readyAudio() && token===generation && $('#rhythm-dialog').open && !document.hidden) drum(button.dataset.drum);}));
   function stopSequence() {
-    playing = false; clearTimeout(sequenceTimer);
+    generation++; starting = false; playing = false; clearTimeout(sequenceTimer);
     $('#rhythm-play').textContent = '播放'; $('#rhythm-play').setAttribute('aria-pressed','false');
     $$('.beat-light').forEach(light=>light.classList.remove('lit'));
     steps.forEach(b=>b.classList.remove('step-playing'));
@@ -59,8 +59,12 @@ export function initRhythm() {
     sequenceTimer=setTimeout(tick,60000/Number($('#tempo').value)/4);
   }
   $('#rhythm-play').addEventListener('click',async()=>{
-    if (playing) {stopSequence();return;}
-    if (!await readyAudio() || !$('#rhythm-dialog').open || playing) return;
+    if (playing || starting) {stopSequence();return;}
+    const token=generation;starting=true;
+    const ready=await readyAudio();
+    if(token!==generation)return;
+    starting=false;
+    if (!ready || !$('#rhythm-dialog').open || document.hidden || playing) return;
     playing=true;beat=0;$('#rhythm-play').textContent='暂停';$('#rhythm-play').setAttribute('aria-pressed','true');tick();
   });
   $('#tempo').addEventListener('input',()=>{$('#tempo-output').value=$('#tempo').value;});

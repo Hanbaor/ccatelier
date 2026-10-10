@@ -39,3 +39,48 @@ test('ordinary article clicks never change font size; explicit controls stay syn
     window.close();
   }
 });
+
+test('reader find leaves IME confirmation alone and preserves Enter navigation', async t => {
+  const dom = new JSDOM('<div class="reading-studio"><article class="article-body"><p>中文 中文</p></article></div><input id="reader-find"><span data-find-status>输入关键词</span>', {url:'https://ccatelier.test/'});
+  const {window} = dom;
+  const globals = new Map();
+  let scrolls = 0;
+  for (const [name, value] of Object.entries({window, document:window.document,
+    localStorage:window.localStorage, NodeFilter:window.NodeFilter, innerHeight:900,
+    matchMedia:()=>({matches:false}), requestAnimationFrame:()=>0,
+    getSelection:()=>window.getSelection()})) {
+    globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+    Object.defineProperty(globalThis, name, {configurable:true, writable:true, value});
+  }
+  t.after(() => {
+    window.close();
+    for (const [name, descriptor] of globals) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+  });
+  window.HTMLElement.prototype.scrollIntoView = () => scrolls++;
+  const {initReader} = await import('../source/atelier/js/reader.js');
+  initReader();
+  const input = document.querySelector('#reader-find');
+  const status = document.querySelector('[data-find-status]');
+  input.value = '中文';
+  for (const options of [{isComposing:true}, {keyCode:229}, {isComposing:true, shiftKey:true}]) {
+    const event = new window.KeyboardEvent('keydown', {key:'Enter', bubbles:true, cancelable:true, ...options});
+    input.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(status.textContent, '输入关键词', 'IME confirmation does not search');
+    assert.equal(scrolls, 0, 'IME confirmation does not navigate');
+    assert.equal(window.getSelection().rangeCount, 0);
+  }
+  input.dispatchEvent(new window.CompositionEvent('compositionend'));
+  assert.equal(status.textContent, '2 处匹配');
+  assert.equal(scrolls, 0);
+  for (const [shiftKey, expected] of [[false,'1 / 2'], [false,'2 / 2'], [true,'1 / 2']]) {
+    const event = new window.KeyboardEvent('keydown', {key:'Enter', shiftKey, cancelable:true});
+    input.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(status.textContent, expected);
+  }
+  assert.equal(scrolls, 3);
+});
