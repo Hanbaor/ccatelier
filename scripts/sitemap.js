@@ -1,5 +1,6 @@
 'use strict';
 const {escapeHTML}=require('hexo-util');
+const {extname}=require('node:path');
 const {canonicalUrl,latestDate,contentDates}=require('../tools/site-metadata.cjs');
 
 hexo.extend.generator.register('nijika-sitemap',async function(locals){
@@ -13,7 +14,14 @@ hexo.extend.generator.register('nijika-sitemap',async function(locals){
     entries.set(url,latestDate([previous,lastmod]));
   };
   locals.posts.forEach(post=>{if(post.published!==false)add(post.path,contentDates(post).updated);});
-  locals.pages.forEach(page=>{if(page.published!==false&&page.nijika!=='admin')add(page.path);});
+  locals.pages.forEach(page=>{
+    if(page.published===false||page.nijika==='admin')return;
+    // Hexo also stores renderable CSS/JS/JSON in locals.pages. Use the source
+    // renderer's output, not layout or route spelling: standalone HTML can
+    // have layout:false, and a real page's permalink can contain dots.
+    const output=this.render.getOutput(page.source)||extname(page.source||'').slice(1);
+    if(/^html?$/i.test(output))add(page.path);
+  });
   // Reuse the actual generators, so disabled/empty taxonomy and archive periods
   // cannot turn into invented URLs. Paginated identities are omitted.
   const names=['index','archive','category','tag','nijika-cover','nijika-stage','nijika-after-hours','nijika-hot100','nijika-studio','nijika-practice'];
