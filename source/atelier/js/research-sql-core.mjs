@@ -100,19 +100,25 @@ export function validateQuery(sql) {
 // everywhere, so input cannot introduce a second statement or change query_only.
 // An outer LIMIT is an optimization; the independent step limit still applies
 // when a valid input comment or expression changes the wrapper's structure.
-function withFixtureQuery(SQL, caseId, input, datasetId, consume) {
+function withFixtureQuery(SQL, caseId, input, datasetId, consume, subsetMask) {
   const fixture = getSqlDataset(caseId, datasetId), sql = validateQuery(input);
+  const tables = subsetMask === undefined ? fixture.tables : subsetTables(fixture, subsetMask);
   const db = new SQL.Database();
   try {
     db.run(`PRAGMA hard_heap_limit = ${SQL_LIMITS.heapBytes}`);
     db.run(fixture.schema);
-    for (const table of fixture.tables) {
+    for (const table of tables) {
       const statement = db.prepare(`INSERT INTO ${table.name} VALUES (${table.columns.map(() => '?').join(',')})`);
       try { for (const row of table.rows) statement.run(row); }
       finally { statement.free(); }
     }
     db.run('PRAGMA query_only = ON');
     if (db.exec('PRAGMA query_only')[0]?.values[0]?.[0] !== 1) throw new Error('只读数据库未就绪。');
+    if (subsetMask !== undefined) {
+      const standalone = db.prepare(sql);
+      try { if (standalone.getSQL() !== sql) throw new Error('最小化需要完整、独立的查询。'); }
+      finally { standalone.free(); }
+    }
     const wrapped = `SELECT * FROM (\n${sql}\n) AS query_result LIMIT ${SQL_LIMITS.rows + 1}`;
     const statement = db.prepare(wrapped);
     if (statement.getSQL() !== wrapped) throw new Error('每次只运行一条完整的只读查询。');
@@ -122,7 +128,7 @@ function withFixtureQuery(SQL, caseId, input, datasetId, consume) {
   } finally { db.close(); }
 }
 
-export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
+export function runFixtureQuery(SQL, caseId, input, datasetId='default', subsetMask) {
   return withFixtureQuery(SQL, caseId, input, datasetId, (db, statement, wrapped, columns) => {
     const rows = [];
     let truncated = false;
@@ -135,7 +141,7 @@ export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
       rows.push(row);
     }
     return {columns, rows, truncated};
-  });
+  }, subsetMask);
 }
 
 // The prefix is internal only: user SQL still passes the identical SELECT
@@ -186,3 +192,13 @@ export function compareResults(actual, expected) {
   if (state === 'order') actualMarks.forEach((_, index) => { if (rowKey(actual.rows[index]) !== rowKey(expected.rows[index])) actualMarks[index] = 'order'; });
   return {state, actualMarks, expectedMarks, missing, extra};
 }
+
+// Subsets can only remove published fixture rows. No caller-provided schema,
+// table identifiers, values, or SQL setup crosses this boundary.
+export function subsetTables(fixture, mask) {
+  const count=fixture.tables.reduce((sum,table)=>sum+table.rows.length,0);
+  if (count > 6 || !Number.isSafeInteger(mask) || mask < 0 || mask >= 2 ** count) throw new Error('反例搜索仅支持当前最多 6 行的固定数据。');
+  let index=0;
+  return fixture.tables.map(table=>({...table,rows:table.rows.filter(()=>Boolean(mask & (1 << index++)))}));
+}
+export {minimizeCounterexample, replayCounterexample} from './research-sql-minimize.mjs';

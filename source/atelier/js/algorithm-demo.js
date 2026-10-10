@@ -16,6 +16,21 @@ export function initAlgorithmDemo({root=document}={}){
   previous.addEventListener('click',()=>{if(index>0){index--;paint();}});
   next.addEventListener('click',()=>{if(index<steps.length-1){index++;paint();}});
   select.addEventListener('change',()=>{const example=TWO_SUM_EXAMPLES[Number(select.value)];if(!example)return;steps=traceTwoSum(example.nums,example.target);index=0;paint();});
+  addComparisonDisclosure(host);
   paint();host.querySelector('[data-demo-controls]').hidden=false;host.querySelector('[data-demo-fallback]').hidden=true;initialized.add(host);
  }
+}
+
+// Keep the optional lab unconstructed and its model unloaded until requested.
+function addComparisonDisclosure(host){
+ const doc=host.ownerDocument,disclosure=doc.createElement('details'),summary=doc.createElement('summary'),status=doc.createElement('p');
+ disclosure.className='algorithm-comparison';disclosure.setAttribute('data-algorithm-comparison','');summary.textContent='对照实验：枚举 vs 哈希';disclosure.append(summary);let ready=false,pending=false;
+ disclosure.addEventListener('toggle',async()=>{
+  if(!disclosure.open||ready||pending)return;
+  pending=true;status.textContent='正在载入对照实验…';status.setAttribute('role','status');disclosure.append(status);
+  try{const {initAlgorithmComparison}=await import('./algorithm-comparison.js');initAlgorithmComparison(disclosure);ready=true;status.remove();}
+  catch{status.textContent='对照实验暂时无法载入。请收起后重新展开重试；上方原作拆解仍可使用。';}
+  finally{pending=false;}
+ });
+ host.querySelector('.algorithm-demo-body').append(disclosure);
 }

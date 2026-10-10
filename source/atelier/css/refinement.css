@@ -230,6 +230,9 @@ h1,h2 {text-wrap:balance}
 .code-workbench-open {right:72px}
 /* Keep the compact 13px baseline at 18px prose, while honoring reader zoom. */
 .reading-studio .code-container pre,.reading-studio .article-body.markdown-body figure.highlight {font-size:calc(var(--reader-size) / 18 * 13);line-height:1.85}
+/* Redefine pins pre to .9rem and 1.5 with !important. Release only article
+   code's inner text to inherit its scaled figure, including gutter and spans. */
+.reading-studio .article-body.markdown-body figure.highlight :is(pre,code) {font-size:inherit!important;line-height:inherit!important}
 .reading-studio .article-body.markdown-body table:not(.highlight table) {font-size:calc(var(--reader-size) / 18 * 13)}
 .chapter-copy {min-width:32px;min-height:32px;opacity:0}
 .reading-studio .neighbor-posts {display:flex;gap:24px;margin:28px 0 16px;padding:0;border:0}

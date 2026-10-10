@@ -1,9 +1,11 @@
 import {$,motion} from './ui.js';
 import {buildGraph} from './archive-core.mjs';
 import {element,action,queueAction} from './archive-store.js';
+import {createReadingConnections} from './reading-connections.js';
 
 export function createConstellation(host,onTag){
  const canvas=$('canvas',host),ctx=canvas.getContext('2d'),detail=$('.constellation-detail',host),select=$('[data-graph-select]',host);
+ const connections=createReadingConnections(host);
  let nodes=[],edges=[],posts=[],selected='',neighbors=new Set(),frame=0,steps=0,active=false,width=800,height=470,pan={x:0,y:0},zoom=1,drag=null,signature='';
  const position=n=>({x:width/2+pan.x+n.x*zoom,y:height/2+pan.y+n.y*zoom});
  function resize(){const r=canvas.getBoundingClientRect();if(!r.width)return;width=r.width;height=r.height;const d=Math.min(devicePixelRatio||1,2);canvas.width=width*d;canvas.height=height*d;ctx?.setTransform(d,0,0,d,0,0);draw();}
@@ -22,7 +24,7 @@ export function createConstellation(host,onTag){
  }
  function tick(){frame=0;if(!active||host.hidden||document.hidden)return;if(steps>0){simulate();steps--;}draw();if(steps>0&&motion.enabled)frame=requestAnimationFrame(tick);}
  function wake(count=100){steps=count;cancelAnimationFrame(frame);frame=0;if(!motion.enabled){for(let i=0;i<Math.min(count,180);i++)simulate();draw();}else if(active&&!document.hidden)frame=requestAnimationFrame(tick);}
- function choose(id){selected=id;neighbors=new Set([id]);for(const e of edges){if(e.a.id===id)neighbors.add(e.b.id);if(e.b.id===id)neighbors.add(e.a.id);}select.value=id;detail.replaceChildren();const n=nodes.find(n=>n.id===id);if(!n){detail.append(element('span','','选择一颗星，循着关联继续阅读。'));draw();return;}
+ function choose(id){connections.select(posts,posts.some(p=>p.path===id)?id:'');selected=id;neighbors=new Set([id]);for(const e of edges){if(e.a.id===id)neighbors.add(e.b.id);if(e.b.id===id)neighbors.add(e.a.id);}select.value=id;detail.replaceChildren();const n=nodes.find(n=>n.id===id);if(!n){detail.append(element('span','','选择一颗星，循着关联继续阅读。'));draw();return;}
   detail.append(element('strong','',n.label));
   if(n.kind==='tag'){detail.append(element('span','',n.count+' 篇关联文章'),action('浏览这个主题 ↗',()=>onTag(n.label)));}
   else{const p=posts.find(p=>p.path===id),link=element('a','','开始阅读 ↗');link.href=p.path;detail.append(link,action('＋ 阅读队列',()=>queueAction({type:'add',item:p})));}
@@ -39,5 +41,5 @@ export function createConstellation(host,onTag){
  $('[data-graph-zoom=in]',host).addEventListener('click',()=>scale(1.2));$('[data-graph-zoom=out]',host).addEventListener('click',()=>scale(.8));$('[data-graph-reset]',host).addEventListener('click',()=>{zoom=Math.min(1,width/780);pan={x:0,y:0};choose('');});select.addEventListener('change',()=>choose(select.value));
  new ResizeObserver(resize).observe(canvas);document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;}else if(active)wake(steps);});document.addEventListener('atelier:motion',()=>{if(active)wake(steps);});
  if(!ctx){canvas.hidden=true;detail.textContent='此浏览器使用列表模式，请在下方选择文章或主题。';}
- return {setPosts(next){active=true;const key=next.map(p=>p.path).join('|');if(signature===key){resize();wake(steps);return;}signature=key;posts=next;const g=buildGraph(posts);nodes=g.nodes.map((n,i)=>{const angle=i*2.399963,r=Math.sqrt(i+1)*21;return {...n,x:Math.cos(angle)*r,y:Math.sin(angle)*r,vx:0,vy:0};});const lookup=new Map(nodes.map(n=>[n.id,n]));edges=g.edges.map(e=>({a:lookup.get(e.source),b:lookup.get(e.target)}));select.replaceChildren(element('option','','选择文章或主题'));select.firstChild.value='';nodes.filter(n=>n.kind==='tag').concat(nodes.filter(n=>n.kind==='post')).forEach(n=>{const o=element('option','',(n.kind==='tag'?'# ':'')+n.label);o.value=n.id;select.append(o);});pan={x:0,y:0};resize();zoom=Math.min(1,width/780);choose('');wake(240);},pause(){active=false;cancelAnimationFrame(frame);frame=0;}};
+ return {setPosts(next){active=true;const key=next.map(p=>p.path).join('|');if(signature===key){connections.select(posts,posts.some(p=>p.path===selected)?selected:'');resize();wake(steps);return;}signature=key;posts=next;const g=buildGraph(posts);nodes=g.nodes.map((n,i)=>{const angle=i*2.399963,r=Math.sqrt(i+1)*21;return {...n,x:Math.cos(angle)*r,y:Math.sin(angle)*r,vx:0,vy:0};});const lookup=new Map(nodes.map(n=>[n.id,n]));edges=g.edges.map(e=>({a:lookup.get(e.source),b:lookup.get(e.target)}));select.replaceChildren(element('option','','选择文章或主题'));select.firstChild.value='';nodes.filter(n=>n.kind==='tag').concat(nodes.filter(n=>n.kind==='post')).forEach(n=>{const o=element('option','',(n.kind==='tag'?'# ':'')+n.label);o.value=n.id;select.append(o);});pan={x:0,y:0};resize();zoom=Math.min(1,width/780);choose('');wake(240);},pause(){connections.pause();active=false;cancelAnimationFrame(frame);frame=0;}};
 }

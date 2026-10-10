@@ -76,3 +76,24 @@
 .algorithm-demo [data-demo-message] {min-height:3.5em}
 .algorithm-demo .algorithm-demo-note {color:var(--muted,inherit);font-size:.9em}
 /* No transitions, timers or autoplay: reduced-motion gets the same discrete steps. */
+/* The comparison stays inside the optional article walkthrough. */
+.algorithm-demo .algorithm-comparison {margin:1.5rem 0 0;border:0;border-top:1px solid var(--line,#8884);padding-top:.75rem;min-width:0}
+.algorithm-demo .algorithm-comparison summary {display:list-item;list-style:disclosure-closed inside;background:transparent;padding:.5rem 0;min-height:44px;box-sizing:border-box;cursor:pointer;color:inherit}
+.algorithm-demo .algorithm-comparison details[open]>summary,.algorithm-demo .algorithm-comparison[open]>summary {list-style-type:disclosure-open;background:transparent}
+.algorithm-demo .algorithm-comparison summary::marker {display:revert}
+.algorithm-demo .algorithm-comparison form {display:flex;flex-wrap:wrap;align-items:end;gap:.65rem 1rem;margin:1rem 0}
+.algorithm-demo .algorithm-comparison label {display:flex;flex-direction:column;gap:.3rem;max-width:100%;min-width:0}
+.algorithm-demo .algorithm-comparison label:has([data-comparison-nums]) {flex:1 1 17rem}
+.algorithm-demo .algorithm-comparison input {box-sizing:border-box;min-width:0;max-width:100%;width:100%;font:inherit;color:inherit;background:var(--bg,transparent);border:1px solid var(--line,#8884);border-radius:4px;padding:.35rem .65rem;min-height:40px}
+.algorithm-demo .algorithm-comparison input:focus-visible {outline:2px solid currentColor;outline-offset:3px}
+.algorithm-demo .algorithm-comparison input[aria-invalid=true] {border-color:currentColor;border-style:dashed}
+.algorithm-demo .algorithm-comparison form>p {flex-basis:100%;margin:0}
+.algorithm-demo .algorithm-comparison [data-comparison-error]:empty {display:none}
+.algorithm-demo .algorithm-comparison-panels {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1.5rem;min-width:0}
+.algorithm-demo .algorithm-comparison-panels>section {min-width:0;border-top:1px solid var(--line,#8884);padding-top:.5rem}
+.algorithm-demo .algorithm-comparison h4 {font:inherit;font-weight:600;margin:.5rem 0}
+.algorithm-demo .algorithm-comparison-array {display:flex;flex-wrap:wrap;gap:.35rem;padding:0;margin:.75rem 0;list-style:none}
+.article-body .algorithm-demo .algorithm-comparison-array li {list-style:none;margin:0;border:1px solid var(--line,#8884);border-radius:3px;padding:.15rem .4rem;font: .8rem/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;max-width:100%}
+.algorithm-demo .algorithm-comparison-array .is-active {border-color:currentColor;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.algorithm-demo .algorithm-comparison :is([data-comparison-state],[data-comparison-counts],[data-comparison-map],[data-comparison-input],[data-comparison-verification]) {overflow-wrap:anywhere;font-size:.9em}
+.algorithm-demo .algorithm-comparison-verification {border:0;margin-top:1rem}

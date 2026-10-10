@@ -18,7 +18,7 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     clearTimer(pending.timer);
     onState(pending.operation === 'explain' ? 'planning' : 'running');
     pending.timer = setTimer(() => finish(new Error('查询超过 1.5 秒，已停止。可修改后再运行。'), null, true), queryMs);
-    worker.postMessage({type:pending.operation, id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1});
+    worker.postMessage({type:pending.operation, id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1, ...(pending.subsetMask === undefined ? {} : {subsetMask:pending.subsetMask})});
   }
   function startWorker() {
     if (typeof WorkerClass !== 'function') throw new Error('当前浏览器不支持 Worker；示例数据与参考结果仍可阅读。');
@@ -37,11 +37,11 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     instance.onmessageerror = () => { if (worker === instance) finish(new Error('SQLite 返回结果失败，请重试。'), null, true); };
   }
   return {
-    run(caseId, sql, datasetId='default', operation='run') {
-      if (!['run','explain'].includes(operation)) return Promise.reject(new Error('未知操作。'));
+    run(caseId, sql, datasetId='default', operation='run', subsetMask) {
+      if (!['run','explain','minimize','witness'].includes(operation)) return Promise.reject(new Error('未知操作。'));
       if (pending) finish(abortError(), null, true);
       return new Promise((resolve,reject) => {
-        pending = {id:++serial, caseId, sql, datasetId, operation, resolve, reject, timer:null};
+        pending = {id:++serial, caseId, sql, datasetId, operation, subsetMask, resolve, reject, timer:null};
         try {
           if (!worker) startWorker();
           if (ready) submit();
@@ -64,14 +64,15 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   host.dataset.sqlEngine = 'idle';
   const runner = runnerFactory({onState:state => {
     host.dataset.sqlEngine = state;
-    if (state === 'loading' && !planBusy) message('正在载入 SQLite…');
-    if (state === 'running') message('SQLite 正在运行…');
+    if (state === 'loading' && !planBusy && !minimizeBusy) message('正在载入 SQLite…');
+    if (state === 'running' && !minimizeBusy) message('SQLite 正在运行…');
   }});
   const runButton = host.querySelector('[data-sql-run]'), stopButton = host.querySelector('[data-sql-cancel]');
   const status = host.querySelector('[data-sql-status]'), panels = Array.from(host.querySelectorAll('[data-sql-case]'));
   let active = SQL_CASES[0].id, ticket = 0, busy = false, importTicket = 0, recovery = null;
-  let planBusy = false;
+  let planBusy = false, minimizeBusy = null;
   const plans = new WeakMap();
+  const witnesses = new WeakMap();
   const datasets = new Map(SQL_CASES.map(item => [item.id,'default']));
   const datasetSelect = host.querySelector('[data-sql-dataset]');
   const fileInput = host.querySelector('[data-sql-file]');
@@ -83,6 +84,9 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   function setBusy(value) { busy = value; runButton.disabled = value; stopButton.hidden = !value; host.setAttribute('aria-busy', String(value)); }
   function clearPlan(node=panel()) {
     plans.delete(node);
+    witnesses.delete(node);
+    const witness=node.querySelector('[data-sql-minimize]');
+    if (witness) { witness.hidden=true; witness.open=false; witness.querySelector('[data-sql-minimize-output]').replaceChildren(); witness.querySelector('[data-sql-minimize-status]').textContent=''; witness.querySelector('[data-sql-witness-replay]').hidden=true; }
     const details=node.querySelector('[data-sql-plan]');
     if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); const planStatus=details.querySelector('[data-sql-plan-status]'); if (planStatus) planStatus.textContent=''; }
   }
@@ -95,7 +99,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       delete row.dataset.diff; const mark = row.querySelector('[data-sql-row-mark]'); mark.textContent = ''; mark.removeAttribute('aria-label');
     });
   }
-  function cancel(release=false) { importTicket++; ticket++; if (busy || planBusy || release) runner.stop(); planBusy=false; setBusy(false); }
+  function cancel(release=false) { if (minimizeBusy) { minimizeBusy.querySelector('[data-sql-minimize-status]').textContent='已停止，未得到新的验证结果。'; minimizeBusy=null; } importTicket++; ticket++; if (busy || planBusy || release) runner.stop(); planBusy=false; setBusy(false); }
   function modified() { cancel(); clearResult(); message('查询已修改，重新运行后比较。'); }
   function select(id) {
     getSqlCase(id); cancel(); clearPlan(); active = id;
@@ -209,6 +213,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       const node=panel(), details=node.querySelector('[data-sql-plan]');
       plans.set(node,{caseId,datasetId,sql,caseRevision:1,datasetRevision:1,result:null,loading:false});
       if (details) details.hidden=false;
+      node.querySelector('[data-sql-minimize]').hidden=false;
       if (comparison.state === 'match') message(datasetId === 'default' ? '本例结果一致。' : '此数据集结果一致，不代表所有数据都成立。', 'match');
       else if (comparison.state === 'order') message('值和重复次数一致，行顺序不同。↕ 标出错位行。', 'different');
       else if (comparison.state === 'limited') message('结果超过 100 行，已截断；不作一致性判断。', 'error');
@@ -247,6 +252,71 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       if (current === ticket) { planBusy=false; stopButton.hidden=true; }
     }
   }
+  async function minimize(node,replay=false) {
+    if (busy || planBusy || node !== panel()) return;
+    const caseId=active,datasetId=datasets.get(active),sql=editor().value;
+    const details=node.querySelector('[data-sql-minimize]'),output=details.querySelector('[data-sql-minimize-output]');
+    const live=details.querySelector('[data-sql-minimize-status]'),saved=witnesses.get(node);
+    if (replay && !saved) return;
+    importTicket++;
+    const current=++ticket;
+    minimizeBusy=details; setBusy(true); live.textContent=replay ? '正在重放同一反例…' : '正在搜索行数最少的反例…';
+    try {
+      const result=await runner.run(caseId,sql,datasetId,replay ? 'witness' : 'minimize',replay ? saved.mask : undefined);
+      if (current !== ticket || caseId !== active || sql !== editor().value || datasetId !== datasets.get(active)) return;
+      if (replay) {
+        const stable=JSON.stringify(result.actual)===JSON.stringify(saved.actual) && JSON.stringify(result.reference)===JSON.stringify(saved.reference);
+        live.textContent=stable ? '同一数据与查询已重放，结果一致。' : '重放结果改变，不能继续声称此反例稳定。';
+        if (!stable) { witnesses.delete(node); details.querySelector('[data-sql-witness-replay]').hidden=true; }
+        return;
+      }
+      witnesses.delete(node); details.querySelector('[data-sql-witness-replay]').hidden=true; output.replaceChildren();
+      const summary=doc.createElement('p');
+      if (result.state==='inconclusive') summary.textContent=`未完成验证。${result.reason} 已检查 ${result.tested} 个子集。`;
+      else if (result.state==='no-witness') summary.textContent=`已检查全部 ${result.tested} 个行子集，未发现反例；不代表对其他数据成立。`;
+      else {
+        summary.textContent=`${result.totalRows} → ${result.remainingRows} 行 · 检查 ${result.tested} / ${result.totalSubsets} 个子集。更少行的全部子集均已比较。`;
+        witnesses.set(node,result); details.querySelector('[data-sql-witness-replay]').hidden=false;
+      }
+      output.append(summary); live.textContent=result.state==='witness' ? `找到 ${result.remainingRows} 行的反例。` : result.state==='no-witness' ? '所有行子集均一致。' : '反例验证未完成。';
+      if (result.state!=='witness') return;
+      const inputs=doc.createElement('div'); inputs.className='sql-fixtures';
+      for (const table of result.tables) {
+        const wrap=doc.createElement('div'); wrap.className='sql-table-wrap';
+        const view=makeTable(table.columns,table.rows); view.createCaption().textContent=`${table.name} · ${table.rows.length} 行`; wrap.append(view); inputs.append(wrap);
+      }
+      output.append(inputs);
+      const comparison=doc.createElement('p'); comparison.textContent=result.comparison.state==='order' ? '值与重复次数一致，行顺序不同。' : `候选输出多出 ${result.comparison.extra} 行，缺少 ${result.comparison.missing} 行。`; output.append(comparison);
+      const outputs=doc.createElement('div'); outputs.className='sql-comparison';
+      for (const [label,data,rowMarks] of [['候选输出',result.actual,result.comparison.actualMarks],['参考输出',result.reference,result.comparison.expectedMarks]]) {
+        const wrap=doc.createElement('div'); wrap.className='sql-result';
+        const table=makeTable(data.columns,data.rows,true); table.createCaption().textContent=`${label} · ${data.rows.length} 行`;
+        Array.from(table.tBodies[0].rows).forEach((row,index)=>markRow(row,rowMarks[index],row.cells[0]));
+        wrap.append(table); outputs.append(wrap);
+      }
+      output.append(outputs);
+      const evidence=doc.createElement('details'); evidence.className='sql-insight';
+      const title=doc.createElement('summary'); title.textContent='可重放 SQL';
+      const label=doc.createElement('label'); label.textContent='在新的临时 SQLite 数据库执行';
+      const code=doc.createElement('textarea'); code.readOnly=true; code.rows=10; code.className='sql-editor'; code.setAttribute('aria-label','完整反例重放 SQL'); code.value=result.script;
+      label.append(code); evidence.append(title,label); output.append(evidence);
+    } catch(error) {
+      if (current===ticket && !error.cancelled) live.textContent=`${error.message || '验证失败。'} 未得到最小性结论，可重试。`;
+    } finally { if(current===ticket) { minimizeBusy=null; setBusy(false); } }
+  }
+  panels.forEach(node=>{
+    const details=doc.createElement('details'); details.className='sql-insight'; details.dataset.sqlMinimize=''; details.hidden=true;
+    const title=doc.createElement('summary'); title.textContent='缩小反例';
+    const note=doc.createElement('p'); note.textContent='仅删除当前数据中的行，按总行数穷举最多 64 个子集；保留值、重复次数与顺序的比较规则。每次搜索共用 1.5 秒期限。';
+    const boundary=doc.createElement('p'); boundary.textContent='仅支持完整的确定性查询子集：需顶层 ORDER BY，函数须在白名单内；拒绝时间、随机数、连接状态和数据库元数据。最小性仅适用于这些行的子集，只比较固定 SQLite 版本的实际输出，不是 SQL 等价性证明；排序键并列时不保证跨环境顺序。两次结果一致本身不能证明确定性。只保留声明的 schema 约束，不补充业务外键。';
+    const button=doc.createElement('button'); button.type='button'; button.className='sql-text-button'; button.dataset.sqlMinimizeRun=''; button.textContent='搜索最小反例'; button.addEventListener('click',()=>minimize(node));
+    const replay=doc.createElement('button'); replay.type='button'; replay.className='sql-text-button'; replay.dataset.sqlWitnessReplay=''; replay.textContent='重放同一反例'; replay.hidden=true; replay.addEventListener('click',()=>minimize(node,true));
+    const live=doc.createElement('p'); live.dataset.sqlMinimizeStatus=''; live.setAttribute('role','status'); live.setAttribute('aria-live','polite'); live.setAttribute('aria-atomic','true');
+    const output=doc.createElement('div'); output.dataset.sqlMinimizeOutput='';
+    const controls=doc.createElement('div'); controls.className='sql-draft-tools'; controls.append(button,replay);
+    details.append(title,note,boundary,controls,live,output);
+    const plan=node.querySelector('[data-sql-plan]'); if (plan) plan.after(details); else node.append(details);
+  });
   panels.forEach(node=>node.querySelector('[data-sql-plan]')?.addEventListener('toggle',()=>loadPlan(node)));
   host.querySelector('[data-sql-switch]').hidden = false;
   host.querySelector('[data-sql-run-bar]').hidden = false;

@@ -81,3 +81,48 @@ test('generated permutation article keeps exactly one demo and byte-identical au
   assert.equal([...code.querySelectorAll('.code .line')].map(line=>line.textContent).join('\n'),raw.replace(/\n$/,''));
  }finally{doc.defaultView.close();}
 });
+
+test('real Redefine important pre rules cannot pin inner code, gutter or syntax glyphs during reader resizing',()=>{
+ const theme=read('public/atelier/css/redefine.css'),css=read('source/atelier/css/refinement.css'),content=read('source/atelier/css/content.css');
+ // Use the actual compiled theme declarations that caused the browser regression,
+ // including !important line-height and padding. Do not replace them with mocks.
+ const themeFont=theme.match(/pre\s*\{[^}]*font-size:\s*0\.9rem[^}]*\}/)?.[0];
+ const themeLeading=theme.match(/pre,\s*code\s*\{[^}]*line-height:[^}]*\}/)?.[0];
+ assert.ok(themeFont);assert.ok(themeLeading);
+ assert.match(themeFont,/font-size:\s*0\.9rem\s*!important/);
+ assert.match(themeLeading,/line-height:\s*1\.5\s*!important/);
+ const scaled=css.split('\n').find(line=>line.startsWith('.reading-studio .code-container pre,'));
+ const correction=css.split('\n').find(line=>line.startsWith('.reading-studio .article-body.markdown-body figure.highlight :is(pre,code)'));
+ assert.ok(correction);
+ const tableInheritance=content.match(/\.article-body\.markdown-body figure\.highlight table\{[^}]*\}/)[0];
+ const html='<section class="reading-studio"><div class="article-body markdown-body">'+figure.replace('vector&lt;int&gt;','<code><span class="keyword">vector</span>&lt;int&gt;</code>')+'</div></section><pre id="outside">unrelated code</pre>';
+ const dom=new JSDOM('<style>'+[themeFont,themeLeading,scaled,tableInheritance,correction].join('\n')+'</style>'+html),doc=dom.window.document;
+ try{
+  const rule=[...doc.styleSheets[0].cssRules].find(rule=>rule.selectorText?.endsWith('figure.highlight :is(pre,code)'));
+  assert.equal(rule.style.getPropertyPriority('font-size'),'important');
+  assert.equal(rule.style.getPropertyPriority('line-height'),'important');
+  assert.equal(rule.style.getPropertyValue('font-size'),'inherit');assert.equal(rule.style.getPropertyValue('line-height'),'inherit');
+  // jsdom does not resolve CSS variables or inherited font metrics. Resolve only
+  // these two properties along the real DOM chain, preserving explicit values.
+  // A lingering .9rem on pre therefore fails at the actual glyph descendants.
+  function metric(node,property,size){
+   const value=dom.window.getComputedStyle(node).getPropertyValue(property);
+   if(!value||value==='inherit')return node.parentElement?metric(node.parentElement,property,size):property==='font-size'?16:1.2;
+   if(value==='calc(var(--reader-size) / 18 * 13)')return size/18*13;
+   if(value.endsWith('rem'))return parseFloat(value)*16;
+   return parseFloat(value);
+  }
+  const textNodes=[...doc.querySelectorAll('figure.highlight,figure table,figure pre,figure .line,figure code,figure .keyword')];
+  assert.ok(textNodes.length>=8);
+  for(const size of [18,23,14]){
+   doc.querySelector('.reading-studio').style.setProperty('--reader-size',size+'px');
+   for(const node of textNodes){assert.ok(Math.abs(metric(node,'font-size',size)-size/18*13)<.00001,node.outerHTML);assert.equal(metric(node,'line-height',size),1.85,node.outerHTML);}
+  }
+  assert.equal(metric(doc.getElementById('outside'),'font-size',23),14.4,'unrelated pre retains theme size');
+  assert.equal(metric(doc.getElementById('outside'),'line-height',23),1.5,'unrelated pre retains theme leading');
+  assert.equal(dom.window.getComputedStyle(doc.querySelector('figure pre')).paddingTop,'14px','padding is intentionally unchanged');
+  doc.querySelector('style').textContent=[themeFont,themeLeading,scaled,tableInheritance].join('\n');
+  assert.equal(metric(doc.querySelector('figure .keyword'),'font-size',23),14.4,'negative control reproduces the original frozen inner glyph size');
+  assert.equal(metric(doc.querySelector('figure .keyword'),'line-height',23),1.5,'negative control reproduces the original theme leading');
+ }finally{dom.window.close();}
+});

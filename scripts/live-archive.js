@@ -1,10 +1,12 @@
 'use strict';
 const {plain,metadata,articleContent}=require('../tools/content-catalog.cjs');
+const {connectionCatalog}=require('../tools/connection-catalog.cjs');
 const fs=require('node:fs'),path=require('node:path');
 const tagsFor=post=>[...new Set([...(post.tags?.toArray()||[]).map(t=>t.name),...(post.categories?.toArray()||[]).map(t=>t.name)])];
 hexo.extend.generator.register('live-archive',function(locals){
   const root=this.config.root||'/';
-  const posts=locals.posts.sort('date',-1).toArray().filter(post=>post.published!==false).map(post=>{
+  const published=locals.posts.sort('date',-1).toArray().filter(post=>post.published!==false);
+  const posts=published.map(post=>{
     const details=metadata(post,locals.data.writing_catalog);
     const text=plain(articleContent(post));
     return {path:root+post.path.replace(/^\//,''),title:post.title,text,...details,...(post.series==='hot100'?{order:post.series_order,difficulty:post.difficulty}:{}),group:post.series==='hot100'?'hot100':'writing',date:post.date.toISOString().slice(0,10),minutes:Math.max(1,Math.ceil(text.length/500))};
@@ -13,7 +15,8 @@ hexo.extend.generator.register('live-archive',function(locals){
   function collect(directory){for(const entry of fs.readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,entry.name);if(entry.isDirectory())collect(file);else if(/\.(?:m?js|css|ttf|woff2?)$/.test(entry.name))shell.push(root+path.relative(sourceDir,file).replaceAll('\\','/'));}}
   for(const directory of ['js','css','fonts'])collect(path.join(sourceDir,'atelier',directory));
   const sw=fs.readFileSync(path.join(this.base_dir,'custom/live-sw.template'),'utf8').replaceAll('__ROOT__',JSON.stringify(root));
-  return [{path:'atelier/data/archive.json',data:JSON.stringify({version:1,posts})},{path:'atelier/data/offline-shell.json',data:JSON.stringify(shell)},{path:'live-sw.js',data:sw}];
+  const connections=connectionCatalog(published.map((post,i)=>({path:posts[i].path,topics:posts[i].topics,html:articleContent(post,{reading:true})})));
+  return [{path:'atelier/data/connections.json',data:JSON.stringify(connections)},{path:'atelier/data/archive.json',data:JSON.stringify({version:1,posts})},{path:'atelier/data/offline-shell.json',data:JSON.stringify(shell)},{path:'live-sw.js',data:sw}];
 });
 hexo.extend.helper.register('live_article_content',articleContent);
 hexo.extend.helper.register('live_reader_content',page=>articleContent(page,{reading:true}));

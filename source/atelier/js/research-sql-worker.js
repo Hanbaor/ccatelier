@@ -9,12 +9,22 @@ const ready = (async () => {
 })().catch(() => { self.postMessage({type:'load-error'}); });
 
 self.onmessage = async ({data}) => {
-  if (!data || !['run','explain'].includes(data.type) || !Number.isSafeInteger(data.id) || typeof data.caseId !== 'string' || typeof data.sql !== 'string') return;
+  if (!data || !['run','explain','minimize','witness'].includes(data.type) || !Number.isSafeInteger(data.id) || typeof data.caseId !== 'string' || typeof data.sql !== 'string') return;
   await ready;
   if (!SQL) return;
   try {
     const datasetId = data.datasetId === undefined ? 'default' : data.datasetId;
     const fixture = core.getSqlDataset(data.caseId, datasetId, data.caseRevision === undefined ? 1 : data.caseRevision, data.datasetRevision === undefined ? 1 : data.datasetRevision);
+    if (data.type === 'witness') {
+      const result = core.replayCounterexample(SQL, data.caseId, data.sql, datasetId, data.subsetMask);
+      self.postMessage({type:'result', id:data.id, result});
+      return;
+    }
+    if (data.type === 'minimize') {
+      const result = core.minimizeCounterexample(SQL, data.caseId, data.sql, datasetId);
+      self.postMessage({type:'result', id:data.id, result});
+      return;
+    }
     if (data.type === 'explain') {
       const result = core.explainFixtureQuery(SQL, data.caseId, data.sql, datasetId);
       self.postMessage({type:'result', id:data.id, result});
