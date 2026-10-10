@@ -629,3 +629,5 @@ h1,h2 {text-wrap:balance}
 /* Availability is readable before entering a comment, on every route. */
 .encore-comments .comment-status,.encore-comments .community-retry,.encore-comments .comment-form-bottom button,.encore-comments .comment-stamps legend {font-size:13px}
 .encore-comments .comment-status:empty {display:none}
+
+.encore-comments .comment-status .community-retry {display:inline-flex;align-items:center;vertical-align:middle;margin:0;margin-inline-start:12px;min-height:44px}

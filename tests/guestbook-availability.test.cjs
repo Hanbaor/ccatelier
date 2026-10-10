@@ -84,6 +84,14 @@ for(const route of ['guestbook/index.html','2026/09/22/Hello-CC-Atelier/index.ht
   for(const selector of ['.comment-status','.community-retry','.comment-form-bottom button','.comment-stamps legend']){
    const size=parseFloat(dom.window.getComputedStyle(doc.querySelector(selector)).fontSize);assert.ok(size>=13,`${selector}: ${size}px`);
   }
+  const retry=doc.querySelector('[data-comment-status] .community-retry'),retryStyle=dom.window.getComputedStyle(retry);
+  assert.equal(retryStyle.display,'inline-flex');assert.equal(retryStyle.verticalAlign,'middle');assert.equal(retryStyle.alignItems,'center');
+  assert.equal(retryStyle.marginInlineStart,'12px');assert.equal(retryStyle.marginTop,'0px');assert.equal(retryStyle.marginBottom,'0px');assert.equal(retryStyle.marginRight,'0px');
+  assert.ok(parseFloat(retryStyle.minHeight)>=44);
+  const status=doc.querySelector('[data-comment-status]');status.firstChild.textContent='投递结果尚未确认。内容仍在当前表单中，可手动重试。 留言暂未开放。';
+  assert.notEqual(dom.window.getComputedStyle(status).whiteSpace,'nowrap','long status can wrap before its inline retry');
+  const listRetry=doc.createElement('button');listRetry.className='community-retry';listRetry.textContent='再试一次';doc.querySelector('[data-comment-list] .community-empty').append(listRetry);
+  const listStyle=dom.window.getComputedStyle(listRetry);assert.equal(listStyle.display,'block');assert.equal(listStyle.marginTop,'12px');assert.equal(listStyle.marginLeft,'auto');assert.equal(listStyle.marginRight,'auto');
   assert.ok(links.includes('atelier/css/refinement.css'));
   assert.equal(links.includes('atelier/css/rooms-v2.css'),route.startsWith('guestbook'));
  }finally{dom.window.close();}

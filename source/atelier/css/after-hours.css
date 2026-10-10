@@ -55,3 +55,9 @@ body[data-stage-light=rose] .backstage .gig-sun{background:#dc777c}body[data-sta
 }
 
 fieldset[data-form-guard]{display:contents;border:0;padding:0;margin:0}.contact-photo img{object-position:62% 40%}
+/* Help is functional reading, including its local-storage and moderation notice. */
+#help-dialog .help-shortcuts p{font-size:13px;line-height:1.7;color:var(--text)}
+#help-dialog .help-shortcuts p>span{min-width:0;font-size:14px;line-height:1.7;text-align:right;overflow-wrap:anywhere}
+#help-dialog .help-shortcuts kbd{flex:none;font-size:13px;line-height:1.5;white-space:nowrap}
+#help-dialog .help-links>a,#help-dialog .help-links>button{min-width:0;max-width:100%;font-size:14px;line-height:1.7;white-space:normal;overflow-wrap:anywhere;color:var(--yellow)}
+#help-dialog .credits-note{font-size:13px;line-height:1.8;color:var(--text);overflow-wrap:anywhere}
