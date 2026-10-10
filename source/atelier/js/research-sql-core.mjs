@@ -1,5 +1,5 @@
 // Original, deliberately small teaching fixtures. These are not research results.
-export const SQL_LIMITS = Object.freeze({queryChars:4000, rows:100, columns:16, cellChars:512, heapBytes:16 * 1024 * 1024});
+export const SQL_LIMITS = Object.freeze({queryChars:4000, rows:100, columns:16, cellChars:512, heapBytes:16 * 1024 * 1024, planRows:64, planDetailChars:512});
 function deepFreeze(value) {
   Object.values(value).forEach(item => { if (item && typeof item === 'object') deepFreeze(item); });
   return Object.freeze(value);
@@ -100,7 +100,7 @@ export function validateQuery(sql) {
 // everywhere, so input cannot introduce a second statement or change query_only.
 // An outer LIMIT is an optimization; the independent step limit still applies
 // when a valid input comment or expression changes the wrapper's structure.
-export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
+function withFixtureQuery(SQL, caseId, input, datasetId, consume) {
   const fixture = getSqlDataset(caseId, datasetId), sql = validateQuery(input);
   const db = new SQL.Database();
   try {
@@ -118,6 +118,12 @@ export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
     if (statement.getSQL() !== wrapped) throw new Error('每次只运行一条完整的只读查询。');
     const columns = statement.getColumnNames();
     if (columns.length > SQL_LIMITS.columns) throw new Error('结果最多支持 16 列。');
+    return consume(db, statement, wrapped, columns);
+  } finally { db.close(); }
+}
+
+export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
+  return withFixtureQuery(SQL, caseId, input, datasetId, (db, statement, wrapped, columns) => {
     const rows = [];
     let truncated = false;
     while (statement.step()) {
@@ -129,11 +135,30 @@ export function runFixtureQuery(SQL, caseId, input, datasetId='default') {
       rows.push(row);
     }
     return {columns, rows, truncated};
-  } finally {
-    // Closing the fresh DB frees the prepared statement on success, errors and
-    // row-cap exit. No StatementIterator is left holding an allocated SQL buffer.
-    db.close();
-  }
+  });
+}
+
+// The prefix is internal only: user SQL still passes the identical SELECT
+// wrapper preparation and read-only validation as execution. EQP never steps
+// the candidate statement and describes precisely that bounded wrapper.
+export function explainFixtureQuery(SQL, caseId, input, datasetId='default') {
+  return withFixtureQuery(SQL, caseId, input, datasetId, (db, candidate, wrapped) => {
+    candidate.free();
+    const sql = `EXPLAIN QUERY PLAN ${wrapped}`;
+    const statement = db.prepare(sql);
+    if (statement.getSQL() !== sql || statement.getColumnNames().length !== 4) throw new Error('无法读取完整执行计划。');
+    const rows = [];
+    let truncated = false;
+    while (statement.step()) {
+      if (rows.length === SQL_LIMITS.planRows) { truncated = true; break; }
+      const [id,parent,aux,detail] = statement.get();
+      if (![id,parent,aux].every(Number.isSafeInteger) || typeof detail !== 'string') throw new Error('执行计划格式不支持。');
+      if (detail.length > SQL_LIMITS.planDetailChars) truncated = true;
+      rows.push([id,parent,detail.slice(0,SQL_LIMITS.planDetailChars)]);
+    }
+    const version = db.exec('SELECT sqlite_version()')[0].values[0][0];
+    return {columns:['id','parent','detail'],rows,truncated,version};
+  });
 }
 
 const rowKey = row => JSON.stringify(row.map(value => [value === null ? 'null' : typeof value, value]));

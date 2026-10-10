@@ -16,9 +16,9 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
   function submit() {
     if (!worker || !ready || !pending) return;
     clearTimer(pending.timer);
-    onState('running');
+    onState(pending.operation === 'explain' ? 'planning' : 'running');
     pending.timer = setTimer(() => finish(new Error('查询超过 1.5 秒，已停止。可修改后再运行。'), null, true), queryMs);
-    worker.postMessage({type:'run', id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1});
+    worker.postMessage({type:pending.operation, id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1});
   }
   function startWorker() {
     if (typeof WorkerClass !== 'function') throw new Error('当前浏览器不支持 Worker；示例数据与参考结果仍可阅读。');
@@ -37,10 +37,11 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     instance.onmessageerror = () => { if (worker === instance) finish(new Error('SQLite 返回结果失败，请重试。'), null, true); };
   }
   return {
-    run(caseId, sql, datasetId='default') {
+    run(caseId, sql, datasetId='default', operation='run') {
+      if (!['run','explain'].includes(operation)) return Promise.reject(new Error('未知操作。'));
       if (pending) finish(abortError(), null, true);
       return new Promise((resolve,reject) => {
-        pending = {id:++serial, caseId, sql, datasetId, resolve, reject, timer:null};
+        pending = {id:++serial, caseId, sql, datasetId, operation, resolve, reject, timer:null};
         try {
           if (!worker) startWorker();
           if (ready) submit();
@@ -63,12 +64,14 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   host.dataset.sqlEngine = 'idle';
   const runner = runnerFactory({onState:state => {
     host.dataset.sqlEngine = state;
-    if (state === 'loading') message('正在载入 SQLite…');
+    if (state === 'loading' && !planBusy) message('正在载入 SQLite…');
     if (state === 'running') message('SQLite 正在运行…');
   }});
   const runButton = host.querySelector('[data-sql-run]'), stopButton = host.querySelector('[data-sql-cancel]');
   const status = host.querySelector('[data-sql-status]'), panels = Array.from(host.querySelectorAll('[data-sql-case]'));
   let active = SQL_CASES[0].id, ticket = 0, busy = false, importTicket = 0, recovery = null;
+  let planBusy = false;
+  const plans = new WeakMap();
   const datasets = new Map(SQL_CASES.map(item => [item.id,'default']));
   const datasetSelect = host.querySelector('[data-sql-dataset]');
   const fileInput = host.querySelector('[data-sql-file]');
@@ -78,7 +81,13 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   const editor = () => panel().querySelector('[data-sql-editor]');
   function message(text, state='') { status.textContent = text; status.dataset.state = state; }
   function setBusy(value) { busy = value; runButton.disabled = value; stopButton.hidden = !value; host.setAttribute('aria-busy', String(value)); }
+  function clearPlan(node=panel()) {
+    plans.delete(node);
+    const details=node.querySelector('[data-sql-plan]');
+    if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); }
+  }
   function clearResult(node=panel()) {
+    clearPlan(node);
     const empty = doc.createElement('p'); empty.className = 'sql-result-empty'; empty.textContent = '运行查询，看看哪些行不同。';
     node.querySelector('[data-sql-actual]').replaceChildren(empty);
     node.querySelector('[data-sql-result-count]').textContent = '尚未运行';
@@ -86,10 +95,10 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       delete row.dataset.diff; const mark = row.querySelector('[data-sql-row-mark]'); mark.textContent = ''; mark.removeAttribute('aria-label');
     });
   }
-  function cancel(release=false) { importTicket++; ticket++; if (busy || release) runner.stop(); setBusy(false); }
+  function cancel(release=false) { importTicket++; ticket++; if (busy || planBusy || release) runner.stop(); planBusy=false; setBusy(false); }
   function modified() { cancel(); clearResult(); message('查询已修改，重新运行后比较。'); }
   function select(id) {
-    getSqlCase(id); cancel(); active = id;
+    getSqlCase(id); cancel(); clearPlan(); active = id;
     panels.forEach(node => { node.hidden = node.dataset.sqlCase !== id; });
     host.querySelectorAll('[data-sql-select]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sqlSelect === id)));
     renderDataset(); clearResult(); message('修改候选 SQL，再与预期比较。');
@@ -197,6 +206,9 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       if (current !== ticket || caseId !== active || datasetId !== datasets.get(active)) return;
       const comparison = compareResults(result, getSqlDataset(caseId,datasetId).expected);
       renderResult(result, comparison);
+      const node=panel(), details=node.querySelector('[data-sql-plan]');
+      plans.set(node,{caseId,datasetId,sql,caseRevision:1,datasetRevision:1,result:null,loading:false});
+      if (details) details.hidden=false;
       if (comparison.state === 'match') message(datasetId === 'default' ? '本例结果一致。' : '此数据集结果一致，不代表所有数据都成立。', 'match');
       else if (comparison.state === 'order') message('值和重复次数一致，行顺序不同。↕ 标出错位行。', 'different');
       else if (comparison.state === 'limited') message('结果超过 100 行，已截断；不作一致性判断。', 'error');
@@ -207,6 +219,30 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       panel().querySelector('[data-sql-result-count]').textContent = '未得到结果';
     } finally { if (current === ticket) setBusy(false); }
   }
+  async function loadPlan(node) {
+    const details=node.querySelector('[data-sql-plan]'), saved=plans.get(node);
+    if (!details?.open || !saved || saved.loading || saved.result || busy) return;
+    const current=++ticket, output=details.querySelector('[data-sql-plan-output]');
+    saved.loading=true; planBusy=true; stopButton.hidden=false;
+    output.textContent='正在读取 SQLite 执行计划…';
+    try {
+      const result=await runner.run(saved.caseId,saved.sql,saved.datasetId,'explain');
+      if (current !== ticket || plans.get(node) !== saved || active !== saved.caseId || datasets.get(active) !== saved.datasetId || editor().value !== saved.sql) return;
+      saved.result=result;
+      const label=doc.createElement('p');
+      label.textContent=`${getSqlCase(saved.caseId).label} · ${listSqlDatasets(saved.caseId).find(item=>item.id===saved.datasetId).label} · SQLite ${result.version}`;
+      const table=makeTable(result.columns,result.rows), wrap=doc.createElement('div'); wrap.className='sql-plan-table'; wrap.append(table);
+      const caption=table.createCaption(); caption.textContent='SQLite 原始计划节点';
+      output.replaceChildren(label,wrap);
+      if (result.truncated) { const note=doc.createElement('p'); note.textContent='计划未完整显示：最多 64 个节点，每段描述最多 512 字符。'; output.append(note); }
+    } catch (error) {
+      if (current === ticket && !error.cancelled) output.textContent=`${error.message || '计划读取失败。'} 收起后展开可重试；已有查询结果不变。`;
+    } finally {
+      saved.loading=false;
+      if (current === ticket) { planBusy=false; stopButton.hidden=true; }
+    }
+  }
+  panels.forEach(node=>node.querySelector('[data-sql-plan]')?.addEventListener('toggle',()=>loadPlan(node)));
   host.querySelector('[data-sql-switch]').hidden = false;
   host.querySelector('[data-sql-run-bar]').hidden = false;
   host.querySelectorAll('[data-sql-editor]').forEach(field => {
@@ -230,8 +266,8 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     restoreButton.textContent='恢复替换前草稿'; message('已恢复草稿，尚未运行；刚才的草稿也可切回。'); editor().focus();
   });
   runButton.addEventListener('click', run);
-  stopButton.addEventListener('click', () => { cancel(); message('已停止，可修改后再运行。'); runButton.focus(); });
-  function leave() { const wasBusy = busy; cancel(true); if (wasBusy) message('已停止，可重新运行。'); }
+  stopButton.addEventListener('click', () => { const planning=planBusy; cancel(); if (planning) clearPlan(); else message('已停止，可修改后再运行。'); runButton.focus(); });
+  function leave() { const wasBusy = busy; cancel(true); panels.forEach(clearPlan); if (wasBusy) message('已停止，可重新运行。'); }
   win.addEventListener('pagehide', leave);
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) leave(); });
   doc.addEventListener('atelier:dialog-open', leave);

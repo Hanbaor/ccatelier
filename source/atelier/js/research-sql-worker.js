@@ -9,12 +9,17 @@ const ready = (async () => {
 })().catch(() => { self.postMessage({type:'load-error'}); });
 
 self.onmessage = async ({data}) => {
-  if (!data || data.type !== 'run' || !Number.isSafeInteger(data.id) || typeof data.caseId !== 'string' || typeof data.sql !== 'string') return;
+  if (!data || !['run','explain'].includes(data.type) || !Number.isSafeInteger(data.id) || typeof data.caseId !== 'string' || typeof data.sql !== 'string') return;
   await ready;
   if (!SQL) return;
   try {
     const datasetId = data.datasetId === undefined ? 'default' : data.datasetId;
     const fixture = core.getSqlDataset(data.caseId, datasetId, data.caseRevision === undefined ? 1 : data.caseRevision, data.datasetRevision === undefined ? 1 : data.datasetRevision);
+    if (data.type === 'explain') {
+      const result = core.explainFixtureQuery(SQL, data.caseId, data.sql, datasetId);
+      self.postMessage({type:'result', id:data.id, result});
+      return;
+    }
     const result = core.runFixtureQuery(SQL, data.caseId, data.sql, datasetId);
     const reference = core.runFixtureQuery(SQL, data.caseId, fixture.reference, datasetId);
     if (core.compareResults(reference, fixture.expected).state !== 'match') throw new Error('参考结果校验失败，请刷新页面。');
