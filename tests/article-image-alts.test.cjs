@@ -9,12 +9,18 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('twelve visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,12);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,12);
+test('eighteen visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,18);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,18);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
   assert.equal(entriesForPost(identity(entry)).includes(entry),true);
+  const guarded=createArticleImageAltEnhancer({sourceDir}),raw=input(entry);
+  for(const post of [{...identity(entry),source_id:'different'},{...identity(entry),source:'_posts/other.md'}])assert.equal(await guarded(raw,post),raw);
+  for(const suffix of ['?v=1','#x']) {
+   const changedUrl=raw.replace(image(entry),image(entry)+suffix);
+   assert.equal(await guarded(changedUrl,identity(entry)),changedUrl);
+  }
   for(const root of ['/','/lab/']) {
    const enhance=createArticleImageAltEnhancer({sourceDir,root});
    for(const prefix of root==='/'?['']:['','/lab']) {
@@ -39,6 +45,10 @@ test('only absent or exactly empty alt is filled; meaningful author text and for
    assert.equal(imageAttrs(out).alt,entry.alt);assert.equal(imageAttrs(out).width,'12');assert.equal(imageAttrs(out).loading,'eager');
   } else {
    for(const raw of [empty,`<img src="${image(entry)}">`,`<img src="${image(entry)}" alt="gif.latex?(2022)_9">`])assert.equal(await enhance(raw,identity(entry)),raw);
+   for(const alt of [entry.oldAlt+'x',' '+entry.oldAlt,entry.filename,'00000000000000000000000000000000.png']) {
+    const raw=`<img src="${image(entry)}" alt="${alt}">`;
+    assert.equal(await enhance(raw,identity(entry)),raw);
+   }
   }
  }
 });
@@ -102,7 +112,7 @@ test('independent Hexo filter uses priority 21 and only refreshes eligible sourc
  const authorEdited={...identity(entry),content:`<img src="${image(entry)}" alt="作者后来补充的说明">`,_content:'author edited markdown'};
  await filters.after_post_render(authorEdited);assert.equal(imageAttrs(authorEdited.content).alt,'作者后来补充的说明');
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all twelve descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all eighteen descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.

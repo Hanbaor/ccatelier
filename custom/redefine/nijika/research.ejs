@@ -53,7 +53,6 @@ const sqlCases = [
           <textarea id="sql-editor-<%= item.id %>" data-sql-editor readonly maxlength="4000" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="sql-editor-help"><%= item.candidate %></textarea>
           <div class="sql-result-heading"><h5>实际结果</h5><span data-sql-result-count>尚未运行</span></div>
           <div class="sql-result sql-result-actual" data-sql-actual><p class="sql-result-empty">运行查询，看看哪些行不同。</p></div>
-          <details class="sql-plan" data-sql-plan hidden><summary>查看 SQLite 执行计划</summary><span class="sr-only" data-sql-plan-status role="status" aria-live="polite" aria-atomic="true"></span><div data-sql-plan-output></div><p>真实 EXPLAIN QUERY PLAN，包含实际执行的 SELECT 包装与 LIMIT 101。SCAN 表示扫描，可能按索引顺序遍历；SEARCH 表示只访问部分记录。使用索引不代表结果正确，也不保证更快。</p><p>这是当前内置数据与 SQLite 的计划，不是性能测试，也不是其他数据库的通用计划。节点描述可能随 SQLite 版本变化。<a href="https://www.sqlite.org/eqp.html" target="_blank" rel="noopener noreferrer">SQLite 计划说明 ↗</a></p></details>
         </section>
         <section class="sql-query-panel sql-reference-panel" aria-labelledby="sql-reference-<%= item.id %>">
           <header><h4 id="sql-reference-<%= item.id %>">参考 SQL</h4><button type="button" class="sql-text-button" data-sql-use-reference hidden>放入编辑器</button></header>
@@ -62,6 +61,7 @@ const sqlCases = [
           <div class="sql-result" data-sql-expected><table><caption class="sr-only">根据题意和全部示例数据得到的预期结果</caption><thead><tr><th scope="col" class="sql-mark-column"><span class="sr-only">比较状态</span></th><% item.expected.columns.forEach(column => { %><th scope="col"><%= column %></th><% }); %></tr></thead><tbody><% item.expected.rows.forEach(row => { %><tr><td class="sql-mark-column" data-sql-row-mark></td><% row.forEach(value => { %><td><%= value === null ? 'NULL' : value %></td><% }); %></tr><% }); %></tbody></table></div>
         </section>
       </div>
+      <details class="sql-plan" data-sql-plan hidden><summary>当前查询的 SQLite 执行计划</summary><span class="sr-only" data-sql-plan-status role="status" aria-live="polite" aria-atomic="true"></span><div data-sql-plan-output></div><p>对应实际执行的 SELECT 包装与 LIMIT 101，仅观察访问路径，不证明结果正确或速度更快。<a href="https://www.sqlite.org/eqp.html" target="_blank" rel="noopener noreferrer">SQLite 计划说明 ↗</a></p></details>
       <details class="sql-insight"><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
     </article>
     <% }); %>

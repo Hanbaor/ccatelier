@@ -176,3 +176,27 @@ test('plan live announcements stay short and separate from browsable metadata an
   assert.equal(status.textContent,'');assert.equal(output.textContent,'');assert.equal(details.hidden,true);
  }finally{s.close()}
 });
+
+test('every case places its closed optional plan after the comparison as a full-width sibling',async()=>{
+ const s=await setup();try{
+  for(const node of s.doc.querySelectorAll('[data-sql-case]')){
+   const details=node.querySelector('[data-sql-plan]'),comparison=node.querySelector('.sql-comparison');
+   assert.equal(node.querySelectorAll('[data-sql-plan]').length,1);
+   assert.equal(details.parentElement,node);assert.equal(comparison.nextElementSibling,details);
+   assert.equal(details.closest('.sql-query-panel,.sql-comparison'),null);
+   assert.equal(details.hidden,true);assert.equal(details.open,false);
+   assert.equal(details.querySelector('summary').textContent,'当前查询的 SQLite 执行计划');
+   assert.equal(details.querySelectorAll(':scope > p').length,1);
+   assert.match(details.querySelector(':scope > p').textContent,/SELECT.*LIMIT 101.*不证明结果正确或速度更快/);
+   assert.equal(details.querySelector('a').href,'https://www.sqlite.org/eqp.html');
+   assert.equal(details.querySelector('[data-sql-plan-output]').closest('[aria-live],[role="status"]'),null);
+   assert.ok(details.querySelector('[data-sql-plan-status].sr-only[aria-live="polite"]'));
+  }
+  const {SQL_CASES}=await core;
+  for(const fixture of SQL_CASES){
+   s.controller.select(fixture.id);await completed(s);s.details().open=true;await flush();
+   assert.equal(s.calls.at(-1)[0],fixture.id);assert.equal(s.calls.at(-1)[3],'explain');
+   s.requests.at(-1).resolve(plan);await flush();assert.match(s.details().textContent,new RegExp(fixture.label));
+  }
+ }finally{s.close()}
+});

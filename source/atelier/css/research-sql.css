@@ -90,8 +90,13 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-draft-tools select {min-height:36px;max-width:100%;padding:5px 26px 5px 9px;border:1px solid var(--line);border-radius:2px;background:var(--surface);color:var(--ink);font:inherit;outline-offset:4px}
 .sql-draft-tools select:focus-visible {outline:2px solid var(--sql-accent)}
 
-.sql-plan {border-top:1px solid var(--line);padding:8px 17px 14px;min-width:0}
+.sql-plan {margin-top:17px;border-bottom:1px solid var(--line);padding:0 0 17px;min-width:0}
 .sql-plan-table {overflow:auto;max-height:300px;margin-top:12px}
-.sql-plan-table td:last-child {white-space:normal;overflow-wrap:anywhere;min-width:170px}
+.sql-plan-table table {table-layout:fixed}
+.sql-plan-table th:not(:last-child) {width:64px}
+.sql-plan-table td:last-child {white-space:normal;overflow-wrap:anywhere}
+.sql-plan-table td:first-child,.sql-plan-table th:first-child {padding-left:0}
 .sql-plan-table td:not(:last-child) {vertical-align:top;color:var(--muted)}
 .sql-plan [data-sql-plan-output] {font:12px/1.8 var(--chinese);color:var(--muted)}
+
+@media(max-width:650px) {.sql-plan-table th:not(:last-child) {width:50px}.sql-plan-table td,.sql-plan-table th {padding-inline:6px}.sql-plan-table td:first-child,.sql-plan-table th:first-child {padding-left:0}}

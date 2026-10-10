@@ -18,7 +18,13 @@ const allowlist=Object.freeze([
  ['131792879','6724ba0a1ceb5cfa9c64.png','d6611c556c6848d11d413d8b147647d36061cf30bcf36f5b5745dbe9757d46bf',null,'边差分回溯完成：节点5、4、6各标记1，对应路径5—2—4—6上的三条边权值各增加1。'],
  ['149880710','259258c6a6bc207bb7ab.png','3fd13a6a187b50e6d2c88c5665fd7c28061fbc2bf794fb0b2401efee17ba09f5',null,'torch.nn逻辑回归训练曲线：训练与测试损失持续下降，准确率分别升至约97.8%和99.3%。'],
  ['149880710','d3d9809ce24ebe68f572.png','fc7f5cea3601c1f53ccb05647a02cdac2e1d5d4508559d620ee88d52a6813c15',null,'从零实现Softmax回归：训练损失持续下降，训练准确率升至约85%，测试准确率中途略有回落，最终约83.5%。'],
- ['149880710','c781d35710ae402c159e.png','57b62a132e24ddbcb6169f7960d56b514e3b2185e94546fe56f1eb400fe2488d',null,'torch.nn实现Softmax回归：训练损失持续下降，训练准确率升至约85%，测试准确率波动上升至约83.4%。']
+ ['149880710','c781d35710ae402c159e.png','57b62a132e24ddbcb6169f7960d56b514e3b2185e94546fe56f1eb400fe2488d',null,'torch.nn实现Softmax回归：训练损失持续下降，训练准确率升至约85%，测试准确率波动上升至约83.4%。'],
+ ['124338392','b7c8a264574ee1e7195d.jpg','5b8ba69295d66e78c1e69c0bcb866dd38e2d5687401d3dadcfebf686abfc8da7','99969f0c00f9ccc0fb511c7a1f088408.jpeg','两种积木：I型由两个相邻单位方格组成，L型由三个单位方格组成直角形。'],
+ ['124338392','b2047bea65401717ce8a.png','d99a79788cd00f99fa5f9cdca5a33261e3413c0dbb2cc1d6f30ceaf307281cf6','da5e594b0c5ce4cd9d004f772a03591f.png','2×3画布的五种铺法：三个竖I型一种，两个横I型加一个竖I型两种，两个L型两种。'],
+ ['124338392','c7068c3e28122b3ccc72.png','fb51b9fcbbc7f87796ea89c85309e0d24693e662750361492e190b568d02a3ad','b99a41708010461785712a8fe749beed.png','积木画状态00：前i−1列已铺满，第i列上下两格均未被覆盖。'],
+ ['124338392','9f5799f2574234db7263.png','d9c9c30fd8d33bf783e03e4f25787908d228dccd39e6c7b1b3eda103b276dacc','ae3d8f8df3774c9782351c24a0bb257b.png','状态00转移到00：在第i列竖放一个I型积木，第i+1列上下两格仍为空。'],
+ ['124338392','22e8b1306db0807a0b58.png','6a8960cd59ade6ca034da36a1aad32298510267c36a74bce21926335e7774d87','2a3a90ea512c4ee9a3824b23bb287225.png','状态00转移到10：L型积木铺满第i列，并覆盖第i+1列上格，下格仍为空。'],
+ ['124338392','3d222547bd0b8dd376ca.png','bc2ce9bbc0f9eb670ad077baa219bd6b767c4852600ca1f1cd253ede8da3c489','17c5f5284fb643c88aefa0375d4779a8.png','状态00转移到01：L型积木铺满第i列，并覆盖第i+1列下格，上格仍为空。']
 ].map(([sourceId,filename,sha256,oldAlt,alt])=>Object.freeze({sourceId,source:`_posts/csdn/${sourceId}.md`,filename,sha256,oldAlt,alt})));
 
 function entriesForPost(post) {
