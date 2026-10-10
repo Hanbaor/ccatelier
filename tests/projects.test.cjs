@@ -21,7 +21,7 @@ test('projects presents an illustrated main work and coursework with technical e
     assert.equal(room.querySelectorAll('h1').length, 1);
     assert.equal(room.querySelector('h1').textContent, 'CC Atelier');
     assert.ok(room.querySelector('.project-summary .project-description'));
-    assert.equal(room.querySelectorAll(':scope > section').length, 2);
+    assert.equal(room.querySelectorAll(':scope > section').length, 3);
     const implementation = room.querySelector(':scope > details.project-implementation');
     assert.ok(implementation);
     assert.equal(implementation.open, false);
@@ -30,7 +30,7 @@ test('projects presents an illustrated main work and coursework with technical e
     assert.equal(room.querySelectorAll('.project-layers > li').length, 3);
     assert.equal(room.querySelectorAll('.project-decision-list > li').length, 3);
     assert.equal(room.querySelectorAll('img').length, 1);
-    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 12, 'link arrows use the existing font-independent SVG');
+    assert.equal(room.querySelectorAll('svg.editorial-arrow').length, 14, 'link arrows use the existing font-independent SVG');
     assert.doesNotMatch(room.textContent, /↗/);
     assert.ok(room.querySelector('img[src$="/atelier/images/v3/projects.webp"]'));
     assert.match(room.querySelector('img').alt, /主题插画/);
@@ -70,7 +70,7 @@ test('each engineering decision links a real demo and immutable, locally present
         finally { target.window.close(); }
       }
     }
-    const notes = [...room.querySelectorAll('.project-reading a')].map(a=>new URL(a.href).pathname);
+    const notes = [...room.querySelectorAll('.project-experiment-list a[href*="/writing/"], .project-reading a')].map(a=>new URL(a.href).pathname);
     assert.deepEqual(notes, ['124338541','154834561','124387071','124460411'].map(id=>`${prefix}writing/csdn-${id}/`));
   } finally {dom.window.close();}
 });
@@ -79,11 +79,11 @@ test('projects reading entry links directly to the real, initially collapsed per
   const dom = projects();
   const article = new JSDOM(built('writing/csdn-124338541/index.html'));
   try {
-    const link = dom.window.document.querySelector('.project-reading-list > a[href$="#permutation-trace"]');
+    const link = dom.window.document.querySelector('.project-experiment-list a[href$="#permutation-trace"]');
     assert.ok(link);
     assert.equal(link.getAttribute('href'), `${prefix}writing/csdn-124338541/#permutation-trace`);
     assert.equal(link.querySelector('h3').textContent, '数的全排列');
-    assert.equal(link.querySelector('p').textContent, '逐步前进或倒带，查看递归返回与解除标记的过程。');
+    assert.equal(link.querySelector('p').textContent, '对照 C++ 原文，前进或倒带查看回溯。');
     assert.equal(link.querySelectorAll('svg.editorial-arrow').length, 1);
     assert.equal(link.hasAttribute('onclick'), false);
     const targets = article.window.document.querySelectorAll('#permutation-trace');
@@ -135,7 +135,7 @@ test('the standalone case-study template preserves root prefixes for every inter
         assert.ok((element.getAttribute('href') || element.getAttribute('src')).startsWith(base));
       }
       for (const candidate of doc.querySelector('img').getAttribute('srcset').split(',')) assert.ok(candidate.trim().startsWith(base));
-      const trace = doc.querySelector('.project-reading-list > a[href$="#permutation-trace"]');
+      const trace = doc.querySelector('.project-experiment-list a[href$="#permutation-trace"]');
       assert.ok(trace);
       assert.equal(trace.getAttribute('href'), `${base}writing/csdn-124338541/#permutation-trace`);
       assert.equal(trace.querySelector('h3').textContent, '数的全排列');

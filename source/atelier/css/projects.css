@@ -182,3 +182,25 @@
  .project-coursework-list {grid-template-columns:minmax(0,1fr)}
  .project-process details {break-inside:avoid}
 }
+
+/* Working experiments: a quiet, native index rather than another card grid. */
+.project-experiments {margin-top:42px}
+.project-experiments>h2 {margin:0 0 12px;font:500 13px/1.7 var(--chinese);color:var(--muted)}
+.project-experiment-list {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,3vw,42px);list-style:none;margin:0;padding:0}
+.project-experiment-list>li {min-width:0}
+.project-experiment-list a {display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-height:44px;padding:9px 0}
+.project-experiment-list a>div {min-width:0}
+.project-experiment-list h3 {margin:0 0 7px;font:500 18px/1.5 var(--chinese);letter-spacing:-.02em}
+.project-experiment-list p {margin:0;font:13px/1.8 var(--chinese);color:var(--muted);text-wrap:pretty}
+.project-experiment-list svg {flex:none;width:17px;height:17px;margin-top:5px;color:var(--yellow)}
+.project-experiments+.project-implementation {margin-top:18px}
+@media(max-width:760px) {
+ .project-experiments {margin-top:30px}
+ .project-experiment-list {grid-template-columns:minmax(0,1fr);gap:10px}
+ .project-experiment-list a {padding-block:10px}
+ .project-experiment-list h3 {font-size:18px;margin-bottom:4px}
+ .project-experiments+.project-implementation {margin-top:16px}
+}
+@media print {
+ .project-experiments {break-inside:avoid}
+}

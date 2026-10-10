@@ -14,6 +14,15 @@
     <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:760px) 92vw, (max-width:1280px) 50vw, 649px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"><figcaption><span>01 / CC ATELIER</span><span>网站 · 阅读 · 声音</span></figcaption></figure>
   </header>
 
+  <section class="project-experiments" aria-labelledby="project-experiments-title">
+    <h2 id="project-experiments-title">在本站试试</h2>
+    <ul class="project-experiment-list">
+      <li><a href="<%= url_for('research/') %>#sql-lab-title"><div><h3>SQLite 查询实验</h3><p>运行查询、查看计划，重放小数据行子集反例。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+      <li><a href="<%= url_for('writing/csdn-124338541/') %>#permutation-trace"><div><h3>数的全排列</h3><p>对照 C++ 原文，前进或倒带查看回溯。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+      <li><a href="<%= url_for('studio/') %>#rhythm-desk"><div><h3>六轨节奏工作台</h3><p>编排与分享，将音符、力度与节奏导出为 MIDI。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+    </ul>
+  </section>
+
   <details class="project-implementation">
     <summary>看看实现细节<span>静态路由、搜索与离线保存</span></summary>
   <section class="project-section project-architecture" aria-labelledby="project-architecture-title">
@@ -86,9 +95,8 @@
   </section>
 
   <section class="project-section project-reading" aria-labelledby="project-reading-title">
-    <h2 id="project-reading-title">从文章试起</h2>
+    <h2 id="project-reading-title">继续读代码</h2>
     <div class="project-reading-list">
-      <a href="<%= url_for('writing/csdn-124338541/') %>#permutation-trace"><div><h3>数的全排列</h3><p>逐步前进或倒带，查看递归返回与解除标记的过程。</p></div><%- partial('nijika/editorial-arrow') %></a>
       <a href="<%= url_for('writing/csdn-154834561/') %>"><div><h3>分治（1）</h3><p>逆序对计数、中途相遇与平面最近点对，附 C++ 实现。</p></div><%- partial('nijika/editorial-arrow') %></a>
       <div class="project-reading-pair"><div><h3>STL 容器</h3><p>vector 的容量与迭代，set 的常用操作与集合运算。</p></div><nav aria-label="STL 容器文章"><a href="<%= url_for('writing/csdn-124387071/') %>">vector <%- partial('nijika/editorial-arrow') %></a><a href="<%= url_for('writing/csdn-124460411/') %>">set <%- partial('nijika/editorial-arrow') %></a></nav></div>
     </div>
