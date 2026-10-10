@@ -12,11 +12,61 @@
 .catalog-v3 .archive-results[data-mode=grid] .archive-record h2 {font-size:18px}
 .catalog-v3 .archive-results[data-mode=grid] .archive-record p {-webkit-line-clamp:3}
 .catalog-v3 .archive-fallback .editorial-arrow {width:13px;height:13px;vertical-align:middle}
-.series-page .series-header .series-status-note {font-size:12px;line-height:1.8;letter-spacing:0}
+/* Hot100: the collection is a compact index, with native mobile navigation. */
+.series-page .series-header {position:relative;padding:0 0 20px;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.series-page .series-topline {display:flex;align-items:center;justify-content:space-between;gap:16px}
+.series-page .series-topline>.eyebrow {font-size:10px;letter-spacing:.1em}
+.series-page .series-topline>a {display:inline-flex;align-items:center;min-height:44px;font-size:12px;color:var(--text);white-space:nowrap}
+.series-page .series-header h1 {font:600 clamp(72px,7.5vw,96px)/1 var(--condensed);letter-spacing:-.025em;margin:8px 0 14px;color:var(--ink)}
+.series-page .series-header h1>span,.series-page .series-header h1>i {color:var(--yellow);font:inherit;margin:0}
+.series-page .series-header p {margin:0;font:13px/1.8 var(--chinese);letter-spacing:0;color:var(--muted)}
+.series-page .series-header .series-status-note {font-size:12px}
+.series-page .series-intro {margin:0 0 24px;padding:0 0 10px;border-bottom:1px solid var(--line);color:var(--muted)}
+.series-page .series-intro>summary {display:list-item;cursor:pointer;min-height:44px;padding:11px 0;font:12px/1.8 var(--chinese)}
+.series-page .series-intro .article-body {max-width:760px;padding:12px 0 16px}
+.series-page .series-intro .article-body font {color:inherit}
+.series-page .series-layout {display:grid;grid-template-columns:148px minmax(0,1fr);gap:40px}
+.series-page .series-topics {position:sticky;top:90px;align-self:start;max-height:calc(100svh - 120px);overflow:auto;padding-right:10px;scrollbar-width:thin}
+.series-page .series-topics>.eyebrow {display:block;font-size:10px;margin-bottom:8px}
+.series-page .series-topics>a,.series-page .series-mobile-topics>a {display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:8px 0;font:13px/1.5 var(--chinese);color:var(--text)}
+.series-page .series-topics>a:hover,.series-page .series-mobile-topics>a:hover {color:var(--yellow)}
+.series-page .series-topics small,.series-page .series-mobile-topics small {font:11px var(--sans);color:var(--muted)}
+.series-page .series-topic-disclosure {display:none}
+.series-page .series-group {scroll-margin-top:90px;margin-bottom:36px}
+.series-page .series-group h2 {font:500 23px/1.4 var(--chinese);margin:0 0 12px;display:flex;gap:14px;align-items:center}
+.series-page .series-group h2>span {font:11px var(--sans);color:var(--yellow)}
+.series-page .series-track {display:grid;grid-template-columns:35px minmax(0,1fr) 32px 18px;gap:17px;padding:16px 0;border-bottom:1px solid var(--line);align-items:center;min-height:72px}
+.series-page .series-track strong {font:400 16px/1.5 var(--chinese);overflow-wrap:anywhere}
+.series-page .series-track .track-number {font:12px var(--sans);color:var(--muted)}
+.series-page .series-track small {font-size:12px;color:var(--muted)}
+.series-page .series-track:hover strong {color:var(--yellow)}
 .series-page .series-track-copy {display:flex;flex-direction:column;gap:6px;min-width:0}
-.series-page .series-track-state {display:flex;gap:13px;color:var(--muted);font-size:11px;line-height:1.7}
+.series-page .series-track-state {display:flex;flex-wrap:wrap;gap:4px 13px;color:var(--muted);font-size:11px;line-height:1.7}
 .series-page .series-track-state>span:first-child {color:var(--text)}
 .series-page .series-track>.editorial-arrow {width:16px;height:16px;color:var(--yellow)}
+.series-page :is(a,summary):focus-visible {outline:2px solid var(--yellow);outline-offset:4px}
+@media(max-width:640px) {
+  .series-page .series-header {padding-bottom:14px;margin-bottom:8px}
+  .series-page .series-topline {gap:10px}
+  .series-page .series-topline>.eyebrow {font-size:9px;letter-spacing:.06em}
+  .series-page .series-header h1 {font-size:clamp(56px,15vw,64px);margin:4px 0 10px}
+  .series-page .series-header p {font-size:12px;line-height:1.75;max-width:none}
+  .series-page .series-header .series-status-note {font-size:12px;line-height:1.75}
+  .series-page .series-intro {margin-bottom:12px;padding-bottom:6px}
+  .series-page .series-layout {display:block}
+  .series-page .series-topics {display:none}
+  .series-page .series-topic-disclosure {display:block;margin:0 0 20px;border-bottom:1px solid var(--line)}
+  .series-page .series-topic-disclosure>summary {display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;list-style:none;cursor:pointer;font:13px/1.6 var(--chinese)}
+  .series-page .series-topic-disclosure>summary::-webkit-details-marker {display:none}
+  .series-page .series-topic-disclosure>summary>span {margin-left:auto;font-size:11px;color:var(--muted)}
+  .series-page .series-topic-disclosure>summary:after {content:'+';font:20px var(--sans);color:var(--yellow)}
+  .series-page .series-topic-disclosure[open]>summary:after {content:'−'}
+  .series-page .series-mobile-topics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;padding:8px 0 12px}
+  .series-page .series-group h2 {font-size:21px;margin-bottom:8px}
+  .series-page .series-track {grid-template-columns:28px minmax(0,1fr) 30px 16px;gap:10px;padding-block:14px}
+  .series-page .series-track strong {font-size:15px}
+  .series-page .series-track small {font-size:11px}
+}
 .reading-page .exercise-readiness {border-left:2px solid var(--line);padding:3px 0 3px 16px;margin:0 0 28px;font-size:12px;line-height:1.8;color:var(--muted)}
 .reading-page .exercise-readiness strong {font-weight:500;color:var(--text)}
 .reading-page .exercise-readiness p {margin:4px 0 0}
@@ -26,8 +76,5 @@
   .catalog-v3 .archive-results[data-mode=list] p {font-size:13px;-webkit-line-clamp:3}
   .catalog-v3 .archive-results[data-mode=list] .record-top,.catalog-v3 .archive-results[data-mode=list] .record-bottom {align-self:start;padding-top:4px}
   .catalog-v3 .archive-results[data-mode=list] .record-top b {font-size:20px}
-  .series-page .series-header p {line-height:1.85;letter-spacing:0;max-width:90%}
-  .series-page .series-track {padding-block:16px}
-  .series-page .series-track-state {font-size:11px;gap:10px}
 }
 @media print { .reading-page .exercise-readiness {break-inside:avoid} }
