@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('six visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,6);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,6);
+test('twelve visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,12);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,12);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -51,7 +51,8 @@ test('wrong article, unknown images and non-exact URLs receive no fallback',asyn
  for(const html of [`<img src="${image(entry)}" srcset="x 2x">`,`<img src="${image(entry)}" data-src="x">`,`<picture>${raw}</picture>`,`<div aria-hidden="true">${raw}</div>`,`<img hidden src="${image(entry)}">`,`<img role="presentation" src="${image(entry)}">`,`<img alt="" alt="作者描述" src="${image(entry)}">`])assert.equal(await enhance(html,identity(entry)),html);
 });
 test('original bytes are rechecked across calls; missing, changed and escaped files fail closed',async()=>{
- const entry=allowlist[0],temp=fs.mkdtempSync(path.join(os.tmpdir(),'article-image-alts-'));
+ for(const entry of allowlist) {
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'article-image-alts-'));
  try {
   const dir=path.join(temp,'atelier/images/posts');fs.mkdirSync(dir,{recursive:true});
   const file=path.join(dir,entry.filename),raw=input(entry),enhance=createArticleImageAltEnhancer({sourceDir:temp});
@@ -63,6 +64,7 @@ test('original bytes are rechecked across calls; missing, changed and escaped fi
   fs.unlinkSync(file);fs.symlinkSync(path.join(sourceDir,image(entry)),file);
   assert.equal(await enhance(raw,identity(entry)),raw);
  } finally { fs.rmSync(temp,{recursive:true,force:true}); }
+ }
 });
 test('attribute escaping is safe and existing surrounding markup is byte-preserved',async()=>{
  assert.equal(escapeAttribute('"<&\'>'),'&quot;&lt;&amp;&#39;&gt;');
@@ -100,7 +102,7 @@ test('independent Hexo filter uses priority 21 and only refreshes eligible sourc
  const authorEdited={...identity(entry),content:`<img src="${image(entry)}" alt="作者后来补充的说明">`,_content:'author edited markdown'};
  await filters.after_post_render(authorEdited);assert.equal(imageAttrs(authorEdited.content).alt,'作者后来补充的说明');
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all six descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all twelve descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.
