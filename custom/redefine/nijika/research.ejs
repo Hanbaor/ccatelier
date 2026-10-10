@@ -70,7 +70,7 @@ const sqlCases = [
         </section>
       </div>
       <details class="sql-plan" data-sql-plan hidden><summary>当前查询的 SQLite 执行计划</summary><span class="sr-only" data-sql-plan-status role="status" aria-live="polite" aria-atomic="true"></span><div data-sql-plan-output></div><p>对应实际执行的 SELECT 包装与 LIMIT 101，仅观察访问路径，不证明结果正确或速度更快。<a href="https://www.sqlite.org/eqp.html" target="_blank" rel="noopener noreferrer">SQLite 计划说明 ↗</a></p></details>
-      <details class="sql-insight"><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
+      <details class="sql-insight" data-sql-insight><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
     </article>
     <% }); %>
     <p class="sql-editor-help" id="sql-editor-help">只读 SELECT / WITH · 不含分号 · 最多 100 行 · Ctrl / ⌘ + Enter 运行</p>

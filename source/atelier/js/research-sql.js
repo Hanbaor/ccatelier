@@ -86,7 +86,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     plans.delete(node);
     witnesses.delete(node);
     const witness=node.querySelector('[data-sql-minimize]');
-    if (witness) { witness.hidden=true; witness.open=false; witness.querySelector('[data-sql-minimize-output]').replaceChildren(); witness.querySelector('[data-sql-minimize-status]').textContent=''; witness.querySelector('[data-sql-witness-replay]').hidden=true; }
+    if (witness) { witness.hidden=true; witness.open=false; witness.querySelector('[data-sql-minimize-output]').replaceChildren(); witness.querySelector('[data-sql-minimize-evidence]').replaceChildren(); witness.querySelector('[data-sql-minimize-scope]').open=false; witness.querySelector('[data-sql-minimize-status]').textContent=''; witness.querySelector('[data-sql-witness-replay]').hidden=true; }
     const details=node.querySelector('[data-sql-plan]');
     if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); const planStatus=details.querySelector('[data-sql-plan-status]'); if (planStatus) planStatus.textContent=''; }
   }
@@ -138,7 +138,8 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     expected.replaceChildren(table);
     if (!data.expected.rows.length) { const empty=doc.createElement('p'); empty.className='sql-result-empty'; empty.textContent='0 行'; expected.append(empty); }
     node.querySelector('.sql-reference-panel .sql-result-heading span').textContent=`${data.expected.rows.length} 行`;
-    node.querySelector('.sql-insight summary').textContent=datasets.get(active)==='default' ? '为什么会不同？' : '原始反例说明';
+    const insightSummary=node.querySelector('[data-sql-insight] > summary');
+    if (insightSummary) insightSummary.textContent=datasets.get(active)==='default' ? '为什么会不同？' : '原始反例说明';
   }
   function captureDrafts() {
     return {active, drafts:panels.map(node => ({caseId:node.dataset.sqlCase,datasetId:datasets.get(node.dataset.sqlCase),sql:node.querySelector('[data-sql-editor]').value}))};
@@ -270,7 +271,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
         if (!stable) { witnesses.delete(node); details.querySelector('[data-sql-witness-replay]').hidden=true; }
         return;
       }
-      witnesses.delete(node); details.querySelector('[data-sql-witness-replay]').hidden=true; output.replaceChildren();
+      witnesses.delete(node); details.querySelector('[data-sql-witness-replay]').hidden=true; output.replaceChildren(); details.querySelector('[data-sql-minimize-evidence]').replaceChildren();
       const summary=doc.createElement('p');
       if (result.state==='inconclusive') summary.textContent=`未完成验证。${result.reason} 已检查 ${result.tested} 个子集。`;
       else if (result.state==='no-witness') summary.textContent=`已检查全部 ${result.tested} 个行子集，未发现反例；不代表对其他数据成立。`;
@@ -295,11 +296,10 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
         wrap.append(table); outputs.append(wrap);
       }
       output.append(outputs);
-      const evidence=doc.createElement('details'); evidence.className='sql-insight';
-      const title=doc.createElement('summary'); title.textContent='可重放 SQL';
+      const evidence=details.querySelector('[data-sql-minimize-evidence]');
       const label=doc.createElement('label'); label.textContent='在新的临时 SQLite 数据库执行';
       const code=doc.createElement('textarea'); code.readOnly=true; code.rows=10; code.className='sql-editor'; code.setAttribute('aria-label','完整反例重放 SQL'); code.value=result.script;
-      label.append(code); evidence.append(title,label); output.append(evidence);
+      label.append(code); evidence.replaceChildren(label);
     } catch(error) {
       if (current===ticket && !error.cancelled) live.textContent=`${error.message || '验证失败。'} 未得到最小性结论，可重试。`;
     } finally { if(current===ticket) { minimizeBusy=null; setBusy(false); } }
@@ -307,14 +307,18 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   panels.forEach(node=>{
     const details=doc.createElement('details'); details.className='sql-insight'; details.dataset.sqlMinimize=''; details.hidden=true;
     const title=doc.createElement('summary'); title.textContent='缩小反例';
-    const note=doc.createElement('p'); note.textContent='仅删除当前数据中的行，按总行数穷举最多 64 个子集；保留值、重复次数与顺序的比较规则。每次搜索共用 1.5 秒期限。';
+    const note=doc.createElement('p'); note.textContent='仅删当前数据中的行；最多 64 个子集，整体限时 1.5 秒。';
     const boundary=doc.createElement('p'); boundary.textContent='仅支持完整的确定性查询子集：需顶层 ORDER BY，函数须在白名单内；拒绝时间、随机数、连接状态和数据库元数据。最小性仅适用于这些行的子集，只比较固定 SQLite 版本的实际输出，不是 SQL 等价性证明；排序键并列时不保证跨环境顺序。两次结果一致本身不能证明确定性。只保留声明的 schema 约束，不补充业务外键。';
+    const scope=doc.createElement('details'); scope.className='sql-insight'; scope.dataset.sqlMinimizeScope='';
+    const scopeTitle=doc.createElement('summary'); scopeTitle.textContent='验证范围与重放 SQL';
+    const semantics=doc.createElement('p'); semantics.textContent='按保留行数从少到多穷举；比较值、重复次数和行顺序。错误、截断或重复执行不一致时停止，不作最小性结论。重放 SQL 需在新的临时 SQLite 数据库中执行。';
+    const evidence=doc.createElement('div'); evidence.dataset.sqlMinimizeEvidence=''; scope.append(scopeTitle,boundary,semantics,evidence);
     const button=doc.createElement('button'); button.type='button'; button.className='sql-text-button'; button.dataset.sqlMinimizeRun=''; button.textContent='搜索最小反例'; button.addEventListener('click',()=>minimize(node));
     const replay=doc.createElement('button'); replay.type='button'; replay.className='sql-text-button'; replay.dataset.sqlWitnessReplay=''; replay.textContent='重放同一反例'; replay.hidden=true; replay.addEventListener('click',()=>minimize(node,true));
     const live=doc.createElement('p'); live.dataset.sqlMinimizeStatus=''; live.setAttribute('role','status'); live.setAttribute('aria-live','polite'); live.setAttribute('aria-atomic','true');
     const output=doc.createElement('div'); output.dataset.sqlMinimizeOutput='';
     const controls=doc.createElement('div'); controls.className='sql-draft-tools'; controls.append(button,replay);
-    details.append(title,note,boundary,controls,live,output);
+    details.append(title,note,controls,live,output,scope);
     const plan=node.querySelector('[data-sql-plan]'); if (plan) plan.after(details); else node.append(details);
   });
   panels.forEach(node=>node.querySelector('[data-sql-plan]')?.addEventListener('toggle',()=>loadPlan(node)));

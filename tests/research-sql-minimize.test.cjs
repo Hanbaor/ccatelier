@@ -161,3 +161,56 @@ test('exported witness reproduces setup and both nonempty outputs in a fresh ind
  assert.deepEqual(replay.result.slice(1),[result.actual,result.reference].map(({columns,rows})=>({columns,values:rows})));
  assert.equal(replay.result.length,3,'heap setup and both query results must remain independently executable');
 });
+
+test('real-query completion and every dataset switch keep minimizer and fixture explanation headings distinct',async()=>{
+ const c=await core,SQL=await engine;
+ const html=require('ejs').render(fs.readFileSync(path.join(root,'custom/redefine/nijika/research.ejs'),'utf8'),{url_for:x=>'/'+x,partial:()=>''});
+ const dom=new JSDOM(html,{url:'https://example.test/research/',pretendToBeVisual:true}),doc=dom.window.document;
+ const {initResearchSql}=await import('../source/atelier/js/research-sql.js');
+ const controller=initResearchSql(doc,{runnerFactory:()=>({async run(caseId,sql,datasetId){return c.runFixtureQuery(SQL,caseId,sql,datasetId)},stop(){}})});
+ try{
+  for(const fixture of c.SQL_CASES){
+   controller.select(fixture.id);
+   const panel=doc.querySelector('[data-sql-case]:not([hidden])'),minimizer=panel.querySelector('[data-sql-minimize]'),explanation=panel.querySelector('[data-sql-insight]');
+   assert.equal(panel.querySelectorAll('[data-sql-insight]').length,1);
+   // Deliberately vary sibling order: semantics cannot depend on a shared class
+   // or which details element happens to appear first in this template.
+   panel.prepend(minimizer);
+   assert.equal(minimizer.querySelector(':scope > summary').textContent,'缩小反例');
+   assert.equal(explanation.querySelector(':scope > summary').textContent,'为什么会不同？');
+   for(const dataset of [...c.listSqlDatasets(fixture.id),{id:'default'}]){
+    const select=doc.querySelector('[data-sql-dataset]');select.value=dataset.id;select.dispatchEvent(new dom.window.Event('change'));
+    const expectedLabel=dataset.id==='default'?'为什么会不同？':'原始反例说明';
+    assert.equal(minimizer.querySelector(':scope > summary').textContent,'缩小反例',`${fixture.id}/${dataset.id} after switch`);
+    assert.equal(explanation.querySelector(':scope > summary').textContent,expectedLabel);
+    await controller.run();
+    assert.equal(minimizer.hidden,false);
+    assert.equal(minimizer.querySelector(':scope > summary').textContent,'缩小反例',`${fixture.id}/${dataset.id} after real run`);
+    assert.equal(explanation.querySelector(':scope > summary').textContent,expectedLabel);
+   }
+  }
+ }finally{controller.stop();dom.window.close()}
+});
+
+test('technical verification scope and replay SQL share a closed second-level disclosure',async()=>{
+ const s=await setup(),c=await core,SQL=await engine;
+ try{
+  await complete(s);
+  const details=s.details(),scope=details.querySelector('[data-sql-minimize-scope]');
+  assert.equal(scope.open,false);
+  assert.equal(scope.querySelector(':scope > summary').textContent,'验证范围与重放 SQL');
+  assert.match(scope.textContent,/确定性查询.*ORDER BY.*白名单/);
+  assert.match(scope.textContent,/不是 SQL 等价性证明/);
+  assert.match(scope.textContent,/schema 约束/);
+  const topParagraphs=Array.from(details.children).filter(node=>node.tagName==='P').map(node=>node.textContent).join('');
+  assert.equal(topParagraphs,'仅删当前数据中的行；最多 64 个子集，整体限时 1.5 秒。');
+  details.querySelector('[data-sql-minimize-run]').click();
+  s.requests.at(-1).resolve(c.minimizeCounterexample(SQL,'empty-count',c.SQL_CASES[0].candidate));await flush();
+  assert.equal(scope.open,false,'result does not expand technical text');
+  assert.equal(scope.querySelectorAll('textarea').length,1);
+  assert.equal(details.querySelector('[data-sql-minimize-output] textarea'),null);
+  scope.open=true;
+  const editor=s.panel().querySelector('[data-sql-editor]');editor.value='SELECT 1 ORDER BY 1';editor.dispatchEvent(new s.dom.window.Event('input'));
+  assert.equal(scope.open,false);assert.equal(scope.querySelector('textarea'),null,'invalidated query cannot retain stale replay SQL');
+ }finally{s.close()}
+});
