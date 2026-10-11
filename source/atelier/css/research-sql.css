@@ -72,7 +72,7 @@
 .sql-noscript {font:12px/1.9 var(--chinese);color:var(--muted)}
 body.dark-mode .sql-lab {--sql-accent:#8ccfc2;--sql-soft:#17302d;--sql-wrong:#efa59b;--sql-good:#a1d6b0}
 @media(max-width:900px) {
-  .sql-lab {margin-top:28px}.sql-comparison {gap:16px}.sql-lab textarea,.sql-lab pre {font-size:13px;padding:16px 12px}.sql-query-panel>header {padding-inline:12px}
+  .sql-lab {margin-top:28px}.sql-comparison {grid-template-columns:minmax(0,1fr);gap:16px}.sql-lab textarea,.sql-lab pre {font-size:13px;padding:16px 12px}.sql-query-panel>header {padding-inline:12px}
 }
 @media(max-width:650px) {
   .room-research .research-scene {grid-template-columns:minmax(0,1fr) 123px;gap:20px;padding-bottom:20px}.room-research .research-focus {flex-wrap:wrap;gap:8px 20px;padding:12px 0}.research-topics {font-size:12px}.research-focus .room-status {font-size:11px}.research-focus .room-action {margin-left:auto}
@@ -100,6 +100,24 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-plan [data-sql-plan-output] {font:12px/1.8 var(--chinese);color:var(--muted)}
 
 @media(max-width:650px) {.sql-plan-table th:not(:last-child) {width:50px}.sql-plan-table td,.sql-plan-table th {padding-inline:6px}.sql-plan-table td:first-child,.sql-plan-table th:first-child {padding-left:0}}
+
+/* Session history stays folded until requested, beside the recorded experiment. */
+.sql-history-controls {display:flex;align-items:end;gap:20px;margin:12px 0}
+.sql-history-controls label {display:grid;gap:7px;min-width:0;flex:1;font:11px var(--chinese);color:var(--muted)}
+.sql-history-controls select {width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:12px var(--chinese)}
+.sql-history-controls select:focus-visible {outline:2px solid var(--sql-accent);outline-offset:4px}
+.sql-lab .sql-history pre {height:auto;max-height:190px;min-height:0;border-left:2px solid var(--line);background:color-mix(in srgb,var(--sql-soft) 25%,transparent)}
+@media(max-width:650px) {.sql-history-controls {align-items:stretch;flex-direction:column;gap:5px}.sql-history-controls button {align-self:start}}
+
+/* Fixed-dataset validation is opt-in and shares the existing worker budget. */
+.sql-suite {margin:0 0 22px;min-width:0}
+.sql-suite-output {overflow:auto;max-height:330px}
+.sql-suite-output:focus-visible {outline:2px solid var(--sql-accent);outline-offset:4px}
+.sql-suite-output table {min-width:540px;font:12px/1.7 var(--chinese)}
+.sql-suite-output caption {text-align:left;padding-block:12px;color:var(--muted)}
+.sql-suite-output th,.sql-suite-output td {padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:normal;overflow-wrap:anywhere}
+.sql-suite-output [data-state="error"] td,.sql-suite-output [data-state="different"] td {color:var(--ink)}
+.sql-suite [data-sql-suite-status] {font:12px/1.8 var(--chinese);color:var(--muted)}
 
 /* Research editorial opening. SQL controls and runtime remain independent. */
 .room-research .personal-research-opening {grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(30px,6vw,80px);align-items:center}

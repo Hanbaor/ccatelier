@@ -56,6 +56,13 @@ const sqlCases = [
       <input type="file" data-sql-file accept=".json,application/json" hidden aria-label="选择 SQL 草稿 JSON 文件">
     </div>
     <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
+    <details class="sql-insight sql-suite" data-sql-suite hidden>
+      <summary>跨数据集验证</summary>
+      <p>同一候选 SQL，依次检查本例全部固定数据集。比较值、重复次数与行顺序；全部一致也不代表 SQL 普遍等价。每个数据集限时 1.5 秒，最多 8 个，载入另计。</p>
+      <button type="button" class="sql-text-button" data-sql-suite-run>验证全部数据集</button>
+      <p data-sql-suite-status role="status" aria-live="polite" aria-atomic="true">仅在点击后运行；每个数据集限时 1.5 秒，最多 8 个，载入另计。</p>
+      <div class="sql-suite-output" data-sql-suite-output tabindex="0" role="region" aria-label="固定数据集验证结果，可横向滚动"></div>
+    </details>
     <% sqlCases.forEach((item,index) => { %>
     <article class="sql-case" id="sql-case-<%= item.id %>" data-sql-case="<%= item.id %>" aria-labelledby="sql-question-<%= item.id %>">
       <div class="sql-question"><span aria-hidden="true">0<%= index + 1 %></span><h3 id="sql-question-<%= item.id %>"><%= item.question %></h3></div>

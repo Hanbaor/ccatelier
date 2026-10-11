@@ -13,7 +13,8 @@ for(const prefix of ['/','/lab/'])test(`Notes defaults to an article index with 
  assert.equal(d.querySelector('.archive-options').open,false);
  assert.equal(d.querySelectorAll('.archive-options').length,1);
  assert.ok(!d.querySelector('#archive-q').closest('details'));
- for(const selector of ['[data-duration]','[data-tag]','#archive-sort','[data-view=graph]','.queue-open']) assert.ok(d.querySelector(selector).closest('.archive-options'));
+ for(const selector of ['[data-duration]','[data-tag]','#archive-sort']) assert.ok(d.querySelector(selector).closest('.archive-options'));
+ for(const selector of ['[data-view=graph]','.queue-open']) assert.ok(!d.querySelector(selector).closest('details'));
  assert.deepEqual([...d.querySelectorAll('[data-group]')].map(b=>b.dataset.group),['writing','hot100','all']);
  assert.equal(d.querySelectorAll('.archive-fallback .archive-record').length,9);
  assert.equal(d.querySelectorAll('.archive-fallback .record-top').length,0);

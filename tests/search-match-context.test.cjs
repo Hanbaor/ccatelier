@@ -113,3 +113,73 @@ test('older browsers without Segmenter retain bounded ASCII/CJK context and whol
  assert.deepEqual(searchResultText(enormous,'needle').excerpt,[]);
  assert.equal(plain(searchResultText(enormous,'needle').title),enormous.title);
 });
+
+test('excerpts find the later passage explaining all distinct query concepts',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ const entry={title:'Container notes',content:'reserve '.repeat(20)+'前'.repeat(100)+'reserve 与 emplace 共同影响 capacity。'+'后'.repeat(100)};
+ const result=searchResultText(entry,'reserve emplace capacity');
+ assert.deepEqual(marked(result.excerpt),['reserve','emplace','capacity']);
+ assert.match(plain(result.excerpt),/^…/);
+ assert.deepEqual(searchResultText(entry,'capacity reserve reserve emplace'),result);
+ assert.ok(Array.from(new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(plain(result.excerpt))).length<=72);
+});
+
+test('body-only evidence takes precedence over a dense repetition of title terms',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ const entry={title:'vector reserve capacity',content:'vector reserve capacity '.repeat(5)+'前'.repeat(100)+'emplace 是正文中的关键操作。'+'后'.repeat(100)};
+ const result=searchResultText(entry,'vector reserve capacity emplace');
+ assert.deepEqual(marked(result.excerpt),['emplace']);
+});
+
+test('a near-budget passage sacrifices leading context to preserve both full matches',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ const passage='alpha'+'中'.repeat(61)+'beta';
+ const entry={title:'Notes',content:'前'.repeat(100)+passage+'后'.repeat(100)};
+ const result=searchResultText(entry,'alpha beta');
+ assert.equal(plain(result.excerpt),'…'+passage+'…');
+ assert.deepEqual(marked(result.excerpt),['alpha','beta']);
+});
+
+test('equally useful passages retain earliest context, and overlapping terms stay complete',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ const entry={title:'Notes',content:'前'.repeat(100)+'FIRST banana beta'+'中'.repeat(100)+'SECOND banana beta'+'后'.repeat(100)};
+ const result=searchResultText(entry,'ana nana beta');
+ assert.match(plain(result.excerpt),/FIRST/);assert.doesNotMatch(plain(result.excerpt),/SECOND/);
+ assert.deepEqual(marked(result.excerpt),['anana','beta']);
+});
+
+test('dense repeated occurrences do not outweigh distinct concepts in Unicode passages',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ const entry={title:'Notes',content:'Ａ '.repeat(3000)+'前'.repeat(100)+'Ａ 👩🏽‍💻 Cafe\u0301'+'后'.repeat(100)};
+ const result=searchResultText(entry,'a 💻 café');
+ assert.deepEqual(marked(result.excerpt),['Ａ','👩🏽‍💻','Cafe\u0301']);
+ assert.ok(plain(result.excerpt).length<120);
+});
+
+test('seeded overlapping queries match an exhaustive bounded-window relevance oracle',async()=>{
+ const {searchResultText}=await import('../source/atelier/js/search-context.mjs');
+ let seed=0x51a7c0de;
+ const random=n=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed%n;};
+ const vocabulary=['a','aba','ba','ana','nana','banana','beta','alpha'];
+ for(let sample=0;sample<160;sample++){
+  const title=Array.from({length:random(4)},()=>vocabulary[random(vocabulary.length)]).join(' ');
+  const content=Array.from({length:10+random(12)},()=>random(3)?vocabulary[random(vocabulary.length)]:'x'.repeat(1+random(90))).join(' ');
+  const terms=[...new Set(Array.from({length:2+random(7)},()=>vocabulary[random(vocabulary.length)]))];
+  const entry={title,content},result=searchResultText(entry,terms.join(' '));
+  const excerpt=plain(result.excerpt).replace(/^…|…$/g,'');
+  const score=text=>{
+   const visible=terms.filter(term=>text.includes(term));
+   return [visible.filter(term=>!title.includes(term)).length,visible.length];
+  };
+  let expected=[-1,-1];
+  // Exhaustive only in this small deterministic test. Production must use the
+  // sorted sweep, not rescan every possible passage of a long article.
+  for(let start=0;start<=content.length;start++){
+   const candidate=score(content.slice(start,start+70));
+   if(candidate[0]>expected[0] || candidate[0]===expected[0] && candidate[1]>expected[1])expected=candidate;
+  }
+  assert.deepEqual(score(excerpt),expected,`sample ${sample}: ${terms.join(' ')}`);
+  assert.ok(excerpt.length<=70);
+  assert.deepEqual(searchResultText(entry,[...terms].reverse().concat(terms[0]).join(' ')),result,`query order, sample ${sample}`);
+ }
+});

@@ -22,10 +22,13 @@
       <div class="archive-group" role="group" aria-label="文章类型"><button type="button" data-group="writing">笔记</button><button type="button" data-group="hot100">Hot100</button><button type="button" data-group="all">全部</button></div>
       <form class="archive-search" role="search"><label class="sr-only" for="archive-q">搜索文章</label><div><input id="archive-q" type="search" maxlength="200" placeholder="搜索笔记" autocomplete="off"><kbd aria-hidden="true">/</kbd></div><button type="reset" hidden>清空筛选</button></form>
     </div>
-    <details class="archive-options"><summary>筛选与工具</summary><div class="archive-options-body">
-      <div class="archive-filters" aria-label="文章筛选"><label>阅读时长<select data-duration><option value="all">任意时长</option><option value="short">5 分钟以内</option><option value="medium">6–15 分钟</option><option value="long">15 分钟以上</option></select></label><label>主题<select data-tag><option value="">所有主题</option></select></label><div class="archive-filter-tags" aria-label="热门主题"></div></div>
-      <div class="archive-toolbar"><label for="archive-sort">排序<select id="archive-sort"><option value="newest">最近发布</option><option value="oldest">最早发布</option><option value="minutes">阅读时长</option><option value="title">按标题</option></select></label><div role="group" aria-label="浏览方式"><button type="button" data-view="grid" title="卡片" aria-label="卡片">卡片</button><button type="button" data-view="list" title="列表" aria-label="列表">列表</button><button type="button" data-view="graph" title="主题星图" aria-label="主题星图">星图</button></div><button type="button" class="queue-open archive-queue-link">阅读队列 <span data-queue-count>0</span></button></div>
-    </div></details>
+    <div class="archive-controls">
+      <details class="archive-options"><summary>筛选与排序</summary><div class="archive-options-body">
+        <div class="archive-filters" aria-label="文章筛选"><label>阅读时长<select data-duration><option value="all">任意时长</option><option value="short">5 分钟以内</option><option value="medium">6–15 分钟</option><option value="long">15 分钟以上</option></select></label><label>主题<select data-tag><option value="">所有主题</option></select></label><label for="archive-sort">排序<select id="archive-sort"><option value="newest">最近发布</option><option value="oldest">最早发布</option><option value="minutes">阅读时长</option><option value="title">按标题</option></select></label></div>
+        <div class="archive-filter-tags" aria-label="热门主题"></div>
+      </div></details>
+      <div class="archive-toolbar"><div role="group" aria-label="浏览方式"><button type="button" data-view="grid" title="卡片" aria-label="卡片">卡片</button><button type="button" data-view="list" title="列表" aria-label="列表">列表</button><button type="button" data-view="graph" title="主题星图" aria-label="主题星图">星图</button></div><button type="button" class="queue-open archive-queue-link">阅读队列 <span data-queue-count>0</span></button></div>
+    </div>
     <p class="archive-feedback sr-only" data-archive-count role="status" aria-live="polite">正在加载目录…</p>
     <div class="archive-layout"><div class="archive-main">
       <div data-archive-results class="archive-results"></div><button data-archive-more class="archive-more" hidden>查看更多</button>

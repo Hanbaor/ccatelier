@@ -77,20 +77,43 @@ function textParts(text, matches, start=0, end=text.length) {
   if(cursor<end)parts.push({text:text.slice(cursor,end),match:false});
   return parts;
 }
+function excerptStart(content, normalizedTitle) {
+  // A frequent word near the opening should not hide a later passage that
+  // explains several requested concepts. Count distinct terms, prioritizing
+  // evidence not already visible in the title, within the same 70-unit budget.
+  const matches=content.matches.filter(match=>match.last-match.first<=70);
+  if(!matches.length)return 0;
+  const starts=[...new Set(matches.flatMap(match=>[
+    Math.max(0,match.first-Math.min(12,70-(match.last-match.first))),match.first
+  ]))].sort((a,b)=>a-b);
+  const endings=[...matches].sort((a,b)=>a.last-b.last);
+  const counts=new Map();let added=0,removed=0,body=0,total=0;
+  let best=starts[0],bestBody=-1,bestTotal=-1;
+  function count(term,delta){
+    const before=counts.get(term)||0,after=before+delta;counts.set(term,after);
+    if(!before || !after){
+      const change=after ? 1 : -1;total+=change;
+      if(!normalizedTitle.includes(term))body+=change;
+    }
+  }
+  // Sweep both ends instead of rescanning every window. Repeated query words
+  // and repeated occurrences cannot inflate relevance or cause quadratic work.
+  for(const start of starts){
+    while(added<endings.length && endings[added].last<=start+70)count(endings[added++].term,1);
+    while(removed<matches.length && matches[removed].first<start)count(matches[removed++].term,-1);
+    if(body>bestBody || body===bestBody && total>bestTotal){best=start;bestBody=body;bestTotal=total;}
+  }
+  return best;
+}
 export function searchResultText(entry, query) {
   const terms=queryTerms(query),title=matchedText(entry.title || '未命名文章',terms);
   const content=matchedText(String(entry.content ?? '').replace(/\s+/g,' '),terms);
-  // Prefer evidence for a word not already visible in the title. The earliest
-  // such body match gives a stable excerpt even when query words are reordered.
-  const normalizedTitle=normalize(title.text);
-  const bodyOnly=content.matches.filter(match => !normalizedTitle.includes(match.term));
-  const anchor=bodyOnly[0] || content.matches[0];
-  const first=anchor ? Math.max(0,anchor.first-Math.min(12,Math.max(0,70-(anchor.last-anchor.first)))) : 0;
+  const first=excerptStart(content,normalize(title.text));
   const last=Math.min(content.boundaries.length-1,first+70);
   const start=content.boundaries[first],end=content.boundaries[last];
   // Never send an entire oversized token/grapheme to the one-line preview.
   // The result remains available by its title when safe context cannot fit.
-  const fits=(!anchor || anchor.last<=last) && end-start<=(segmenter ? 2048 : 280);
+  const fits=(!content.matches.length || content.matches.some(match=>match.first>=first && match.last<=last)) && end-start<=(segmenter ? 2048 : 280);
   const excerpt=terms.length && fits ? textParts(content.text,segmenter ? content.matches : [],start,end) : [];
   if(excerpt.length && start>0)excerpt.unshift({text:'…',match:false});
   if(excerpt.length && end<content.text.length)excerpt.push({text:'…',match:false});
