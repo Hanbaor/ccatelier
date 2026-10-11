@@ -87,6 +87,8 @@ node tests/fixture-build.cjs
 - MIDI 恢复边界：只恢复文件中的鼓点时序与 MIDI 力度，不能找回原静音 / 独奏状态、被静音的音符、音色与混音、导出前浮点力度，或区分原来的 16 步 × 2 轮与 32 步 × 1 轮；采用可表示完整时长的最短合法循环。未声明速度 / 拍号时按 MIDI 默认 120 BPM / 4/4 解释；没有奇数步鼓点时 swing 设为 0。音长 / 释放力度是唯一允许的有损转换，须明确确认后按本站鼓触发处理。
 - 导入状态：成功后停止播放，不自动播放或保存，可撤销 / 重做项目及 MIDI 导入带来的录制轮数变化。失败或取消不改变当前项目、轮数与播放；读取或确认期间的新文件选择、编辑、播放 / 停止 / 试听或导航会使旧导入失效，旧结果不能覆盖新操作。
 
+练习页支持将当前选区的连续 1–2 个完整小节送到 Studio 继续编排。先展示选区预览，再明确打开新标签页；保留鼓点位置、浮点力度、当前 60–180 BPM 与尾部休止，使用 Studio 默认音色和混音。超出范围、过长标题或无法表示的事件明确拒绝，不自动截取或改速。原练习保留，接收后不自动播放或保存到本机作品库；链接包含所选节奏。实现与边界见 `docs/design/practice-studio-bridge.md`，回归见 `tests/practice-studio.test.cjs` 和 `tests/practice-interaction.test.cjs`。
+
 实时播放保留已排入约 120 ms 预调度窗口的声音。调整参数时，下一个尚未调度的时刻不跳动；新的音符和循环长度从该步生效，速度与 swing 影响之后的步间隔。主线程长时间停顿后跳过错过的循环，不补播成一串鼓点；视觉指示跟随音频时钟并丢弃过期回调。该调度逻辑由 `tests/studio-transport.test.cjs` 的模拟时钟回归覆盖，不能代替真实设备听测。
 
 修改分享编码、鼓音映射或时间规则后，检查 `tests/studio-share.test.cjs`、`tests/studio-midi.test.cjs`、`tests/studio-midi-import.test.cjs`、`tests/studio-midi-import-ui.test.cjs`、`tests/studio-core.test.cjs`，并手动验证接收不发声、复制失败回退、导入确认 / 取消与撤销，以及音频导出。

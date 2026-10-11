@@ -161,3 +161,15 @@
 }
 .challenge-count {font:9px var(--sans);text-align:center;color:var(--muted);padding-bottom:4px}
 @media(max-width:600px) {.challenge-count {font-size:8px}}
+
+/* One progressive bridge beside the existing bar selection. */
+.practice-options [data-practice-studio] {margin-left:0;color:var(--yellow);min-height:44px;font-size:13px}
+.practice-studio-preview[hidden],.practice-studio-preview a[hidden] {display:none}
+.practice-studio-preview {display:flex;align-items:center;justify-content:space-between;gap:24px;border-left:2px solid var(--yellow);padding:14px 18px;margin:10px 0 22px;background:color-mix(in srgb,var(--yellow) 4%,transparent)}
+.practice-studio-preview>div:first-child {min-width:0}
+.practice-studio-preview p {margin:3px 0;font:13px/1.8 var(--chinese);color:var(--muted);overflow-wrap:anywhere}
+.practice-studio-preview [data-practice-studio-summary] {font-size:13px;color:var(--ink)}
+.practice-studio-actions {display:flex;align-items:center;gap:12px;flex-shrink:0}
+.practice-studio-actions a,.practice-studio-actions button {display:inline-flex;align-items:center;justify-content:center;min-height:44px;font:13px var(--chinese);padding:8px 12px;border:1px solid var(--line);border-radius:3px}
+.practice-studio-actions a {color:var(--yellow);border-color:var(--yellow)}
+@media(max-width:700px) {.practice-studio-preview {align-items:stretch;flex-direction:column;gap:10px;padding:12px}.practice-studio-actions {justify-content:flex-start;flex-wrap:wrap}}

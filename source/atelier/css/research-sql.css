@@ -37,7 +37,7 @@
 .sql-query-panel {min-width:0;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 50%,transparent);border-top:2px solid var(--sql-accent)}
 .sql-query-panel>header {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 17px;border-bottom:1px solid var(--line);min-height:51px}
 .sql-query-panel h4 {margin:0;font:500 13px var(--chinese)}
-.sql-lab .sql-text-button {min-height:36px;border:0;background:none;color:var(--sql-accent);font:11px var(--chinese);padding:8px 0;cursor:pointer;white-space:nowrap}
+.sql-lab .sql-text-button {min-height:36px;border:0;background:none;color:var(--sql-accent);font:13px var(--chinese);padding:8px 0;cursor:pointer;white-space:nowrap}
 .sql-lab .sql-text-button:hover {text-decoration:underline;text-underline-offset:4px}
 .sql-lab textarea,.sql-lab pre {display:block;width:100%;height:190px;margin:0;padding:18px 17px;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--ink);font:13px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:0;tab-size:2;text-align:left;white-space:pre;overflow:auto;resize:vertical;min-height:145px;max-height:360px}
 .sql-lab pre code {font:inherit;color:inherit;background:none;padding:0}
@@ -59,7 +59,7 @@
 .sql-lab details p {max-width:830px;font:12px/1.95 var(--chinese);color:var(--muted);margin:10px 0 3px}
 .sql-lab details a {color:var(--sql-accent);text-decoration:underline;text-underline-offset:4px}
 .sql-run-bar {display:flex;align-items:center;gap:20px;margin:0 0 24px;padding:16px 0;border-bottom:1px solid var(--line);min-height:47px}
-.sql-lab .sql-run {display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:46px;padding:12px 22px;color:var(--surface);background:var(--sql-accent);border:1px solid var(--sql-accent);font:500 12px var(--chinese);cursor:pointer;white-space:nowrap}
+.sql-lab .sql-run {display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:46px;padding:12px 22px;color:var(--surface);background:var(--sql-accent);border:1px solid var(--sql-accent);font:500 13px var(--chinese);cursor:pointer;white-space:nowrap}
 .sql-run>span {font-size:10px}
 .sql-lab .sql-run:hover {filter:brightness(1.12)}
 .sql-lab .sql-run:disabled {cursor:wait;opacity:.65}
@@ -123,7 +123,7 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-share-panel {margin:16px 0;padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--sql-accent);border-radius:3px;background:var(--sql-soft);font:13px/1.8 var(--chinese)}
 .sql-share-panel p {margin:0 0 10px}
 .sql-share-panel label {display:block}
-.sql-share-panel input {box-sizing:border-box;width:100%;min-height:44px;margin:7px 0;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--ink);font:12px/1.6 ui-monospace,monospace}
+.sql-share-panel input {box-sizing:border-box;width:100%;min-height:44px;margin:7px 0;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--ink);font:13px/1.6 ui-monospace,monospace}
 .sql-share-panel input:focus-visible {outline:2px solid var(--sql-accent);outline-offset:3px}
 .sql-lab .sql-share-panel pre {background:var(--surface);color:var(--ink);max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace}
 .sql-share-panel summary {min-height:44px;cursor:pointer}
@@ -134,9 +134,11 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-lab .sql-history-controls label,.sql-lab .sql-history-controls select,.sql-lab .sql-draft-tools {font-size:13px}
 @media(max-width:650px) {
  .sql-lab .sql-history-controls select,.sql-lab .sql-draft-tools select,.sql-lab .sql-share-panel input {font-size:16px;min-height:44px}
+ .sql-lab textarea[data-sql-editor]:not([readonly]) {font-size:16px}
 }
 
 .sql-lab .sql-text-button,.sql-lab .sql-draft-tools select,.sql-lab .sql-history-controls select {min-height:44px}
+.sql-lab button,.sql-lab .sql-text-button,.sql-lab .sql-run {font-size:13px}
 
 .sql-arrival {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 28px;padding:10px 16px;border:1px solid var(--line);border-radius:3px;color:var(--ink);font:13px/1.8 var(--chinese)}
 .sql-arrival[hidden] {display:none!important}

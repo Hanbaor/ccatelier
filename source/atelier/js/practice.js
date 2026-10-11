@@ -31,22 +31,25 @@ export function renderPracticeBar(bar,index){
  button.append(svg);return button;
 }
 
-export function initPractice({loadScoreExporter=()=>import('./practice-score-export.mjs')}={}){
+export function initPractice({loadScoreExporter=()=>import('./practice-score-export.mjs'),loadStudioBridge=()=>import('./practice-studio.mjs')}={}){
  const host=$('[data-practice]');if(!host)return;if(controllers.has(host))return controllers.get(host);
  const listeners=[],barListeners=[];let destroyed=false;
  const listen=(target,event,handler)=>{target.addEventListener(event,handler);listeners.push(()=>target.removeEventListener(event,handler));};
  const svgExport=$('[data-practice-export-svg]',host),sheet=$('[data-practice-sheet]',host),select=$('[data-practice-demo]',host),play=$('[data-practice-play]',host),status=$('[data-practice-status]',host),position=$('[data-practice-position]',host),from=$('[data-practice-start]',host),to=$('[data-practice-end]',host),bpm=$('[data-practice-bpm]',host),remove=$('[data-practice-remove-recording]',host),recordings=new Map(),audio=new LivehouseAudio();audio.setVolume(Number($('[data-practice-volume]',host).value)/100);
  let exportRequest=null,project=validatePractice(PRACTICE_DEMOS[0]),importedProject=null,startBar=0,endBar=project.bars.length-1,tempo=project.bpm,state='stopped',generation=0,timer=0,origin=0,next=-16,visuals=new Set(),active=-1;
+ const studioButton=$('[data-practice-studio]',host),studioPreview=$('[data-practice-studio-preview]',host),studioSummary=$('[data-practice-studio-summary]',host),studioLink=$('[data-practice-studio-link]',host);let studioRequest=null;
+ function cancelStudio(){studioRequest=null;studioButton.disabled=false;studioButton.setAttribute('aria-expanded','false');studioPreview.hidden=true;studioLink.removeAttribute('href');studioLink.hidden=true;studioSummary.textContent='';}
  const say=text=>{status.textContent=text;};
  const challenge=initPracticeChallenge({host,listen,start:()=>start(true),stop,elapsed:event=>((challengeInputTime(event?.timeStamp,performance.now(),performance.timeOrigin)-origin)/1000)-4*60/tempo,sound:type=>audio.hit(type,.75)});
  const configureChallenge=()=>challenge.configure(project,tempo,startBar,endBar);
  function clearVisuals(){visuals.forEach(clearTimeout);visuals.clear();$$('.practice-measure',sheet).forEach(b=>b.classList.remove('is-current'));$$('.practice-beats i',host).forEach(b=>b.classList.remove('active'));active=-1;}
- function stop(message='已停止；谱面和选区保留。'){if(exportRequest){exportRequest=null;svgExport.disabled=false;}generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';challenge.cancel();play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
+ function stop(message='已停止；谱面和选区保留。',keepStudio=false){if(!keepStudio)cancelStudio();if(exportRequest){exportRequest=null;svgExport.disabled=false;}generation++;clearInterval(timer);timer=0;audio.stop();state='stopped';challenge.cancel();play.setAttribute('aria-pressed','false');play.textContent='开始跟练';clearVisuals();position.textContent='准备';if(message)say(message);}
  function paintRange(){
   from.value=String(startBar);to.value=String(endBar);
   $$('[data-practice-bar]',sheet).forEach(b=>{const n=Number(b.dataset.practiceBar);b.classList.toggle('is-outside',n<startBar||n>endBar);b.setAttribute('aria-pressed',String(n===startBar));});configureChallenge();
  }
  function render(){
+  cancelStudio();
   remove.hidden=!select.value.startsWith('recording:');
   $('[data-practice-title]',host).textContent=project.title;$('[data-practice-description]',host).textContent=project.description;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);
   barListeners.splice(0).forEach(remove=>remove());sheet.replaceChildren();from.replaceChildren();to.replaceChildren();project.bars.forEach((bar,index)=>{
@@ -68,6 +71,7 @@ export function initPractice({loadScoreExporter=()=>import('./practice-score-exp
  async function start(isChallenge=false){
   if(destroyed||document.hidden||(isChallenge&&$('dialog[open]')))return;
   if(state!=='stopped'){const switching=isChallenge&&!challenge.busy();stop();if(!switching)return;}
+  cancelStudio();
   if(isChallenge&&!challenge.prepare())return;
   document.dispatchEvent(new CustomEvent('atelier:practice-start'));
   state='starting';const token=++generation;play.textContent='准备中…';play.setAttribute('aria-pressed','true');
@@ -122,6 +126,24 @@ export function initPractice({loadScoreExporter=()=>import('./practice-score-exp
  listen(from,'change',()=>{stop();startBar=Number(from.value);endBar=Math.max(startBar,endBar);paintRange();});listen(to,'change',()=>{stop();endBar=Number(to.value);startBar=Math.min(startBar,endBar);paintRange();});
  listen($('[data-practice-loop]',host),'change',()=>stop('循环设置已更新。'));
  listen($('[data-practice-reset]',host),'click',()=>{stop('已恢复原速。');tempo=project.bpm;bpm.value=String(tempo);$('[data-practice-bpm-label]',host).textContent=String(tempo);configureChallenge();});
+ listen(studioButton,'click',async()=>{
+  if(destroyed||document.hidden||studioRequest)return;
+  cancelStudio();const request={source:validatePractice(project),startBar,endBar,tempo};studioRequest=request;studioButton.disabled=true;studioButton.setAttribute('aria-expanded','true');studioPreview.hidden=false;studioSummary.textContent='正在准备选区预览…';
+  try{
+   const {practiceToStudio,practiceStudioURL}=await loadStudioBridge();
+   if(destroyed||studioRequest!==request||document.hidden)return;
+   const converted=practiceToStudio(request.source,request.startBar,request.endBar,request.tempo);
+   const href=practiceStudioURL(converted,studioButton.dataset.studioDestination,window.location.href);
+   studioSummary.textContent=request.source.title+' · 第 '+(request.startBar+1)+'–'+(request.endBar+1)+' 小节 · '+converted.bpm+' BPM · '+converted.steps+' 格';
+   studioLink.href=href;studioLink.hidden=false;
+  }catch(error){if(!destroyed&&studioRequest===request)studioSummary.textContent=error.message||'未能准备编排；请重试，原练习保留。';}
+  finally{if(studioRequest===request){studioRequest=null;studioButton.disabled=false;}}
+ });
+ const closeStudio=()=>{cancelStudio();studioButton.focus();};
+ listen($('[data-practice-studio-close]',host),'click',closeStudio);
+ listen(studioPreview,'keydown',event=>{if(event.key==='Escape'&&!event.isComposing&&!studioPreview.hidden&&studioPreview.contains(document.activeElement)){event.preventDefault();event.stopPropagation();closeStudio();}});
+ const leaveForStudio=event=>{if((event.type==='click'||event.button===1)&&studioLink.hasAttribute('href'))stop('已停止；原练习保留，编排在新标签页打开。',true);};
+ listen(studioLink,'click',leaveForStudio);listen(studioLink,'auxclick',leaveForStudio);
  listen($('[data-practice-export]',host),'click',()=>download('cc-original-drum-practice.json',JSON.stringify({...project,bpm:tempo},null,2)));
  listen(svgExport,'click',async()=>{
   if(destroyed||exportRequest)return;
@@ -148,7 +170,7 @@ export function initPractice({loadScoreExporter=()=>import('./practice-score-exp
  // It also invalidates an in-flight import or audio enable before it can finish.
  listen(document,'atelier:dialog-open',()=>stop('已暂停；可随时回到谱面继续。'));
  listen(document,'atelier:recording-ready',event=>{if(receiveRecording(event.detail?.id))event.preventDefault();});
- listen(document,'click',event=>{if(state!=='stopped'&&event.target.closest('[data-practice-import]'))stop('已暂停；可随时回到谱面继续。');});
+ listen(document,'click',event=>{if(event.target.closest('[data-practice-import]'))stop('已暂停；可随时回到谱面继续。');});
  listen(document,'visibilitychange',()=>{if(document.hidden)stop('已暂停，点击开始继续练习。');});listen(window,'pagehide',()=>stop(''));listen(document,'atelier:livehouse-open',()=>stop(''));listen(document,'atelier:studio-start',()=>stop(''));
  const controller={destroy(){if(destroyed)return;destroyed=true;stop('');listeners.splice(0).forEach(remove=>remove());barListeners.splice(0).forEach(remove=>remove());controllers.delete(host);}};
  controllers.set(host,controller);render();const requested=new URL(window.location.href).searchParams.get('recording');if(requested)receiveRecording(requested);$('.practice-app',host).hidden=false;return controller;

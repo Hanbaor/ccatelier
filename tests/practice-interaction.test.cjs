@@ -13,7 +13,7 @@ const originalScore = (overrides = {}) => ({
 
 // The production initializer reads browser globals. Every fixture restores their
 // original descriptors and owns its fake clock, audio contexts and downloads.
-async function practice(t, {deferredAudio = false, audioAvailable = true, recordings = [], loadScoreExporter, url = 'https://ccatelier.test/studio/practice/'} = {}) {
+async function practice(t, {deferredAudio = false, audioAvailable = true, recordings = [], loadScoreExporter, loadStudioBridge, url = 'https://ccatelier.test/studio/practice/'} = {}) {
   const dom = new JSDOM(fs.readFileSync(path.join(__dirname, '../public/studio/practice/index.html'), 'utf8'), {
     url,
   });
@@ -107,7 +107,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true, record
   const {initDialogs, openDialog} = await import('../source/atelier/js/ui.js');
   initDialogs();
   const {initPractice} = await import('../source/atelier/js/practice.js');
-  const controller = initPractice({loadScoreExporter});
+  const controller = initPractice({loadScoreExporter,loadStudioBridge});
   t.after(() => controller.destroy());
   const host = document.querySelector('[data-practice]');
   assert.ok(host, 'the generated practice page contains the application');
@@ -879,4 +879,65 @@ for(const mode of ['choose','reinitialize'])test('a stale SVG completion after a
  button.click();const module=await import('../source/atelier/js/practice-score-export.mjs');pending[1](module);await settle();assert.equal(f.downloads.length,1);assert.equal(button.disabled,false);
  button.click();pending[0](module);await settle();assert.equal(button.disabled,true);assert.equal(f.downloads.length,1);
  pending[2](module);await settle();assert.equal(f.downloads.length,2);assert.equal(button.disabled,false);f.advance(30000);
+});
+
+test('Studio bridge is click-lazy, previews exact selected bars/current fractional tempo without saving or autoplay',async t=>{
+ let calls=0;const f=await practice(t,{loadStudioBridge:()=>{calls++;return import('../source/atelier/js/practice-studio.mjs');}}),button=f.find('[data-practice-studio]'),preview=f.find('[data-practice-studio-preview]'),link=f.find('[data-practice-studio-link]');
+ assert.equal(calls,0);assert.equal(preview.hidden,true);assert.equal(link.hasAttribute('href'),false);
+ await f.importScore(originalScore());f.change(f.bpm,123.4567,'input');f.change(f.from,1);
+ const before=f.find('[data-practice-sheet]').innerHTML,storage=Object.keys(f.window.localStorage).map(k=>[k,f.window.localStorage.getItem(k)]);
+ button.click();await settle();assert.equal(calls,1);assert.equal(preview.hidden,false);assert.equal(link.hidden,false);assert.equal(button.getAttribute('aria-expanded'),'true');
+ const {decodeShare}=await import('../source/atelier/js/studio-share.mjs'),p=decodeShare(new URL(link.href).hash);assert.equal(p.steps,16);assert.equal(p.bpm,123.4567);assert.ok(p.tracks.every(track=>track.steps.every(v=>v===0)));
+ assert.match(f.find('[data-practice-studio-summary]').textContent,/第 2–2 小节.*123.4567 BPM.*16 格/);assert.match(preview.textContent,/音色会不同/);assert.match(preview.textContent,/链接包含所选节奏/);assert.match(preview.textContent,/不会自动存入项目库/);assert.equal(link.target,'_blank');assert.match(link.rel,/noopener/);assert.equal(new URL(link.href).pathname,'/studio/');assert.equal(f.contexts.length,0);assert.equal(f.downloads.length,0);assert.equal(f.find('[data-practice-sheet]').innerHTML,before);assert.deepEqual(Object.keys(f.window.localStorage).map(k=>[k,f.window.localStorage.getItem(k)]),storage);
+ f.find('[data-practice-studio-close]').click();assert.equal(preview.hidden,true);assert.equal(link.hasAttribute('href'),false);assert.equal(f.document.activeElement,button);f.tick(0);
+});
+
+for(const [label,cancel] of [
+ ['selection',f=>f.change(f.to,0)],['tempo',f=>f.change(f.bpm,110,'input')],['practice',f=>f.change(f.demo,f.demo.options[1].value)],['import intent',f=>f.find('[data-practice-import]').click()],['import',f=>f.importFile({size:20,text:async()=>JSON.stringify(originalScore())})],['hidden',f=>f.visibility(true)],['pagehide',f=>f.hidePage()],['close',f=>f.find('[data-practice-studio-close]').click()],['destroy',f=>f.controller.destroy()],['play intent',f=>f.play.click()],['dialog',f=>f.openDialog('search-dialog')],
+])test('late Studio preview is discarded after '+label,async t=>{
+ let resolve;const f=await practice(t,{loadStudioBridge:()=>new Promise(done=>{resolve=done;})});f.change(f.to,1);const button=f.find('[data-practice-studio]');button.click();button.click();assert.equal(button.disabled,true);cancel(f);const status=f.status.textContent;
+ resolve(await import('../source/atelier/js/practice-studio.mjs'));await settle();assert.equal(f.find('[data-practice-studio-preview]').hidden,true);assert.equal(f.find('[data-practice-studio-link]').hasAttribute('href'),false);assert.equal(button.disabled,false);if(label!=='import'&&label!=='play intent')assert.equal(f.status.textContent,status);f.stop();f.tick(0);
+});
+
+test('old bridge load cannot replace or unlock a newer preview; load failures permit retry',async t=>{
+ const pending=[];const f=await practice(t,{loadStudioBridge:()=>new Promise((resolve,reject)=>pending.push({resolve,reject}))}),button=f.find('[data-practice-studio]');f.change(f.to,1);button.click();f.change(f.to,0);button.click();
+ const module=await import('../source/atelier/js/practice-studio.mjs');pending[0].resolve(module);await settle();assert.equal(button.disabled,true);assert.equal(f.find('[data-practice-studio-link]').hidden,true);
+ pending[1].reject(Error('离线时暂未缓存转换模块，请联网重试。'));await settle();assert.equal(button.disabled,false);assert.match(f.find('[data-practice-studio-summary]').textContent,/重试/);button.click();pending[2].resolve(module);await settle();assert.equal(button.disabled,false);assert.match(f.find('[data-practice-studio-summary]').textContent,/16 格/);
+});
+
+for(const mode of ['follow','challenge'])test('native Studio transition stops '+mode+' playback but retains selected score and link',async t=>{
+ const f=await practice(t);if(mode==='challenge')await startChallenge(f);else{await f.importScore(originalScore());await f.start();}f.advance(2100);
+ f.find('[data-practice-studio]').click();await settle();const link=f.find('[data-practice-studio-link]'),href=link.href,title=f.find('[data-practice-title]').textContent;
+ // Cancel only in the fixture, after the app sees the native activation.
+ link.addEventListener('click',event=>event.preventDefault());link.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,cancelable:true}));
+ f.assertStopped();assert.equal(link.href,href);assert.equal(f.find('[data-practice-title]').textContent,title);assert.equal(f.from.value,'0');assert.equal(f.to.value,'1');assert.equal(f.window.localStorage.getItem('cc-practice-best-v1'),null);
+});
+
+test('invalid bridge selections and tempo produce clear inline recovery without changing the score',async t=>{
+ const f=await practice(t),button=f.find('[data-practice-studio]'),summary=f.find('[data-practice-studio-summary]'),link=f.find('[data-practice-studio-link]');const before=f.find('[data-practice-sheet]').innerHTML;
+ button.click();await settle();assert.match(summary.textContent,/1–2/);assert.equal(link.hasAttribute('href'),false);assert.equal(f.find('[data-practice-sheet]').innerHTML,before);
+ f.change(f.to,1);f.change(f.bpm,200,'input');button.click();await settle();assert.match(summary.textContent,/60–180/);assert.equal(f.bpm.value,'200');assert.equal(link.hasAttribute('href'),false);
+ await f.importScore(originalScore({title:'x'.repeat(61)}));button.click();await settle();assert.match(summary.textContent,/60 字符/);assert.equal(f.find('[data-practice-title]').textContent,'x'.repeat(61));
+ await f.importScore(originalScore({title:'<img src=x onerror=alert(1)>',bars:[{hits:[]}]}));button.click();await settle();assert.equal(summary.querySelector('img'),null);assert.match(summary.textContent,/<img/);assert.equal(link.hidden,false);
+ f.change(f.to,0);assert.equal(link.hasAttribute('href'),false);
+});
+
+test('an import finishing after a preview was requested clears the old selection link',async t=>{
+ let resolve;const f=await practice(t);f.change(f.to,1);f.importFile({size:100,text:()=>new Promise(done=>{resolve=done;})});
+ f.find('[data-practice-studio]').click();await settle();assert.equal(f.find('[data-practice-studio-link]').hidden,false);
+ resolve(JSON.stringify(originalScore({title:'新导入'})));await settle();assert.equal(f.find('[data-practice-title]').textContent,'新导入');assert.equal(f.find('[data-practice-studio-preview]').hidden,true);assert.equal(f.find('[data-practice-studio-link]').hasAttribute('href'),false);
+});
+
+
+test('Studio preview Escape is local to preview focus and returns focus to its trigger',async t=>{
+ const f=await practice(t),trigger=f.find('[data-practice-studio]'),preview=f.find('[data-practice-studio-preview]'),close=f.find('[data-practice-studio-close]');f.change(f.to,1);trigger.click();await settle();
+ f.bpm.focus();key(f,'Escape');assert.equal(preview.hidden,false);assert.equal(f.document.activeElement,f.bpm);
+ // A synthetic bubbling key event without focus in this panel also cannot dismiss it.
+ close.dispatchEvent(new f.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(preview.hidden,false);
+ close.focus();key(f,'Escape',{isComposing:true});assert.equal(preview.hidden,false);key(f,'Escape');assert.equal(preview.hidden,true);assert.equal(trigger.getAttribute('aria-expanded'),'false');assert.equal(f.document.activeElement,trigger);assert.equal(f.find('[data-practice-studio-link]').hasAttribute('href'),false);f.tick(0);
+});
+
+test('Escape from a loading Studio preview cancels late completion and preserves focus',async t=>{
+ let resolve;const f=await practice(t,{loadStudioBridge:()=>new Promise(done=>{resolve=done;})}),trigger=f.find('[data-practice-studio]');f.change(f.to,1);trigger.click();f.find('[data-practice-studio-close]').focus();key(f,'Escape');assert.equal(trigger.disabled,false);assert.equal(f.document.activeElement,trigger);
+ resolve(await import('../source/atelier/js/practice-studio.mjs'));await settle();assert.equal(f.find('[data-practice-studio-preview]').hidden,true);assert.equal(f.find('[data-practice-studio-link]').hasAttribute('href'),false);assert.equal(f.document.activeElement,trigger);f.tick(0);
 });

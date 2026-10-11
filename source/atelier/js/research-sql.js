@@ -479,7 +479,12 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   host.querySelector('[data-sql-export]')?.addEventListener('click', exportDraft);
   host.querySelector('[data-sql-share]')?.addEventListener('click',shareDraft);
   shareCopy?.addEventListener('click',copyShare);
-  host.querySelector('[data-sql-share-close]')?.addEventListener('click',()=>{ closeShare(); host.querySelector('[data-sql-share]')?.focus({preventScroll:true}); });
+  function closeShareExplicitly() { closeShare(); host.querySelector('[data-sql-share]')?.focus({preventScroll:true}); }
+  host.querySelector('[data-sql-share-close]')?.addEventListener('click',closeShareExplicitly);
+  sharePanel?.addEventListener('keydown',event=>{
+    if (event.key!=='Escape' || event.isComposing || event.defaultPrevented || sharePanel.hidden || !sharePanel.contains(doc.activeElement)) return;
+    event.preventDefault(); event.stopPropagation(); closeShareExplicitly();
+  });
   arrival?.querySelector('[data-sql-arrival-view]').addEventListener('click',()=>{
     if (!incoming || incoming.hidden || doc.hidden) return;
     incoming.scrollIntoView?.({block:'start',behavior:'instant'}); incoming.focus({preventScroll:true});

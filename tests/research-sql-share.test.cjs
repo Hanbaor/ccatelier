@@ -275,3 +275,51 @@ test('explicit Close and Ignore restore keyboard focus without scroll; passive d
   assert.equal(focusOptions.length,2);
  }finally{s.close()}
 });
+
+test('Escape dismisses only the focused inline share panel and returns focus without stealing global keyboard intent',async()=>{
+ const s=await setup();
+ try{
+  const panel=s.$('[data-sql-share-panel]'),trigger=s.$('[data-sql-share]');let options,globalEscapes=0;
+  const focus=trigger.focus.bind(trigger);trigger.focus=value=>{options=value;focus(value)};
+  s.doc.addEventListener('keydown',event=>{if(event.key==='Escape')globalEscapes++});
+  const key=(node,extra={})=>{const event=new s.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true,...extra});node.dispatchEvent(event);return event};
+  trigger.click();await flush();assert.equal(s.doc.activeElement,s.$('[data-sql-share-url]'));
+  assert.equal(key(s.doc.activeElement,{isComposing:true}).defaultPrevented,false);assert.equal(panel.hidden,false);
+  const ignored=new s.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true});ignored.preventDefault();panel.dispatchEvent(ignored);assert.equal(panel.hidden,false);
+  const baseline=globalEscapes;
+  assert.equal(key(s.doc.activeElement).defaultPrevented,true);assert.equal(panel.hidden,true);assert.equal(s.doc.activeElement,trigger);assert.deepEqual(options,{preventScroll:true});assert.equal(globalEscapes,baseline);
+  trigger.click();await flush();s.editor().focus();
+  assert.equal(key(s.editor()).defaultPrevented,false);assert.equal(panel.hidden,false);assert.equal(s.doc.activeElement,s.editor());assert.equal(globalEscapes,baseline+1);
+  assert.equal(key(panel).defaultPrevented,false);assert.equal(panel.hidden,false);assert.equal(s.doc.activeElement,s.editor());
+  s.$('[data-sql-share-close]').focus();assert.equal(key(s.doc.activeElement).defaultPrevented,true);assert.equal(panel.hidden,true);assert.equal(s.doc.activeElement,trigger);
+  assert.equal(key(panel).defaultPrevented,false);assert.equal(s.doc.activeElement,trigger);
+ }finally{s.close()}
+});
+
+test('SQL action fonts and URL stay readable on desktop and mobile, with mobile editable SQL at 16px',async()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../source/atelier/css/research-sql.css'),'utf8');
+ for(const width of [1280,390]){
+  const s=await setup();
+  try{
+   const sheet=s.doc.createElement('style');sheet.textContent=css;s.doc.head.append(sheet);
+   // jsdom lacks viewport media evaluation. Flatten matching real media rules
+   // in their original position, preserving the stylesheet's selector cascade.
+   const flatten=rules=>Array.from(rules).map(rule=>{
+    if(rule.type!==s.dom.window.CSSRule.MEDIA_RULE)return rule.cssText.replace(/font:\s*([^;]+);/g,(declaration,value)=>{
+     // jsdom incorrectly lets a font shorthand beat a later font-size. Expand
+     // valid shorthands to equivalent longhands before the real DOM cascade.
+     const probe=s.doc.createElement('span');probe.style.font=value;
+     if(!probe.style.fontSize)return declaration;
+     return ['font-style','font-variant','font-weight','font-stretch','font-size','line-height','font-family'].map(name=>probe.style.getPropertyValue(name)?`${name}:${probe.style.getPropertyValue(name)};`:'').join('');
+    });
+    const max=rule.conditionText.match(/^\(max-width:\s*(\d+)px\)$/);
+    return max&&width<=Number(max[1])?flatten(rule.cssRules):'';
+   }).join('\n');
+   const resolved=flatten(sheet.sheet.cssRules);sheet.textContent=resolved;
+   s.controller.run();s.requests[0].resolve({...((await core).SQL_CASES[0].expected),truncated:false});await flush();
+   for(const node of s.doc.querySelectorAll('[data-sql-lab] button'))assert.ok(parseFloat(s.dom.window.getComputedStyle(node).fontSize)>=13,`${width}px: ${node.textContent}`);
+   assert.ok(parseFloat(s.dom.window.getComputedStyle(s.$('[data-sql-share-url]')).fontSize)>=(width<=650?16:13),`${width}px URL font: ${s.dom.window.getComputedStyle(s.$('[data-sql-share-url]')).fontSize}`);
+   assert.equal(parseFloat(s.dom.window.getComputedStyle(s.editor()).fontSize),width<=650?16:13);
+  }finally{s.close()}
+ }
+});
