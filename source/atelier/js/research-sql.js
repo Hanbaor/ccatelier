@@ -1,5 +1,5 @@
 import {SQL_CASES, getSqlCase, getSqlDataset, listSqlDatasets, validateQuery, compareResults} from './research-sql-core.mjs';
-import {SQL_SNAPSHOT_LIMIT, createSqlSnapshot, serializeSqlSnapshot, parseSqlSnapshot} from './research-sql-snapshot.mjs';
+import {SQL_SNAPSHOT_LIMIT, createSqlSnapshot, serializeSqlSnapshot, parseSqlSnapshot, validateSqlSnapshot} from './research-sql-snapshot.mjs';
 
 // The main thread controls the wall-clock deadline. A busy synchronous SQLite
 // worker cannot service its own timer, so timeout means termination, not a message.
@@ -80,6 +80,70 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   const datasetSelect = host.querySelector('[data-sql-dataset]');
   const fileInput = host.querySelector('[data-sql-file]');
   const restoreButton = host.querySelector('[data-sql-restore-draft]');
+  const sharePanel=host.querySelector('[data-sql-share-panel]'), shareURL=host.querySelector('[data-sql-share-url]');
+  const shareStatus=host.querySelector('[data-sql-share-status]'), shareCopy=host.querySelector('[data-sql-share-copy]');
+  const arrival=host.closest('.room-research')?.querySelector('[data-sql-arrival]');
+  function showIncoming(value) { if (incoming) incoming.hidden=!value; if (arrival) arrival.hidden=!value; }
+  const incoming=host.querySelector('[data-sql-incoming]'), incomingInfo=host.querySelector('[data-sql-incoming-info]');
+  let sharePromise, shareTicket=0, arrivalTicket=0, staged=null, dismissedHash=null;
+  const loadShare=()=>sharePromise ||= import('./research-sql-share.mjs').catch(error=>{sharePromise=null;throw error;});
+  function closeShare() {
+    shareTicket++;
+    if (sharePanel) { sharePanel.hidden=true; shareURL.value=''; shareStatus.textContent=''; shareCopy.disabled=false; }
+  }
+  function dismissIncoming() {
+    arrivalTicket++; staged=null; dismissedHash=win.location.hash;
+    if (incoming) { showIncoming(false); incoming.querySelector('[data-sql-incoming-sql]').textContent=''; }
+  }
+  async function stageIncoming() {
+    if (!incoming) return;
+    const hash=win.location.hash,current=++arrivalTicket;
+    staged=null; showIncoming(false); incoming.querySelector('[data-sql-incoming-sql]').textContent='';
+    incoming.querySelector('[data-sql-incoming-preview]').open=false;
+    if (!hash.startsWith('#sql=') || hash===dismissedHash || doc.hidden) return;
+    try {
+      const module=await loadShare();
+      if (current!==arrivalTicket || hash!==win.location.hash || doc.hidden) return;
+      const saved=module.decodeSqlShare(hash);
+      staged={saved,hash}; showIncoming(true);
+      if (arrival) arrival.querySelector('[data-sql-arrival-info]').textContent='收到一个 SQL 实验链接，尚未载入。';
+      incoming.querySelector('[data-sql-incoming-load]').hidden=false;
+      incoming.querySelector('[data-sql-incoming-preview]').hidden=false;
+      incomingInfo.textContent=`收到实验输入：${getSqlCase(saved.caseId).label} · ${listSqlDatasets(saved.caseId).find(item=>item.id===saved.datasetId).label} · SQL ${saved.sql.length} 字符。当前草稿尚未改变。`;
+      incoming.querySelector('[data-sql-incoming-sql]').textContent=saved.sql;
+    } catch(error) {
+      if (current!==arrivalTicket || hash!==win.location.hash || doc.hidden) return;
+      showIncoming(true);
+      if (arrival) arrival.querySelector('[data-sql-arrival-info]').textContent='这个实验链接无法读取，当前草稿未改变。';
+      incomingInfo.textContent=error.message || '无法读取实验链接；当前草稿未改变。';
+      incoming.querySelector('[data-sql-incoming-load]').hidden=true;
+      incoming.querySelector('[data-sql-incoming-preview]').hidden=true;
+    }
+  }
+  async function shareDraft() {
+    if (!sharePanel || doc.hidden) return;
+    closeShare(); importTicket++;
+    const current=shareTicket;
+    try {
+      const snapshot=createSqlSnapshot(active,datasets.get(active),editor().value);
+      const module=await loadShare();
+      if (current!==shareTicket || doc.hidden) return;
+      shareURL.value=module.createSqlShareURL(snapshot,win.location.href,win.location.href);
+      sharePanel.hidden=false; shareStatus.textContent='链接已生成，尚未复制。'; shareURL.focus(); shareURL.select();
+    } catch(error) { if (current===shareTicket) { sharePanel.hidden=false; shareStatus.textContent=error.message || '无法生成实验链接。'; shareCopy.disabled=true; } }
+  }
+  async function copyShare() {
+    if (!sharePanel || sharePanel.hidden || !shareURL.value || doc.hidden || shareCopy.disabled) return;
+    const current=shareTicket,url=shareURL.value;
+    shareCopy.disabled=true;
+    try {
+      if (!win.navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await win.navigator.clipboard.writeText(url);
+      if (current===shareTicket && !doc.hidden && !sharePanel.hidden) shareStatus.textContent='实验链接已复制。';
+    } catch {
+      if (current===shareTicket && !doc.hidden && !sharePanel.hidden) { shareStatus.textContent='未能复制；请选中上方链接手动复制。'; shareURL.focus(); shareURL.select(); }
+    } finally { if (current===shareTicket) shareCopy.disabled=false; }
+  }
   const fixture = () => getSqlDataset(active,datasets.get(active));
   const panel = () => panels.find(node => node.dataset.sqlCase === active);
   const editor = () => panel().querySelector('[data-sql-editor]');
@@ -103,7 +167,8 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     });
   }
   function cancel(release=false, preserveSuite=false) {
-    if (suite && !preserveSuite) { suiteOutput.replaceChildren(); suiteStatus.textContent=suiteBusy ? '已停止；未完成的验证已清除。' : '查询或上下文改变后，请重新验证。'; }
+    closeShare();
+    if (suite && !preserveSuite) { suiteOutput.replaceChildren(); suiteStatus.textContent=suiteBusy ? '已停止；未完成的验证已清除。' : '点击后验证当前 SQL。'; }
     suiteBusy=false;
     if (suiteButton) suiteButton.disabled=false;
     if (minimizeBusy) { minimizeBusy.querySelector('[data-sql-minimize-status]').textContent='已停止，未得到新的验证结果。'; minimizeBusy=null; }
@@ -159,8 +224,19 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     saved.drafts.forEach(item => { datasets.set(item.caseId,item.datasetId); panels.find(node => node.dataset.sqlCase===item.caseId).querySelector('[data-sql-editor]').value=item.sql; });
     select(saved.active); panels.forEach(node => clearResult(node));
   }
+  function applySnapshot(value,kind='import') {
+    // Validate before any mutation; imports and staged links share one transaction.
+    const saved=validateSqlSnapshot(value), previous=captureDrafts();
+    cancel(true); recovery=previous;
+    datasets.set(saved.caseId,saved.datasetId); select(saved.caseId); editor().value=saved.sql;
+    panels.forEach(node=>clearResult(node));
+    if (restoreButton) { restoreButton.hidden=false; restoreButton.textContent=kind==='link' ? '恢复载入前草稿' : '恢复导入前草稿'; }
+    message(kind==='link' ? '已载入实验输入，尚未运行。原草稿可恢复。' : '已导入，尚未运行。原草稿可恢复。');
+    editor().focus();
+  }
   async function importFile(file) {
     if (!file) return;
+    closeShare();
     if (suiteBusy || suiteOutput?.childElementCount) cancel();
     const current=++importTicket;
     try {
@@ -170,13 +246,11 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       });
       if (current !== importTicket) return;
       const saved=parseSqlSnapshot(text);
-      recovery=captureDrafts();
-      datasets.set(saved.caseId,saved.datasetId); select(saved.caseId); editor().value=saved.sql;
-      if (restoreButton) { restoreButton.hidden=false; restoreButton.textContent='恢复导入前草稿'; }
-      message('已导入，尚未运行。原草稿可恢复。'); editor().focus();
+      applySnapshot(saved);
     } catch (error) { if (current === importTicket) message(error.message || '无法导入草稿。','error'); }
   }
   function exportDraft() {
+    closeShare();
     let url;
     try {
       const text=serializeSqlSnapshot(createSqlSnapshot(active,datasets.get(active),editor().value));
@@ -251,7 +325,11 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
       if (!isCurrent() || !results) return;
       const matches=results.filter(row=>row.state==='match').length;
       const inconclusive=results.filter(row=>['error','limited'].includes(row.state)).length;
-      suiteStatus.textContent=`验证完成：${matches} / ${results.length} 个数据集结果一致；${results.length-matches-inconclusive} 个不同，${inconclusive} 个因错误或截断未判断。此结论只适用于本次 SQL 与这些固定数据，不是普遍等价证明。`;
+      const different=results.length-matches-inconclusive;
+      const counts=[`${matches} / ${results.length} 结果一致`];
+      if (different) counts.push(`${different} 个不同`);
+      if (inconclusive) counts.push(`${inconclusive} 个因错误或截断未判断`);
+      suiteStatus.textContent=`${counts.join('，')}。仅限当前 SQL 与固定样例，不是普遍等价证明。`;
       message('跨数据集验证完成；可选择数据集继续调查。');
     } catch (error) {
       if (isCurrent() && !error.cancelled) { suiteStatus.textContent=error.message || '验证未完成，请重试。'; message('跨数据集验证未完成。','error'); }
@@ -287,6 +365,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   async function loadPlan(node) {
     const details=node.querySelector('[data-sql-plan]'), saved=plans.get(node);
     if (!details?.open || !saved || saved.loading || saved.result || busy) return;
+    closeShare(); importTicket++;
     const current=++ticket, output=details.querySelector('[data-sql-plan-output]'), planStatus=details.querySelector('[data-sql-plan-status]');
     saved.loading=true; planBusy=true; stopButton.hidden=false;
     output.textContent='正在读取 SQLite 执行计划…';
@@ -318,7 +397,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     const details=node.querySelector('[data-sql-minimize]'),output=details.querySelector('[data-sql-minimize-output]');
     const live=details.querySelector('[data-sql-minimize-status]'),saved=witnesses.get(node);
     if (replay && !saved) return;
-    importTicket++;
+    closeShare(); importTicket++;
     const current=++ticket;
     minimizeBusy=details; setBusy(true); live.textContent=replay ? '正在重放同一反例…' : '正在搜索行数最少的反例…';
     try {
@@ -395,9 +474,23 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   });
   host.querySelector('[data-sql-draft-tools]')?.removeAttribute('hidden');
   datasetSelect?.addEventListener('change', () => { getSqlDataset(active,datasetSelect.value); cancel(); datasets.set(active,datasetSelect.value); renderDataset(); clearResult(); message('已切换数据，SQL 保留；运行后比较。'); });
-  host.querySelector('[data-sql-import]')?.addEventListener('click', () => { if (suiteBusy || suiteOutput?.childElementCount) cancel(); importTicket++; fileInput.click(); });
+  host.querySelector('[data-sql-import]')?.addEventListener('click', () => { closeShare(); if (suiteBusy || suiteOutput?.childElementCount) cancel(); importTicket++; fileInput.click(); });
   fileInput?.addEventListener('change', () => { const file=fileInput.files?.[0]; fileInput.value=''; importFile(file); });
   host.querySelector('[data-sql-export]')?.addEventListener('click', exportDraft);
+  host.querySelector('[data-sql-share]')?.addEventListener('click',shareDraft);
+  shareCopy?.addEventListener('click',copyShare);
+  host.querySelector('[data-sql-share-close]')?.addEventListener('click',()=>{ closeShare(); host.querySelector('[data-sql-share]')?.focus({preventScroll:true}); });
+  arrival?.querySelector('[data-sql-arrival-view]').addEventListener('click',()=>{
+    if (!incoming || incoming.hidden || doc.hidden) return;
+    incoming.scrollIntoView?.({block:'start',behavior:'instant'}); incoming.focus({preventScroll:true});
+  });
+  host.querySelector('[data-sql-incoming-ignore]')?.addEventListener('click',()=>{ dismissIncoming(); (datasetSelect || runButton).focus({preventScroll:true}); });
+  host.querySelector('[data-sql-incoming-load]')?.addEventListener('click',()=>{
+    if (!staged || staged.hash!==win.location.hash || doc.hidden) return;
+    const saved=staged.saved; dismissIncoming(); applySnapshot(saved,'link');
+  });
+  win.addEventListener('hashchange',()=>{ closeShare(); stageIncoming(); });
+  win.addEventListener('pageshow',()=>stageIncoming());
   restoreButton?.addEventListener('click', () => {
     if (!recovery) return;
     const current=captureDrafts(), previous=recovery; recovery=current; restoreDrafts(previous);
@@ -406,12 +499,12 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   if (suite) { suite.hidden=false; suiteButton.addEventListener('click',validateDatasets); }
   runButton.addEventListener('click', run);
   stopButton.addEventListener('click', () => { const planning=planBusy; cancel(); if (planning) clearPlan(); else message('已停止，可修改后再运行。'); runButton.focus(); });
-  function leave() { const wasBusy = busy; cancel(true); panels.forEach(clearPlan); if (wasBusy) message('已停止，可重新运行。'); }
+  function leave() { arrivalTicket++; const wasBusy = busy; cancel(true); panels.forEach(clearPlan); if (wasBusy) message('已停止，可重新运行。'); }
   win.addEventListener('pagehide', leave);
-  doc.addEventListener('visibilitychange', () => { if (doc.hidden) leave(); });
+  doc.addEventListener('visibilitychange', () => { if (doc.hidden) leave(); else stageIncoming(); });
   doc.addEventListener('atelier:dialog-open', leave);
-  host.classList.add('is-enhanced'); select(active);
-  const controller = {run, validateDatasets, select, stop:leave, importFile, exportDraft}; controllers.set(host,controller); return controller;
+  host.classList.add('is-enhanced'); select(active); stageIncoming();
+  const controller = {run, validateDatasets, select, stop:leave, importFile, exportDraft, shareDraft}; controllers.set(host,controller); return controller;
 }
 
 if (typeof document !== 'undefined') initResearchSql();

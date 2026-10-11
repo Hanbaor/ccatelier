@@ -41,7 +41,8 @@ test('suite is folded and inert until requested; renders real counts and selects
   const sql=s.editor().value,pending=s.controller.validateDatasets();await flush();assert.equal(s.calls.length,1);
   for(let i=0;i<3;i++){s.requests[i].resolve({...c.getSqlDataset('empty-count',s.calls[i][2]).expected,truncated:false});await flush();}
   await pending;assert.equal(s.calls.length,3);assert.ok(s.calls.every(args=>args[1]===sql));
-  assert.match(s.$('[data-sql-suite-status]').textContent,/3 \/ 3.*不是普遍等价/);
+  assert.match(s.$('[data-sql-suite-status]').textContent,/3 \/ 3.*当前 SQL.*固定样例.*不是普遍等价/);
+  assert.doesNotMatch(s.$('[data-sql-suite-status]').textContent,/0 个不同|0 个因错误|未判断/);
   assert.equal(s.$('[data-sql-suite-output] table').tBodies[0].rows.length,3);
   s.$('[data-sql-suite-dataset="no-tracks"]').click();assert.equal(s.$('[data-sql-dataset]').value,'no-tracks');assert.equal(s.editor().value,sql);assert.equal(s.calls.length,3);
   s.$('[data-sql-suite-dataset="empty"]').click();assert.equal(s.$('[data-sql-dataset]').value,'empty');assert.equal(s.calls.length,3);
@@ -122,4 +123,16 @@ test('shipped worker suite obeys timeout termination and recovers for all nine r
   for(const fixture of c.SQL_CASES){const results=await runSqlSuite({caseId:fixture.id,sql:fixture.reference,runner});assert.ok(results.every(row=>row.state==='match'));}
   assert.equal(instances.length,4);
  }finally{runner.stop()}
+});
+
+
+test('suite keeps its initial guidance short while preserving detailed limits in the existing boundaries disclosure',async()=>{
+ const s=await setup();
+ try{
+  assert.equal(s.$('[data-sql-suite]>p').textContent,'用当前 SQL 检查本例全部数据集；结果只适用于这些样例。');
+  assert.equal(s.$('[data-sql-suite-status]').textContent,'点击后验证当前 SQL。');
+  const boundary=s.$('.sql-boundaries').textContent;
+  assert.match(boundary,/最多 8 个固定数据集/);assert.match(boundary,/每个数据集限时 1.5 秒，载入另计/);
+  assert.match(boundary,/比较值、重复次数与行顺序/);assert.match(boundary,/全部一致也不代表 SQL 普遍等价/);
+ }finally{s.close()}
 });

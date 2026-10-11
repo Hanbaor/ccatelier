@@ -14,14 +14,49 @@ export function synth(ctx,destination,track,time,velocity=1){
 export class AudioEngine{
  constructor(onStep=()=>{}){this.onStep=onStep;this.context=null;this.master=null;this.playing=false;this.generation=0;this.events=new Set();}
  async ready(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)throw Error('浏览器未提供 Web Audio');if(!this.context){this.context=new Ctx();this.master=output(this.context,.65);}if(this.context.state!=='running')await this.context.resume();return this.context;}
- async start(project){this.stop();const token=this.generation;await this.ready();if(token!==this.generation||document.hidden)return false;this.playing=true;this.project=validateProject(project);this.master.gain.gain.value=this.project.master*.48;this.origin=this.context.currentTime+.06;this.step=0;this.cycle=0;this.timer=setInterval(()=>this.schedule(),25);this.schedule();return true;}
+ async start(project){
+  const clean=validateProject(project);this.stop();const token=this.generation;
+  try{await this.ready();}catch(error){if(token===this.generation)this.stop();throw error;}
+  if(token!==this.generation)return false;if(document.hidden){this.stop();return false;}
+  this.playing=true;this.project=clean;this.master.gain.gain.value=clean.master*.48;
+  this.nextTime=this.context.currentTime+.06;this.clock=null;this.step=0;this.cycle=0;this.lastVisualTime=-Infinity;
+  this.timer=setInterval(()=>this.schedule(),25);this.schedule();return true;
+ }
  update(project){this.project=validateProject(project);if(this.master&&this.context?.state==='running')this.master.gain.gain.setTargetAtTime(this.project.master*.48,this.context.currentTime,.02);}
- schedule(){if(!this.playing||!this.context)return;const ctx=this.context,p=this.project;let count=0;
-  while(count++<32){const time=this.origin+stepTime(this.step,p.bpm,p.swing);if(time>ctx.currentTime+.12)break;const index=this.step,solo=p.tracks.some(t=>t.solo);let energy=0;
-   if(time>=ctx.currentTime-.02){for(const t of p.tracks){const v=t.steps[index];if(v&&!t.mute&&(!solo||t.solo)){synth(ctx,this.master.gain,t,Math.max(time,ctx.currentTime),v);energy+=v*t.volume;}}
-    const token=this.generation;const event=setTimeout(()=>{this.events.delete(event);if(token!==this.generation||!this.playing)return;this.onStep(index);if(energy)document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:Math.min(1,energy/2),step:index}}));},Math.max(0,(time-ctx.currentTime)*1000));this.events.add(event);
+ // Audio inside the lookahead is committed. Keep the next boundary fixed on edits;
+ // new tempo/swing govern intervals after it, and new content starts at that boundary.
+ advance(p,count=1){
+  if(!this.clock||this.clock.bpm!==p.bpm||this.clock.swing!==p.swing)this.clock={time:this.nextTime,index:this.step%2,count:0,bpm:p.bpm,swing:p.swing};
+  const clock=this.clock;clock.count+=count;
+  // Evaluate against an anchor, rather than accumulating fractional step durations.
+  this.nextTime=clock.time+stepTime(clock.index+clock.count,p.bpm,p.swing)-stepTime(clock.index,p.bpm,p.swing);this.step+=count;
+ }
+ visual(ctx,index,time,energy,expires){
+  const token=this.generation;
+  const queue=(minimum=0)=>{const event=setTimeout(()=>{
+   this.events.delete(event);if(token!==this.generation||!this.playing||ctx!==this.context)return;
+   // Timer delivery uses wall time; audio can be suspended or the main thread delayed.
+   if(ctx.currentTime<time-.005||ctx.state!=='running'){queue(25);return;}
+   if(ctx.currentTime>=expires||time<=this.lastVisualTime||index>=this.project.steps)return;
+   this.lastVisualTime=time;this.onStep(index);
+   if(energy)document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:Math.min(1,energy/2),step:index}}));
+  },Math.max(minimum,(time-ctx.currentTime)*1000));this.events.add(event);};queue();
+ }
+ schedule(){
+  if(!this.playing||!this.context||this.context.state!=='running')return;
+  const ctx=this.context,p=this.project,now=ctx.currentTime,cutoff=now-.02,duration=loopDuration(p.steps,p.bpm);
+  // Skip elapsed whole loops in constant time; examine at most one loop plus lookahead.
+  const loops=Math.max(0,Math.floor((cutoff-this.nextTime)/duration));
+  if(loops)this.advance(p,loops*p.steps);
+  const solo=p.tracks.some(t=>t.solo);
+  for(let count=0;count<p.steps+8&&this.nextTime<=now+.12;count++){
+   if(this.step>=p.steps){this.cycle+=Math.floor(this.step/p.steps);this.step%=p.steps;}
+   const index=this.step,time=this.nextTime;
+   if(time>=cutoff){let energy=0;
+    for(const t of p.tracks){const v=t.steps[index];if(v&&!t.mute&&(!solo||t.solo)){synth(ctx,this.master.gain,t,Math.max(time,now),v);energy+=v*t.volume;}}
+    this.visual(ctx,index,time,energy,time+Math.min(.08,stepTime(index+1,p.bpm,p.swing)-stepTime(index,p.bpm,p.swing)));
    }
-   this.step++;if(this.step>=p.steps){this.origin+=loopDuration(p.steps,p.bpm);this.step=0;this.cycle++;}
+   this.advance(p);
   }
  }
  async audition(track){const token=this.generation;await this.ready();if(token!==this.generation||document.hidden)return;synth(this.context,this.master.gain,track,this.context.currentTime+.005,1);document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:track.volume,track:track.type}}));}

@@ -85,3 +85,42 @@ A witness shows the retained input rows and both actual outputs with the same ac
 Case/data changes, editing, reset/reference selection, a new Run, successful draft import/restore and page lifecycle changes invalidate witness evidence. Stop terminates a running search and marks it stopped. Generation tokens ignore late success/error responses. Search/replay preserves the primary query comparison, including its status message.
 
 `tests/research-sql-minimize.test.cjs` uses the shipped SQLite engine to establish the original minima (empty count: one row; tied maximum: two rows; NULL exclusion: two rows), independently enumerates every smaller subset, executes generated replay scripts, checks every one of the nine reference datasets exhaustively, and checks duplicate/order/NULL semantics. It also tests invalid masks, errors, truncation, unsupported volatile/stateful/metadata calls and lexical bypass probes, safe text rendering, lazy execution, exact-mask replay, stale-result cancellation, and a real runaway-query worker termination followed by successful fresh-worker recovery. A fresh independent Node process verifies that the emitted script configures the heap limit from its initial zero value and reproduces both nonempty query outputs; this avoids masking omitted runtime configuration by sharing a previously configured WASM instance. Wrapper-escaping/unclosed-comment inputs are explicitly rejected instead of allowing a candidate to swallow the reference query in the emitted script. These are executable correctness checks, not benchmark claims or browser visual evidence.
+
+## Shareable input snapshots
+
+“分享实验” lazily loads `research-sql-share.mjs` and generates a readonly URL;
+“复制链接” is a separate, explicit clipboard action. The URL preserves the current
+HTTP(S) origin and pathname (including deployment prefixes), drops query parameters,
+and uses `#sql=v1.<base64url>`. No fetch, server write, storage, location mutation or
+SQLite execution is part of sharing. A query already running may finish normally
+while a link is generated; independent share tickets prevent late clipboard or
+module-loading feedback from overwriting later edits, navigation or dismissal.
+
+The payload is exactly the existing eight-field JSON input snapshot: format,
+version, engine, caseId, caseRevision, datasetId, datasetRevision and sql. Decoding
+requires canonical unpadded base64url, fatal UTF-8, supported pinned versions and a
+known immutable fixture. Limits are 16 KiB decoded, 22,000 fragment characters and
+4,000 SQL UTF-16 code units. Invalid or unfinished SQL is legitimate draft content;
+it is never run on arrival. The fragment is not encrypted: recipients, browser
+history and page scripts can read SQL, although the initial HTTP request does not
+send the fragment. UI disclosure explains this before the copy action.
+
+Incoming links are staged in a small preview, using text-only DOM writes. A concise
+notice before the research introduction appears only for valid or invalid SQL links.
+Its explicit “查看实验” button scrolls to the preview without changing the fragment;
+normal arrivals never scroll or take focus. Arrival,
+hash changes and BFCache restoration never focus, scroll, execute, replace a draft
+or clear an existing result. The explicit “载入此实验” action uses the same validated
+transaction as file import, cancels pending execution/plan/suite/minimization and
+file reads, checkpoints all three cases' SQL and dataset selections, and leaves
+recent experiment history intact. Recovery can toggle back to the displaced drafts.
+Ignoring a link only dismisses the preview. Malformed input cannot enter the apply
+transaction. A snapshot carries input only: no results, schemas, credentials,
+user-supplied datasets or equivalence guarantees.
+
+`tests/research-sql-share.test.cjs` covers all nine fixture combinations, exact
+Unicode and incomplete draft restoration, deterministic fuzz, malformed UTF-8 and
+base64, capacity and strict version/schema boundaries, XSS-safe previews, explicit
+clipboard behavior, dismissal, repeated initialization, all job cancellation paths,
+late file and clipboard completions, hidden pages and BFCache. It also checks the
+actual stylesheet cascade for readable disclosure and experiment-feedback text.

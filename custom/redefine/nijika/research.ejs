@@ -23,6 +23,10 @@ const sqlCases = [
 %>
 <link rel="stylesheet" href="<%= url_for('atelier/css/research-sql.css') %>">
 <section class="atelier-room room-research" aria-label="研究">
+  <aside class="sql-arrival" data-sql-arrival hidden aria-label="收到实验链接">
+    <p data-sql-arrival-info>收到一个 SQL 实验链接。</p>
+    <button type="button" data-sql-arrival-view aria-controls="sql-incoming">查看实验</button>
+  </aside>
   <header class="personal-research-opening">
     <div class="personal-research-copy">
       <p class="personal-eyebrow">RESEARCH NOTES / 关注与练习</p>
@@ -50,17 +54,32 @@ const sqlCases = [
     </div>
     <div class="sql-draft-tools" data-sql-draft-tools hidden>
       <label>数据集 <select data-sql-dataset aria-label="当前案例的数据集"></select></label>
+      <button type="button" class="sql-text-button" data-sql-share>分享实验</button>
       <button type="button" class="sql-text-button" data-sql-export>导出草稿</button>
       <button type="button" class="sql-text-button" data-sql-import title="替换当前案例草稿；原草稿可恢复">导入草稿</button>
       <button type="button" class="sql-text-button" data-sql-restore-draft hidden>恢复导入前草稿</button>
       <input type="file" data-sql-file accept=".json,application/json" hidden aria-label="选择 SQL 草稿 JSON 文件">
     </div>
+    <section class="sql-share-panel" data-sql-share-panel hidden aria-label="分享实验输入">
+      <p>分享案例、固定数据集与 SQL，不含结果或等价证明。</p>
+      <p id="sql-share-privacy">链接含未加密 SQL，收件人可读；请勿放入敏感信息。</p>
+      <details><summary>链接隐私</summary><p>链接片段不随首次 HTTP 请求发送，但浏览器历史与页面脚本可读取。</p></details>
+      <label>实验链接 <input data-sql-share-url type="text" readonly aria-describedby="sql-share-privacy"></label>
+      <div class="sql-draft-tools"><button type="button" class="sql-text-button" data-sql-share-copy>复制链接</button><button type="button" class="sql-text-button" data-sql-share-close>关闭</button></div>
+      <p data-sql-share-status role="status" aria-live="polite" aria-atomic="true"></p>
+    </section>
+    <section class="sql-share-panel" id="sql-incoming" tabindex="-1" data-sql-incoming hidden aria-label="链接中的实验输入">
+      <p data-sql-incoming-info role="status" aria-live="polite" aria-atomic="true"></p>
+      <details data-sql-incoming-preview><summary>预览 SQL</summary><pre data-sql-incoming-sql tabindex="0"></pre></details>
+      <p>仅载入输入，不自动运行；当前全部案例草稿可恢复。</p>
+      <div class="sql-draft-tools"><button type="button" class="sql-text-button" data-sql-incoming-load>载入此实验</button><button type="button" class="sql-text-button" data-sql-incoming-ignore>忽略</button></div>
+    </section>
     <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
     <details class="sql-insight sql-suite" data-sql-suite hidden>
       <summary>跨数据集验证</summary>
-      <p>同一候选 SQL，依次检查本例全部固定数据集。比较值、重复次数与行顺序；全部一致也不代表 SQL 普遍等价。每个数据集限时 1.5 秒，最多 8 个，载入另计。</p>
+      <p>用当前 SQL 检查本例全部数据集；结果只适用于这些样例。</p>
       <button type="button" class="sql-text-button" data-sql-suite-run>验证全部数据集</button>
-      <p data-sql-suite-status role="status" aria-live="polite" aria-atomic="true">仅在点击后运行；每个数据集限时 1.5 秒，最多 8 个，载入另计。</p>
+      <p data-sql-suite-status role="status" aria-live="polite" aria-atomic="true">点击后开始验证。</p>
       <div class="sql-suite-output" data-sql-suite-output tabindex="0" role="region" aria-label="固定数据集验证结果，可横向滚动"></div>
     </details>
     <% sqlCases.forEach((item,index) => { %>
@@ -91,7 +110,7 @@ const sqlCases = [
     </article>
     <% }); %>
     <p class="sql-editor-help" id="sql-editor-help">只读 SELECT / WITH · 不含分号 · 最多 100 行 · Ctrl / ⌘ + Enter 运行</p>
-    <details class="sql-boundaries"><summary>运行边界与来源</summary><p>本站原创小数据，比较只对本例成立。列按位置对应，值类型、重复次数和顺序都参与比较。</p><p>首次运行按需下载约 705 KB 的本地 SQLite 资源；需要支持 WebAssembly 和 Worker 的浏览器。查询仅在当前浏览器运行，不自动保存或上传；导出会保存到本机文件。导入只恢复数据集与 SQL，不自动运行；仅支持匹配版本的内置数据集。随机数、当前时间或未指定排序的查询不保证结果相同。离线时不保证可用。</p><p>查询限 4,000 字符；所有分号都需删除，包括注释和字符串中的分号。执行超过 1.5 秒即停止；SQLite 分配限 16 MiB，结果限 16 列，每格最多 512 字符。</p><p><a href="https://github.com/sql-js/sql.js/releases/tag/v1.14.2" target="_blank" rel="noopener noreferrer">sql.js 1.14.2 / MIT ↗</a></p></details>
+    <details class="sql-boundaries"><summary>运行边界与来源</summary><p>本站原创小数据，比较只对本例成立。列按位置对应，值类型、重复次数和顺序都参与比较。</p><p>首次运行按需下载约 705 KB 的本地 SQLite 资源；需要支持 WebAssembly 和 Worker 的浏览器。查询仅在当前浏览器运行，不自动保存或上传；导出会保存到本机文件。导入只恢复数据集与 SQL，不自动运行；仅支持匹配版本的内置数据集。随机数、当前时间或未指定排序的查询不保证结果相同。离线时不保证可用。</p><p>跨数据集验证依次检查最多 8 个固定数据集；每个数据集限时 1.5 秒，载入另计。比较值、重复次数与行顺序；全部一致也不代表 SQL 普遍等价。</p><p>查询限 4,000 字符；所有分号都需删除，包括注释和字符串中的分号。执行超过 1.5 秒即停止；SQLite 分配限 16 MiB，结果限 16 列，每格最多 512 字符。</p><p><a href="https://github.com/sql-js/sql.js/releases/tag/v1.14.2" target="_blank" rel="noopener noreferrer">sql.js 1.14.2 / MIT ↗</a></p></details>
     <noscript><p class="sql-noscript">启用 JavaScript 后可编辑并执行查询；上方保留了全部示例的完整数据与预期结果。</p></noscript>
   </section>
 </section>

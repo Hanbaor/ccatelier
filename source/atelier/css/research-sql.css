@@ -70,7 +70,7 @@
 .sql-boundaries {margin-top:10px}
 .sql-boundaries summary {font-size:10px}
 .sql-noscript {font:12px/1.9 var(--chinese);color:var(--muted)}
-body.dark-mode .sql-lab {--sql-accent:#8ccfc2;--sql-soft:#17302d;--sql-wrong:#efa59b;--sql-good:#a1d6b0}
+body.dark-mode .sql-lab,body.nijika:not(.light) .sql-lab {--sql-accent:#8ccfc2;--sql-soft:#17302d;--sql-wrong:#efa59b;--sql-good:#a1d6b0}
 @media(max-width:900px) {
   .sql-lab {margin-top:28px}.sql-comparison {grid-template-columns:minmax(0,1fr);gap:16px}.sql-lab textarea,.sql-lab pre {font-size:13px;padding:16px 12px}.sql-query-panel>header {padding-inline:12px}
 }
@@ -118,6 +118,33 @@ body.motion-off .sql-result tbody tr {transition:none}
 .sql-suite-output th,.sql-suite-output td {padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:normal;overflow-wrap:anywhere}
 .sql-suite-output [data-state="error"] td,.sql-suite-output [data-state="different"] td {color:var(--ink)}
 .sql-suite [data-sql-suite-status] {font:12px/1.8 var(--chinese);color:var(--muted)}
+
+
+.sql-share-panel {margin:16px 0;padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--sql-accent);border-radius:3px;background:var(--sql-soft);font:13px/1.8 var(--chinese)}
+.sql-share-panel p {margin:0 0 10px}
+.sql-share-panel label {display:block}
+.sql-share-panel input {box-sizing:border-box;width:100%;min-height:44px;margin:7px 0;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--ink);font:12px/1.6 ui-monospace,monospace}
+.sql-share-panel input:focus-visible {outline:2px solid var(--sql-accent);outline-offset:3px}
+.sql-lab .sql-share-panel pre {background:var(--surface);color:var(--ink);max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace}
+.sql-share-panel summary {min-height:44px;cursor:pointer}
+@media print {.sql-share-panel {display:none!important}}
+/* Interactive disclosures and experiment feedback are reading text, not metadata. */
+.sql-lab summary,.sql-lab .sql-boundaries summary {font-size:13px;min-height:44px}
+.sql-lab .sql-history p,.sql-lab .sql-suite p,.sql-lab .sql-share-panel p,.sql-lab [data-sql-status] {font-size:13px;line-height:1.85}
+.sql-lab .sql-history-controls label,.sql-lab .sql-history-controls select,.sql-lab .sql-draft-tools {font-size:13px}
+@media(max-width:650px) {
+ .sql-lab .sql-history-controls select,.sql-lab .sql-draft-tools select,.sql-lab .sql-share-panel input {font-size:16px;min-height:44px}
+}
+
+.sql-lab .sql-text-button,.sql-lab .sql-draft-tools select,.sql-lab .sql-history-controls select {min-height:44px}
+
+.sql-arrival {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 28px;padding:10px 16px;border:1px solid var(--line);border-radius:3px;color:var(--ink);font:13px/1.8 var(--chinese)}
+.sql-arrival[hidden] {display:none!important}
+.sql-arrival p {margin:0}
+.sql-arrival button {flex-shrink:0;min-height:44px;padding:8px 0;border:0;background:none;color:var(--ink);font:inherit;text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.sql-arrival button:focus-visible {outline:2px solid var(--ink);outline-offset:4px}
+.sql-lab [data-sql-incoming]:focus {outline:2px solid var(--sql-accent);outline-offset:4px}
+@media print {.sql-arrival {display:none!important}}
 
 /* Research editorial opening. SQL controls and runtime remain independent. */
 .room-research .personal-research-opening {grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(30px,6vw,80px);align-items:center}
