@@ -1,0 +1,18 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {JSDOM}=require('jsdom');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../source/atelier/js/cover.js'),'utf8').replace(/^import[^\n]+\n/,'').replace('export function','function');
+function fixture(){
+ const dom=new JSDOM('<section class="personal-home"><figure id="cover-photograph"></figure><a href="/notes/">Notes</a></section>',{url:'https://ccatelier.test/',pretendToBeVisual:true}),w=dom.window,d=w.document,art=d.querySelector('figure'),frames=new Map(),mediaListeners=[];
+ let id=0,fine=true,hidden=false,width=100;
+ const motion={enabled:true};Object.defineProperty(d,'hidden',{get:()=>hidden});
+ w.matchMedia=()=>({get matches(){return fine;},addEventListener(type,fn){mediaListeners.push(fn);}});
+ art.getBoundingClientRect=()=>({left:0,width});
+ vm.runInNewContext(source+'\ninitCover();',{$:s=>d.querySelector(s),window:w,document:d,motion,requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)});
+ return {w,d,art,motion,frames,close:()=>w.close(),value:()=>art.style.getPropertyValue('--portrait-x'),move(x=80,type='mouse'){const e=new w.MouseEvent('pointermove',{clientX:x});Object.defineProperty(e,'pointerType',{value:type});art.dispatchEvent(e);},draw(){const batch=[...frames.values()];frames.clear();batch.forEach(fn=>fn());},fine(value){fine=value;mediaListeners.forEach(fn=>fn());},hidden(value){hidden=value;d.dispatchEvent(new w.Event('visibilitychange'));},width(value){width=value;}};
+}
+test('hero coalesces pointer movement to the latest sample in one frame',()=>{const f=fixture();try{f.move(20);f.move(90);assert.equal(f.frames.size,1);f.draw();assert.ok(Math.abs(parseFloat(f.value())-1.2)<1e-9);assert.equal(f.frames.size,0);}finally{f.close();}});
+test('hero ignores touch, coarse pointers, motion disabled, hidden pages and dialogs',()=>{const f=fixture();try{f.move(50,'touch');assert.equal(f.frames.size,0);f.fine(false);f.move();assert.equal(f.frames.size,0);f.fine(true);f.motion.enabled=false;f.move();assert.equal(f.frames.size,0);f.motion.enabled=true;f.hidden(true);f.move();assert.equal(f.frames.size,0);f.hidden(false);const dialog=f.d.createElement('dialog');dialog.open=true;f.d.body.append(dialog);f.move();assert.equal(f.frames.size,0);}finally{f.close();}});
+for(const type of ['pointerleave','blur','pagehide','pageshow','atelier:motion','atelier:dialog-open'])test(`hero clears applied and queued offset on ${type}`,()=>{const f=fixture();try{f.move();f.draw();assert.notEqual(f.value(),'');f.move(20);const target=type==='pointerleave'?f.art:type.startsWith('atelier:')?f.d:f.w;target.dispatchEvent(new f.w.Event(type));assert.equal(f.value(),'');assert.equal(f.frames.size,0);}finally{f.close();}});
+test('hero clears offset on visibility and input capability changes',()=>{const f=fixture();try{f.move();f.draw();f.move();f.hidden(true);assert.equal(f.value(),'');assert.equal(f.frames.size,0);f.hidden(false);f.move();f.draw();f.fine(false);assert.equal(f.value(),'');}finally{f.close();}});
+test('hero rechecks motion and dialog state inside queued frame',()=>{const f=fixture();try{f.move();f.motion.enabled=false;f.draw();assert.equal(f.value(),'');f.motion.enabled=true;f.move();const dialog=f.d.createElement('dialog');dialog.open=true;f.d.body.append(dialog);f.draw();assert.equal(f.value(),'');}finally{f.close();}});
+test('hero avoids zero-width math and clamps captured positions',()=>{const f=fixture();try{f.width(0);f.move();f.draw();assert.equal(f.value(),'');f.width(100);f.move(9999);f.draw();assert.equal(f.value(),'1.5px');f.move(-9999);f.draw();assert.equal(f.value(),'-1.5px');}finally{f.close();}});

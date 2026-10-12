@@ -1,0 +1,308 @@
+/* Art-forward rooms. Labels belong to controls; the illustrations carry the mood. */
+.atelier-room {
+  --room-panel:color-mix(in srgb,var(--surface) 93%,transparent);
+  --room-shadow:0 24px 70px #0002;
+  margin:0 auto;
+}
+.atelier-room figure {margin:0}
+.atelier-room a:focus-visible,.atelier-room button:focus-visible {outline:2px solid var(--yellow);outline-offset:5px}
+.room-scene {position:relative;isolation:isolate;aspect-ratio:2.4;min-height:340px;overflow:hidden;background:#1b2023;border-radius:4px}
+.room-scene>img {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.2s cubic-bezier(.2,.6,.2,1);z-index:-2}
+.room-scene:after {content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#071214b3,transparent 52%);pointer-events:none}
+.room-scene h1 {position:absolute;left:clamp(28px,4vw,64px);bottom:38px;margin:0;font:500 var(--page-title)/1.15 var(--chinese);letter-spacing:-.06em;color:#fff7e7;text-shadow:0 8px 38px #0612154d;text-wrap:nowrap}
+.room-action {display:inline-flex;align-items:center;justify-content:space-between;gap:30px;min-height:48px;padding:11px 18px;border:1px solid var(--line);background:var(--surface);font:13px var(--sans);color:var(--ink);border-radius:3px}
+.room-action svg {width:19px;height:19px;flex:none;transition:transform .25s}
+.room-action:hover {border-color:var(--yellow);color:var(--yellow)}
+.room-action:hover svg {transform:translate(2px,-2px)}
+.room-status {display:inline-flex;align-items:center;gap:9px;white-space:nowrap;font:12px var(--chinese);color:var(--muted)}
+.room-status i {width:6px;height:6px;border-radius:50%;background:var(--yellow);box-shadow:0 0 14px color-mix(in srgb,var(--yellow) 35%,transparent)}
+
+/* Research / a small live status panel overlaps the star-lit study. */
+
+/* Life / the unpublished state stays readable, without fabricating an album. */
+.life-scene {aspect-ratio:1.8}
+.life-scene>img {object-position:center 10%}
+.life-scene h1 {left:auto;right:clamp(28px,4vw,64px);bottom:42px}
+.scene-state {position:absolute;left:clamp(28px,4vw,64px);bottom:50px;color:#f5ecd7;font:13px/1.8 var(--chinese);padding:10px 15px;background:#10221e66;border:1px solid #eee2c933;backdrop-filter:blur(12px)}
+
+.life-paths {display:flex;flex-wrap:wrap;gap:12px 32px;margin-top:22px;padding-block:10px;border-bottom:1px solid var(--line)}
+.life-paths>a {display:flex;align-items:center;gap:22px;min-height:44px;color:var(--text);font:13px var(--chinese)}
+.life-paths svg {width:18px;height:18px;flex:none;color:var(--yellow)}
+.life-paths>a:hover {color:var(--yellow)}
+
+/* Projects / the image is the stage, the real project is the only caption. */
+.projects-scene {aspect-ratio:1672/941;min-height:0}
+.projects-scene>img {object-position:center}
+.projects-scene h1 {bottom:48px}
+.project-panel {position:relative;z-index:2;display:flex;align-items:center;gap:32px;margin:-24px 36px 0 auto;width:76%;padding:26px 32px;background:var(--room-panel);border:1px solid var(--line);box-shadow:var(--room-shadow);backdrop-filter:blur(16px)}
+.project-panel>div {margin-right:auto}
+.project-panel h2 {font:500 clamp(29px,3.3vw,48px)/1.2 var(--sans);letter-spacing:-.05em;margin:0 0 8px}
+.project-panel p {font:12px/1.8 var(--sans);color:var(--muted)}
+.project-panel .room-action {border-color:var(--yellow)}
+
+/* About / a tall portrait, grounded by actual facts and recent writing. */
+.about-scene {position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);align-items:center;min-height:680px;gap:20px}
+.about-core {position:relative;z-index:1;padding:35px 28px 40px 35px}
+.about-core h1 {font:600 clamp(100px,13.5vw,198px)/.9 var(--sans);letter-spacing:-.085em;margin:0 0 28px;text-wrap:nowrap}
+.about-core h1 small {display:block;font:500 22px/1.6 var(--chinese);letter-spacing:.02em;margin:0 0 19px 5px}
+.about-core h1>span {color:var(--yellow)}
+.about-core>p {font:15px/1.9 var(--chinese);color:var(--text)}
+.about-interests {display:flex;gap:10px 20px;flex-wrap:wrap;margin:25px 0 32px;font:12px/1.7 var(--sans);color:var(--muted)}
+.about-interests>span {border-bottom:1px solid var(--line);padding-bottom:7px}
+.about-actions {display:flex;gap:15px;flex-wrap:wrap}
+.about-actions .room-action {min-width:137px;background:var(--room-panel)}
+.about-counts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:52px;max-width:390px}
+.about-counts strong {display:block;font:500 51px/1 var(--condensed);color:var(--ink)}
+.about-counts span {display:block;margin-top:9px;font:11px/1.7 var(--chinese);color:var(--muted)}
+.about-portrait-scene {position:relative;align-self:center;justify-self:end;width:min(100%,520px);aspect-ratio:2/3;min-height:0;overflow:hidden;clip-path:polygon(10% 0,100% 0,100% 100%,0 100%);background:#171c26}
+.about-portrait-scene>img {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.about-portrait-scene:after {content:'';position:absolute;inset:0;background:linear-gradient(90deg,#060e180d,transparent 30%),linear-gradient(0deg,#111a2126,transparent 30%);pointer-events:none}
+.about-notebook {margin-top:55px;padding-top:29px;border-top:1px solid var(--line);display:grid;grid-template-columns:250px minmax(0,1fr);column-gap:50px}
+.about-notebook>h2 {grid-row:1/4;font:500 24px/1.5 var(--chinese);margin:0;padding-top:14px}
+.about-note {display:flex;align-items:center;justify-content:space-between;gap:25px;min-height:64px;padding:15px 0;border-bottom:1px solid var(--line);font:14px/1.7 var(--chinese)}
+.about-note>span {overflow-wrap:anywhere}
+.about-note svg {width:20px;height:20px;flex:none;color:var(--yellow)}
+.about-note:hover {color:var(--yellow)}
+
+/* Lounge / functional instruments arranged below one large scene. */
+.lounge-scene {aspect-ratio:2.15}
+.lounge-scene>img {object-position:center top}
+.lounge-scene h1 {font-size:clamp(56px,7vw,102px);bottom:48px}
+.room-lounge .lounge-tabs {position:absolute;right:34px;bottom:44px;display:flex;gap:6px;padding:6px;margin:0;border:1px solid #faf1db55;border-radius:5px;backdrop-filter:blur(14px);background:#07140f66;color:#fff0d7}
+.room-lounge .lounge-tabs>a {font:13px var(--chinese);display:flex;align-items:center;justify-content:center;min-width:66px;min-height:43px;padding:8px 13px;margin:0;color:inherit;border-radius:2px}
+.room-lounge .lounge-tabs>a:hover {background:#f4e7d226}
+.room-lounge .lounge-grid {display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:22px;margin-top:35px}
+.room-lounge .lounge-card {margin:0;min-width:0;position:relative;border:1px solid var(--line);border-radius:5px;padding:28px;background:var(--surface);overflow:hidden}
+.room-lounge .lounge-card>h2,.room-lounge .collection-title h2 {margin:0 0 23px;font:500 24px/1.5 var(--chinese);letter-spacing:-.035em}
+.room-lounge .lounge-fine-print {display:block;font:11px/1.8 var(--chinese);color:var(--muted);margin-top:17px}
+.room-lounge .after-text-button {font:12px var(--chinese);min-height:44px;margin:0;padding:10px 0;color:var(--yellow);border-color:var(--line)}
+.room-lounge .discovery-card {grid-column:span 4;min-height:290px;background:#d4b578;color:#242c25;border:0;isolation:isolate}
+.room-lounge .discovery-card>h2 {position:relative;z-index:1}
+.room-lounge .shuffle-disc {width:207px;height:207px;top:56px;right:-65px;z-index:-1;box-shadow:0 14px 30px #45351944}
+.room-lounge .shuffle-actions {margin-top:40px;gap:12px}
+.room-lounge .shuffle-actions>button {min-width:185px;min-height:46px;padding:11px 15px;border-radius:3px;box-shadow:none;font:12px var(--chinese)}
+.room-lounge .collection-card {grid-column:span 8;border-width:0 0 1px;border-radius:0;background:transparent;padding:0 12px 21px 28px}
+.room-lounge .collection-title h2 {margin:0}
+.room-lounge .collection-title>span {font:500 42px var(--condensed);color:var(--muted)}
+.room-lounge .reading-list-tabs {margin-top:12px;gap:24px}
+.room-lounge .reading-list-tabs>button {font-size:12px;min-height:42px}
+.room-lounge [data-reading-list] {height:132px}
+.room-lounge .reading-shelf-row>a {font-size:13px}
+.room-lounge .passport-card {grid-column:span 7;background:transparent;border:0;padding:27px 35px 14px}
+.room-lounge .visitor-pass {margin:0 0 19px;padding:24px 26px 19px;transform:rotate(-2deg);border-radius:3px;box-shadow:6px 12px 25px #0002}
+.room-lounge .visitor-pass strong {font:600 41px/1.3 var(--chinese);letter-spacing:-.065em;margin:0 0 24px}
+.room-lounge .visitor-pass strong>span {font:51px var(--sans);right:61px;top:22px}
+.room-lounge .visitor-pass-id {font-size:9px}
+.room-lounge .visitor-pass-date {font-size:9px}
+.room-lounge .visitor-pass:before,.room-lounge .visitor-pass:after {background:var(--bg)}
+.room-lounge .passport-stamps {padding-top:16px;padding-bottom:16px;gap:18px}
+.room-lounge .passport-stamps>span {width:40px;height:44px}
+.room-lounge .passport-card .lounge-fine-print {display:inline;margin-left:17px}
+.room-lounge .encore-note-card {grid-column:span 5;background:color-mix(in srgb,var(--yellow) 5%,var(--surface));border:0;padding:27px 30px;color:var(--ink)}
+.room-lounge .daily-note {margin:0 5px 13px;padding:24px 25px;min-height:206px;transform:rotate(2deg);box-shadow:5px 9px 22px #0002}
+.room-lounge .daily-note:before {width:62px;height:17px;top:-8px}
+.room-lounge .daily-note>span[data-daily-date] {font:11px/1.7 var(--chinese);letter-spacing:0;color:#75614a;margin:0}
+.room-lounge .daily-note>strong {font:500 23px/1.85 var(--chinese);max-width:300px;margin:20px 0 0}
+.room-lounge .sound-card {grid-column:span 6;background:transparent;border:0;padding:24px 28px}
+.room-lounge .pixel-stage-card {margin:0 0 17px;border-radius:3px;box-shadow:none;transform:rotate(-1deg);max-width:none}
+.room-lounge .pixel-stage-card img {aspect-ratio:1672/941;width:100%;height:auto;object-fit:cover;image-rendering:auto}
+.room-lounge .pixel-stage-bottom {font:12px var(--chinese);letter-spacing:0;padding:12px 17px}
+.room-lounge .pixel-stage-bottom>.editorial-arrow {width:14px;height:14px;margin-left:auto}
+.room-lounge .after-solid-button {border-radius:3px;min-height:48px;font-size:13px}
+.room-lounge .focus-card {grid-column:span 6;background:#202b2b;color:#e8edd9;border-color:#354544;padding:28px 33px}
+.room-lounge .focus-amp {margin:0;padding:0;border:0;box-shadow:none;background:none;border-radius:0;color:#e8d5a7}
+.room-lounge .focus-duration {margin:0 0 9px;gap:12px}
+.room-lounge .focus-duration>button {font-size:12px;min-height:39px;padding:8px 11px;border-color:#5a6a5d;border-radius:3px}
+.room-lounge .focus-duration>button[aria-pressed=true] {background:#d0b37b;color:#232c26;border-color:#d0b37b}
+.room-lounge .focus-amp>output {font:500 clamp(85px,9vw,135px)/1.45 var(--condensed);letter-spacing:.03em;color:#e9d3a3}
+.room-lounge .focus-buttons>button {font-size:13px;min-height:44px;padding-inline:21px;border-radius:3px}
+.room-lounge .focus-amp>p {font-size:11px;line-height:1.8;margin-top:17px;color:#b1c2ae}
+.room-lounge .focus-card .lounge-fine-print {color:#a4b9a8}
+.room-lounge .light-card {grid-column:span 7;background:radial-gradient(ellipse at 76% 50%,color-mix(in srgb,var(--lamp) 20%,transparent),transparent 64%),var(--surface);border:0;padding:29px 35px}
+.room-lounge .light-presets {margin-top:0;gap:28px}
+.room-lounge .light-presets>button {font-size:12px;min-height:42px}
+.room-lounge .charm-desk {min-height:158px;justify-content:center}
+.room-lounge .charm-desk>p {font-size:11px}
+.room-lounge .audience-card {grid-column:span 5;border:0;background:none;padding:29px 35px}
+.room-lounge .audience-numbers {gap:38px;margin-top:27px}
+.room-lounge .audience-numbers strong {font-size:57px}
+.room-lounge .audience-numbers span {font-size:11px}
+.room-lounge .audience-card>small {display:block;font:11px/1.85 var(--chinese);color:var(--muted);margin-top:14px}
+.room-lounge .after-links {padding-top:15px;margin-top:16px}
+.room-lounge .after-links>button {min-height:38px;font:12px var(--chinese)}
+
+/* Guestbook / a full rooftop panorama above the real community interface. */
+.guestbook-scene {aspect-ratio:1916/821;min-height:0}
+.guestbook-scene>img {object-position:center}
+.guestbook-scene h1 {left:auto;right:60px;bottom:40px;font-size:clamp(60px,8.2vw,115px)}
+.guestbook-compose {width:min(920px,100%);margin:38px auto 0}
+.guestbook-compose>.guestbook-rules {display:block;border:0;padding:0;margin:0 0 28px;font-family:var(--chinese);font-size:13px;line-height:1.9;color:var(--muted)}
+.guestbook-compose>.encore-comments {margin-top:0}
+.room-guestbook .encore-heading {margin-bottom:22px}
+.room-guestbook .encore-heading h2 {font-size:25px;line-height:1.5}
+.room-guestbook .encore-form {padding:30px;border-radius:5px;background:var(--surface);border:1px solid var(--line);border-top:2px solid var(--yellow)}
+.room-guestbook .encore-form input[name=nickname] {padding-left:0;border-radius:0}
+.room-guestbook .encore-form textarea {min-height:155px;border-radius:3px;background:var(--bg)}
+.room-guestbook .comment-stamps label>span,.room-guestbook .comment-form-bottom button {border-radius:3px}
+.room-guestbook .encore-list {padding-top:28px}
+body.light .atelier-room {--room-panel:#fffaf1ef;--room-shadow:0 24px 70px #554c2b1a}
+
+@media(min-width:1600px) {
+  .about-scene {min-height:800px}
+  .about-portrait-scene {width:min(100%,560px)}
+}
+@media(max-width:1100px) {
+  .room-scene {min-height:300px}
+  .room-scene h1 {bottom:28px}
+  .project-panel {width:86%;gap:23px;padding:23px 27px;margin-right:23px}
+  .about-core {padding-left:20px;padding-right:15px}
+  .about-scene {min-height:620px}
+  .about-core h1 {font-size:140px}
+  .about-counts {gap:20px;margin-top:42px}
+  .about-counts strong {font-size:46px}
+  .about-notebook {grid-template-columns:190px minmax(0,1fr);gap:0 35px}
+  .room-lounge .lounge-tabs {bottom:33px;right:25px}
+  .lounge-scene h1 {font-size:64px}
+  .room-lounge .lounge-grid {gap:20px}
+  .room-lounge .lounge-card {padding:25px}
+  .room-lounge .lounge-card>h2,.room-lounge .collection-title h2 {font-size:22px}
+  .room-lounge .discovery-card {grid-column:span 5}
+  .room-lounge .collection-card {grid-column:span 7;padding:0 0 20px 15px}
+  .room-lounge .passport-card {grid-column:span 6;padding-inline:15px}
+  .room-lounge .encore-note-card {grid-column:span 6}
+  .room-lounge .passport-stamps {gap:10px}
+  .room-lounge .visitor-pass {padding-inline:21px}
+  .room-lounge .visitor-pass strong {font-size:35px}
+  .room-lounge .visitor-pass strong>span {right:38px;font-size:43px}
+  .room-lounge .focus-card {padding-inline:28px}
+  .room-lounge .focus-amp>output {font-size:102px}
+  .room-lounge .light-card,.room-lounge .audience-card {grid-column:span 6}
+  .room-lounge .audience-numbers {gap:28px}
+  .guestbook-scene {min-height:0}
+}
+@media(max-width:760px) {
+  .room-scene {aspect-ratio:1.23;min-height:0;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px))}
+  .room-scene h1 {left:24px;bottom:24px;letter-spacing:-.05em}
+  .room-action {min-height:46px;font-size:12px;gap:22px;padding:11px 15px}
+  .room-status {font-size:11px;gap:7px}
+  .life-scene {aspect-ratio:1.15}
+  .life-scene>img {object-position:33% center}
+  .life-scene h1 {left:auto;right:24px;bottom:68px;font-size:68px}
+  .scene-state {left:auto;right:24px;bottom:24px;font-size:11px;padding:7px 11px}
+  .projects-scene {aspect-ratio:1.32}
+  .projects-scene>img {object-position:60% center}
+  .projects-scene h1 {font-size:63px;bottom:26px}
+  .project-panel {width:calc(100% - 20px);margin:-10px 0 0 auto;padding:23px;display:grid;grid-template-columns:1fr auto;gap:18px 15px}
+  .project-panel>div {grid-column:1/-1}
+  .project-panel h2 {font-size:38px;margin-bottom:8px}
+  .project-panel p {font-size:11px}
+  .project-panel .room-action {padding:9px 12px;min-height:42px}
+  .about-scene {grid-template-columns:1fr;gap:0;min-height:0}
+  .about-portrait-scene {grid-row:1;width:86%;min-height:0;height:auto;max-height:none;aspect-ratio:2/3;margin-left:14%!important;clip-path:polygon(9% 0,100% 0,100% 100%,0 100%)}
+  .about-portrait-scene>img {object-position:center top}
+  .about-core {grid-row:2;margin-top:-94px;padding:0 15px 0 9px;isolation:isolate}
+  .about-core h1 {font-size:135px;line-height:.9;margin-bottom:23px;position:relative;width:fit-content;color:var(--ink);text-shadow:0 2px 24px var(--bg),0 0 8px var(--bg)}
+  .about-core h1 small {font-size:17px;margin:0 0 11px 6px;line-height:1.6}
+  .about-core>p {font-size:14px}
+  .about-interests {font-size:12px;gap:10px 18px;margin:23px 0 26px}
+  .about-actions {gap:14px}
+  .about-actions .room-action {min-width:137px}
+  .about-counts {gap:23px;margin-top:34px;max-width:360px}
+  .about-counts strong {font-size:47px}
+  .about-counts span {font-size:11px}
+  .about-notebook {display:block;margin-top:35px;padding:24px 8px 0}
+  .about-notebook>h2 {font-size:22px;padding:0;margin:0 0 14px}
+  .about-note {font-size:13px;min-height:61px;padding-block:14px}
+  .lounge-scene {aspect-ratio:1.22}
+  .lounge-scene>img {object-position:69% center}
+  .lounge-scene h1 {font-size:54px;bottom:87px;left:24px}
+  .room-lounge .lounge-tabs {left:23px;right:auto;bottom:23px;padding:4px;gap:2px}
+  .room-lounge .lounge-tabs>a {min-width:68px;min-height:35px;padding:6px 12px;font-size:11px}
+  .room-lounge .lounge-grid {grid-template-columns:1fr;gap:24px;margin-top:25px}
+  .room-lounge .lounge-card {grid-column:1!important;padding:25px;min-height:0}
+  .room-lounge .lounge-card>h2,.room-lounge .collection-title h2 {font-size:24px;margin-bottom:21px}
+  .room-lounge .discovery-card {min-height:272px}
+  .room-lounge .shuffle-disc {top:28px;right:-14px;width:233px;height:233px}
+  .room-lounge .shuffle-actions {margin-top:33px;gap:12px}
+  .room-lounge .shuffle-actions>button {min-width:181px}
+  .room-lounge .collection-card {padding:0 8px 18px;border-bottom:1px solid var(--line)}
+  .room-lounge .collection-title h2 {margin:0}
+  .room-lounge .collection-title>span {font-size:40px}
+  .room-lounge [data-reading-list] {height:153px}
+  .room-lounge .passport-card {padding:9px 8px;overflow:visible}
+  .room-lounge .visitor-pass {padding:23px 22px 18px;margin-top:0;margin-bottom:21px}
+  .room-lounge .visitor-pass strong {font-size:37px;margin-bottom:25px}
+  .room-lounge .visitor-pass strong>span {font-size:46px;right:45px;top:21px}
+  .room-lounge .passport-stamps {gap:10px}
+  .room-lounge .passport-card .lounge-fine-print {font-size:10px;margin-left:12px}
+  .room-lounge .daily-note {min-height:196px;padding:22px 23px}
+  .room-lounge .daily-note>strong {font-size:23px}
+  .room-lounge .sound-card {padding:7px 8px}
+  .room-lounge .focus-card {padding:25px 28px}
+  .room-lounge .focus-amp>output {font-size:110px;line-height:1.35}
+  .room-lounge .focus-amp>p {font-size:10px}
+  .room-lounge .light-card {padding:26px}
+  .room-lounge .light-presets {gap:29px}
+  .room-lounge .charm-desk {min-height:155px}
+  .room-lounge .audience-card {padding:8px}
+  .room-lounge .audience-numbers {gap:51px}
+  .guestbook-scene {aspect-ratio:1.42}
+  .guestbook-scene>img {object-position:25% center}
+  .guestbook-scene h1 {font-size:65px;left:auto;right:23px;bottom:24px}
+  .guestbook-compose {margin-top:28px;padding-inline:5px}
+  .guestbook-compose>.guestbook-rules {font-size:13px;margin-bottom:24px;line-height:1.85}
+  .room-guestbook .encore-heading h2 {font-size:22px}
+  .room-guestbook .encore-form {padding:22px}
+  .room-guestbook .comment-form-top {display:block}
+  .room-guestbook .comment-stamps {margin-top:18px;gap:9px}
+  .room-guestbook .comment-stamps>legend {float:none;margin:0 0 10px;padding:0}
+  .room-guestbook .comment-form-bottom {gap:12px}
+  .room-guestbook .comment-form-bottom>span {font-size:10px}
+  .room-guestbook .comment-form-bottom>button {font-size:13px;padding-inline:12px;gap:12px}
+}
+@media(max-width:380px) {
+  .room-scene h1 {left:20px}
+  .life-scene h1 {left:auto;right:20px;font-size:63px}
+  .scene-state {right:20px}
+  .project-panel {padding:21px}
+  .project-panel h2 {font-size:34px}
+  .about-core {padding-left:7px}
+  .about-core h1 {font-size:122px}
+  .about-interests {font-size:11px;gap:10px 15px}
+  .about-actions .room-action {min-width:123px}
+  .about-actions {gap:11px}
+  .about-counts strong {font-size:42px}
+  .about-counts {gap:19px}
+  .lounge-scene h1 {font-size:46px;left:20px}
+  .room-lounge .lounge-tabs {left:19px}
+  .room-lounge .lounge-tabs>a {min-width:61px}
+  .room-lounge .lounge-card {padding:23px}
+  .room-lounge .collection-card,.room-lounge .sound-card,.room-lounge .audience-card {padding-inline:6px}
+  .room-lounge .shuffle-disc {right:-48px}
+  .room-lounge .passport-card {padding-inline:5px}
+  .room-lounge .passport-stamps {gap:8px}
+  .room-lounge .passport-stamps>span {width:37px}
+  .room-lounge .visitor-pass {padding-inline:18px}
+  .room-lounge .visitor-pass strong {font-size:33px}
+  .room-lounge .visitor-pass strong>span {right:36px;font-size:42px}
+  .room-lounge .passport-card .lounge-fine-print {display:block;margin:3px 0 0}
+  .room-lounge .focus-card {padding-inline:24px}
+  .room-lounge .focus-amp>output {font-size:93px}
+  .room-lounge .focus-duration>button {font-size:11px;padding-inline:9px}
+  .room-lounge .light-presets {gap:23px}
+  .room-lounge .daily-note {margin-inline:0;padding-inline:21px}
+  .room-lounge .daily-note>strong {font-size:22px}
+  .guestbook-scene h1 {left:auto;right:20px}
+  .room-guestbook .encore-form {padding:18px}
+}
+/* Empty shelves follow their copy; populated shelves keep their scroll capacity. */
+.room-lounge [data-reading-list]:has(>.community-empty:only-child) {height:auto}
+.room-lounge [data-reading-list]>.community-empty:only-child {margin:0;padding:16px 10px;overflow-wrap:anywhere}
+@media(hover:hover) {
+  body:not(.motion-off) .room-scene:hover>img {transform:scale(1.018)}
+}
+@media(prefers-reduced-motion:reduce) {
+  .atelier-room *,.atelier-room *:before,.atelier-room *:after {scroll-behavior:auto;transition:none!important}
+  .room-scene:hover>img {transform:none!important}
+}
+body.motion-off .atelier-room * {transition:none}

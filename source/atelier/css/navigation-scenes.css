@@ -1,0 +1,65 @@
+/* The navigation determines the dialog's height. The companion frame follows
+   the scene's own proportions without cropping hands or scenic context. */
+.nijika #menu-dialog {min-height:0}
+/* Long labels may grow vertically without widening the companion-art grid. */
+.menu-v3-layout {grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.menu-v3-layout > nav {min-width:0}
+/* Let the row rhythm and artwork carry the menu, without a ruled-list texture. */
+.menu-v3-layout > nav > a,
+.menu-v3-layout > nav > a:last-child {border-top:0;border-bottom:0}
+.menu-v3-layout > nav > a[aria-current=page] {font-weight:500}
+.menu-v3-layout > nav > a > span {min-width:0;overflow-wrap:anywhere}
+.menu-v3-layout > nav > a > svg {flex-shrink:0;color:var(--muted)}
+.menu-v3-layout > nav > a:hover > svg,
+.menu-v3-layout > nav > a:focus-visible > svg,
+.menu-v3-layout > nav > a[aria-current=page] > svg {color:var(--yellow)}
+.menu-v3-layout > .menu-scene {
+  --menu-scene-max-height:510px;
+  position:relative;
+  isolation:isolate;
+  margin:0;
+  min-width:0;
+  min-height:0;
+  align-self:center;
+  justify-self:center;
+  width:min(100%, calc(var(--menu-scene-max-height) * var(--menu-scene-ratio, .6666666667)));
+  height:auto;
+  max-height:var(--menu-scene-max-height);
+  aspect-ratio:var(--menu-scene-ratio, 2 / 3);
+  overflow:hidden;
+  border-radius:3px;
+  background:#0c131b;
+  box-shadow:inset 0 0 0 1px #ffffff09;
+}
+.menu-scene > .menu-scene-image {
+  position:absolute;
+  inset:0;
+  display:block;
+  width:100%;
+  height:100%;
+  max-height:none;
+  object-fit:contain;
+  object-position:50% 50%;
+  border:0;
+  border-radius:0;
+}
+.menu-scene-image.is-entering {animation:menu-scene-arrive 360ms cubic-bezier(.22,.61,.36,1) both}
+.menu-scene-image.is-leaving {animation:menu-scene-depart 360ms ease both}
+.menu-v3-layout > nav > a:focus-visible {
+  color:var(--yellow);
+  outline:2px solid var(--yellow);
+  outline-offset:4px;
+}
+@keyframes menu-scene-arrive {
+  from {opacity:0;clip-path:inset(0 0 0 3%)}
+  to {opacity:1;clip-path:inset(0)}
+}
+@keyframes menu-scene-depart {from {opacity:1} to {opacity:0}}
+.motion-off .menu-scene-image {animation:none!important}
+@media (prefers-reduced-motion:reduce) {.menu-scene-image {animation:none!important}}
+@media (max-width:760px) {.menu-v3-layout {grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}}
+@media (max-width:600px) {
+  .menu-v3-layout {grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+  .menu-v3-layout > .menu-scene {--menu-scene-max-height:392px}
+}
+@media (max-width:360px) {.menu-v3-layout {grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}

@@ -1,0 +1,9 @@
+# Live Archive artwork
+
+Built-in image_gen, generated 2026-09-24. Original AI fan illustration, not official art or an artist's Pixiv upload.
+Saved: `source/atelier/images/nijika-live-archive.png` (1942 × 809).
+Checked: face/eyes, blonde side ponytail and triangular ahoge, composition, no visible hands; desktop/mobile crops are verified in the page.
+
+## Final prompt
+
+Use case: illustration-story. Asset: ultra-wide panoramic hero background for an exquisite Nijika Ijichi Live House personal blog, original new anime fan illustration. Scene: inside a quiet underground live house after rehearsal, deep blue-black shadows on the left, out-of-focus amplifier texture, narrow amber theatrical light shafts and suspended delicate dust, a restrained distant dark red curtain. Subject: Nijika Ijichi from Bocchi the Rock, accurate warm yellow-blonde hair, long side ponytail, her distinctive triangular ahoge, red eyes, black band T-shirt and rich red bow, bust portrait placed on rightmost third (face at x78%, y40%), in three-quarter view looking softly toward the left with a subtle natural hopeful smile. Her head and face are exceptionally well drawn and expressive. Framing: shoulders-and-head only, arms and hands outside the frame; a small curved cymbal rim in extreme lower-right foreground. Left 55% is beautifully layered low-contrast near-black negative space reserved for website typography. Refined contemporary hand-painted anime illustration with intricate strand work and luminous rim light, subtle analog grain, gorgeous atmospheric perspective, gold and red against ink, cinematic, intimate rather than flashy, no 3D. Wide 2.4:1 landscape composition, high detail. No words, lettering, logos, watermark, panels or interface. No extra people, no hands, no distorted eyes, no busy objects in left half, no generic neon cyberpunk.

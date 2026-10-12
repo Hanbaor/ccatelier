@@ -1,0 +1,123 @@
+<% const projectSource = 'https://github.com/Hanbaor/ccatelier/blob/0f0ca188521f991b726eb132b3b131921c63c253/'; %>
+<section class="atelier-room room-projects project-case" aria-labelledby="project-title">
+  <header class="project-intro">
+    <div class="project-summary">
+      <p class="project-context"><%- partial('nijika/rhythm-signature') %><span>SELECTED WORK / 作品与实践</span></p>
+      <h1 id="project-title" tabindex="-1">CC Atelier</h1>
+      <p class="project-lead">把想法，做成可以打开的东西。</p>
+      <p class="project-description">这个网站也是一件持续打磨的作品。以静态文章为底，连接代码、笔记与声音实验。</p>
+      <div class="project-actions">
+        <a class="room-action" href="<%= url_for('notes/') %>">浏览笔记 <%- partial('nijika/editorial-arrow') %></a>
+        <a class="project-text-link" href="https://github.com/Hanbaor/ccatelier/tree/nijika-dot" target="_blank" rel="noopener noreferrer">查看源码 <%- partial('nijika/editorial-arrow') %></a>
+      </div>
+    </div>
+    <figure class="project-art"><img src="<%= url_for('atelier/images/v3/projects.webp') %>" srcset="<%= url_for('atelier/images/v3/projects-960.webp') %> 960w, <%= url_for('atelier/images/v3/projects.webp') %> 1672w" sizes="(max-width:760px) max(min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))), calc(min(calc(min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) / 1.65), 350px) * 1.776834)), 747px" alt="虹夏在电子制作桌前创作的项目主题插画" width="1672" height="941" fetchpriority="high"><figcaption><span>01 / CC ATELIER</span><span>网站 · 阅读 · 声音</span></figcaption></figure>
+  </header>
+
+  <section class="project-experiments" aria-labelledby="project-experiments-title">
+    <h2 id="project-experiments-title">在本站试试</h2>
+    <ul class="project-experiment-list">
+      <li><a href="<%= url_for('research/') %>#sql-lab-title"><div><h3>SQLite 查询实验</h3><p>运行查询、查看计划，重放小数据行子集反例。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+      <li><a href="<%= url_for('writing/csdn-124338541/') %>#permutation-trace"><div><h3>数的全排列</h3><p>对照 C++ 原文，前进或倒带查看回溯。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+      <li><a href="<%= url_for('studio/') %>#rhythm-desk"><div><h3>六轨节奏工作台</h3><p>编排与分享，将音符、力度与节奏导出为 MIDI。</p></div><%- partial('nijika/editorial-arrow') %></a></li>
+    </ul>
+  </section>
+
+<details class="project-retrieval" data-project-retrieval data-retrieval-index="<%= url_for('atelier/data/archive.json') %>">
+  <summary>试一次检索<span>看看来源为何排在前面</span></summary>
+  <div class="project-retrieval-body">
+    <p>本站公开文章 · 本地关键词检索</p>
+    <form hidden>
+      <label for="retrieval-query">关键词 <span>用空格分开，最多 8 个</span></label>
+      <div class="project-retrieval-controls">
+        <input id="retrieval-query" name="query" type="search" maxlength="200" value="STL 递归" required autocomplete="off">
+        <select name="mode" aria-label="匹配方式"><option value="all">全部命中</option><option value="any">至少一个</option></select>
+        <button type="submit">检索</button>
+      </div>
+    </form>
+    <p data-retrieval-status role="status">关键词演示需要 JavaScript；文章可直接浏览。</p>
+    <ol data-retrieval-results></ol>
+    <a href="<%= url_for('notes/') %>">浏览全部笔记</a>
+  </div>
+</details>
+
+  <details class="project-implementation">
+    <summary>看看实现细节<span>静态路由、搜索与离线保存</span></summary>
+  <section class="project-section project-architecture" aria-labelledby="project-architecture-title">
+    <h2 id="project-architecture-title">实现结构</h2>
+    <ol class="project-layers" aria-label="静态内容、浏览器增强与共享后端的职责">
+      <li><span class="project-layer-label">构建时</span><h3>Markdown → HTML</h3><p>Hexo 生成文章与目录，EJS 覆盖 Redefine 视图。</p></li>
+      <li><span class="project-layer-label">浏览器</span><h3>ES modules</h3><p>全文检索、文章阅读工具与 Web Audio 节奏实验。</p></li>
+      <li><span class="project-layer-label">共享后端</span><h3>Worker + D1</h3><p>同域 <code>/api/*</code> 处理留言、掌声与统计。<a class="project-inline-link" href="<%= projectSource %>worker/index.mjs" target="_blank" rel="noopener noreferrer">实现 <%- partial('nijika/editorial-arrow') %></a></p></li>
+    </ol>
+    <p class="project-boundary">阅读进度、收藏与队列仅保存在当前浏览器，存储受限时可能无法保留；离线副本需主动保存。共享互动需要独立部署后端，静态页面可单独使用。</p>
+  </section>
+
+  <section class="project-section project-decisions" aria-labelledby="project-decisions-title">
+    <h2 id="project-decisions-title">三个实现取舍</h2>
+    <ol class="project-decision-list">
+      <li>
+        <h3><span aria-hidden="true">01</span>保留静态入口</h3>
+        <div><p>在 Hexo 构建阶段加载定制模板，保留原生文章、分类与标签路由。关闭 JavaScript 后，正文、分页、导航和标签页内容仍可访问。</p>
+          <div class="project-evidence"><a href="<%= url_for('archives/') %>">打开静态归档 <%- partial('nijika/editorial-arrow') %></a><span class="project-source-links">源码：<a href="<%= projectSource %>scripts/nijika.js#L17-L60" target="_blank" rel="noopener noreferrer">模板注册</a><a href="<%= projectSource %>custom/redefine/layout.ejs#L11-L14" target="_blank" rel="noopener noreferrer">无脚本回退</a></span></div>
+        </div>
+      </li>
+      <li>
+        <h3><span aria-hidden="true">02</span>筛选留在 URL 中</h3>
+        <div><p>关键词、文章类型和排序写入查询参数，后退可恢复。检索在 Web Worker 中执行，异常或超时后用同一纯函数回退；索引加载失败则保留静态目录。</p>
+          <div class="project-evidence"><a href="<%= url_for('notes/') %>?q=STL&amp;group=writing&amp;sort=oldest">试试 STL 筛选 <%- partial('nijika/editorial-arrow') %></a><span class="project-source-links">源码：<a href="<%= projectSource %>source/atelier/js/archive.js#L6-L20" target="_blank" rel="noopener noreferrer">查询与回退</a><a href="<%= projectSource %>source/atelier/js/archive-core.mjs#L3-L25" target="_blank" rel="noopener noreferrer">查询核心</a></span></div>
+        </div>
+      </li>
+      <li>
+        <h3><span aria-hidden="true">03</span>离线保存先完成，再替换</h3>
+        <div><p>主动保存文章时，先下载资源并写入新的独立缓存，全部成功后才更新元数据指针。写入失败便丢弃新快照，保留已有副本。</p>
+          <div class="project-evidence"><a href="<%= url_for('writing/csdn-154834561/') %>">打开文章试用 <%- partial('nijika/editorial-arrow') %></a><span class="project-source-links">源码：<a href="<%= projectSource %>custom/live-sw.template#L14-L28" target="_blank" rel="noopener noreferrer">快照提交</a></span></div>
+          <p class="project-instruction">文章末尾展开「阅读工具」，选择「离线保存」。浏览器需支持 Service Worker，并使用 HTTPS 或 localhost。</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  </details>
+
+  <section class="project-section project-coursework" aria-labelledby="project-coursework-title">
+    <div class="project-section-heading"><h2 id="project-coursework-title" tabindex="-1">课程实践</h2><span>02—03 / 从材料到模型</span></div>
+    <ul class="project-coursework-list">
+      <li>
+        <div class="project-coursework-heading"><span class="project-work-number" aria-hidden="true">02</span><p class="project-coursework-kind">课程助教原型</p><h3 id="project-edurag" tabindex="-1">EduRAG</h3></div>
+        <div class="project-coursework-body">
+          <p>围绕课程材料做检索问答，展示来源片段，并生成选择题用于自测。</p>
+          <ul class="project-coursework-stack" aria-label="EduRAG 技术栈"><li>Streamlit</li><li>LlamaIndex</li><li>FAISS</li></ul>
+          <a class="project-coursework-source" href="https://github.com/Hanbaor/EduRAG" target="_blank" rel="noopener noreferrer" aria-label="查看 EduRAG 公开源码">公开源码 <%- partial('nijika/editorial-arrow') %></a>
+        </div>
+        <div class="project-process project-process-rag" role="group" aria-label="EduRAG 流程示意：课程材料、检索问答、来源片段与选择题自测">
+          <ol>
+            <li><span>01 / INPUT</span><strong>课程材料</strong></li>
+            <li><span>02 / RETRIEVAL</span><strong>检索问答</strong></li>
+            <li><span>03 / OUTPUT</span><strong>来源片段 <i>＋</i> 选择题</strong></li>
+          </ol>
+        </div>
+      </li>
+      <li>
+        <div class="project-coursework-heading"><span class="project-work-number" aria-hidden="true">03</span><p class="project-coursework-kind">德英翻译课程实验</p><h3 id="project-transformer" tabindex="-1">Transformer</h3></div>
+        <div class="project-coursework-body">
+          <p>用编码器—解码器 Transformer 练习德英翻译，串起训练、束搜索与 BLEU 评估流程。</p>
+          <ul class="project-coursework-stack" aria-label="Transformer 技术要点"><li>PyTorch</li><li>Beam search</li><li>BLEU</li></ul>
+          <a class="project-coursework-source" href="https://github.com/Hanbaor/transformer-assignment" target="_blank" rel="noopener noreferrer" aria-label="查看 Transformer 课程实验公开源码">公开源码 <%- partial('nijika/editorial-arrow') %></a>
+        </div>
+        <div class="project-process project-process-transformer" role="group" aria-label="Transformer 流程示意：德语输入、编码器与解码器、束搜索和英语输出；使用 BLEU 评估">
+          <span class="project-process-caption">ENCODE → DECODE</span>
+          <ol><li><details><summary><div><span>DE → EN</span><strong>德语 <i>→</i> 英语</strong></div></summary><p>输入语言为德语，输出为英语。配置在 <code>configs/transformer.yml</code> 中；训练、推理使用一致的分词方式。</p></details></li><li><details><summary><div><span>MODEL</span><strong>Encoder <i>→</i> Decoder</strong></div></summary><p><code>src/model.py</code> 定义模型，<code>src/train.py</code> 负责训练。公开实现使用固定正弦位置编码。</p></details></li><li><details><summary><div><span>DECODE / EVALUATE</span><strong>Beam search <i>·</i> BLEU</strong></div></summary><p><code>src/translate.py</code> 支持束搜索。评估输出 <code>results/test_pairs.txt</code>（翻译配对）与 <code>results/test_bleu.txt</code>（BLEU 结果文件）。</p></details></li></ol>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="project-section project-reading" aria-labelledby="project-reading-title">
+    <h2 id="project-reading-title">继续读代码</h2>
+    <div class="project-reading-list">
+      <a href="<%= url_for('writing/csdn-154834561/') %>"><div><h3>分治（1）</h3><p>逆序对计数、中途相遇与平面最近点对，附 C++ 实现。</p></div><%- partial('nijika/editorial-arrow') %></a>
+      <div class="project-reading-pair"><div><h3>STL 容器</h3><p>vector 的容量与迭代，set 的常用操作与集合运算。</p></div><nav aria-label="STL 容器文章"><a href="<%= url_for('writing/csdn-124387071/') %>">vector <%- partial('nijika/editorial-arrow') %></a><a href="<%= url_for('writing/csdn-124460411/') %>">set <%- partial('nijika/editorial-arrow') %></a></nav></div>
+    </div>
+  </section>
+</section>

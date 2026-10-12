@@ -1,0 +1,128 @@
+import {$} from './ui.js';
+import {communityAPI, element, messageCard} from './community-shared.js';
+
+function friendlyFailure(container,message,retry) {
+  const focused=container.ownerDocument.activeElement;
+  const ownedFocus=container.contains(focused)&&focused.matches('button.community-retry');
+  container.replaceChildren();const box=element('div','community-empty');box.append(element('p','',message));const button=element('button','community-retry','再试一次 ↻');button.type='button';button.addEventListener('click',retry);box.append(button);container.append(box);
+  if(ownedFocus)button.focus({preventScroll:true});
+}
+export function initComments(root) {
+  const form=$('form',root),list=$('[data-comment-list]',root),more=$('[data-comment-more]',root),status=$('[data-comment-status],.comment-status:not([data-comment-connection])',root),submit=$('button[type=submit]',form);
+  const connection=$('[data-comment-connection]',root);
+  const showConnection=message=>{if(connection)connection.textContent=message;};
+  const initialPlaceholder=$(':scope > p.community-empty',list);
+  const page=location.pathname,doc=root.ownerDocument,view=doc.defaultView;
+  let next=null,loading=null,loadRecoveryNeeded=false,unavailable=false,requestSequence=0,availabilitySequence=0,statusOwner='',submissionId=crypto.randomUUID(),draft='',navigationEpoch=0,active=true,inFlight=null,recoveryNeeded=false;
+  const visibleView=()=>active&&root.isConnected&&!root.closest('[hidden]')&&view?.document===doc&&view.location.pathname===page;
+  const syncSubmit=()=>{submit.disabled=!!inFlight||unavailable;};
+  const notConfigured=error=>error.status===503&&error.code==='not_configured';
+  const availabilityNote=element('span','',' 留言暂未开放。');
+  const listFailure=element('p','community-empty','留言列表读取未完成。');
+  const listRetry=element('button','community-retry','重新读取');listRetry.type='button';
+  listRetry.addEventListener('click',()=>load());listFailure.append(listRetry);
+  const recheck=element('button','community-retry','重新检查');recheck.type='button';
+  recheck.addEventListener('click',()=>load());
+  function syncAvailabilityStatus(){
+    if(unavailable){
+      if(!inFlight&&statusOwner!=='receipt'){
+        status.textContent='留言暂未开放。';statusOwner='availability';
+      }else status.append(availabilityNote);
+      status.append(recheck);recheck.disabled=!!loading;
+    }else{
+      availabilityNote.remove();recheck.remove();
+      if(statusOwner==='availability'){status.textContent='';statusOwner='';}
+    }
+  }
+  function setStatus(message,owner){status.textContent=message;statusOwner=owner;syncAvailabilityStatus();}
+  function recordAvailability(sequence,value){
+    // Only explicit, validated evidence changes availability. Newer requests win.
+    if(sequence<availabilitySequence)return false;
+    availabilitySequence=sequence;unavailable=value;showConnection(value?'':'留言已开放。');syncSubmit();syncAvailabilityStatus();return true;
+  }
+  function restoreInterruptedStatus(){
+    if(recoveryNeeded&&!inFlight&&visibleView()){
+      setStatus('投递结果尚未确认。内容仍在当前表单中，可手动重试。','failure');
+      recoveryNeeded=false;
+    }
+  }
+  view.addEventListener('pagehide',()=>{
+    active=false;navigationEpoch++;if(inFlight)recoveryNeeded=true;
+    if(loading){loading=null;loadRecoveryNeeded=true;}
+  });
+  view.addEventListener('pageshow',()=>{
+    active=true;restoreInterruptedStatus();
+    if(loadRecoveryNeeded&&visibleView()){loadRecoveryNeeded=false;load();}
+  });
+  const input=$('[name=message]',form);input.addEventListener('input',()=>{$('[data-comment-length]',form).textContent=[...input.value.trim()].length+' / 1200';});
+  async function load(append=false) {
+    if(loading||!visibleView())return;
+    const attempt={},epoch=navigationEpoch,sequence=++requestSequence;
+    showConnection(unavailable?'':'正在连接留言服务……');
+    loading=attempt;more.disabled=true;recheck.disabled=true;listRetry.disabled=true;list.setAttribute('aria-busy','true');
+    const currentView=()=>loading===attempt&&navigationEpoch===epoch&&visibleView();
+    try {
+      const data=await communityAPI('comments?page='+encodeURIComponent(page)+'&offset='+(append?next||0:0));
+      if(!currentView())return;
+      const focused=doc.activeElement,recoveringList=list.contains(focused)&&focused.matches('button.community-retry');
+      initialPlaceholder?.remove();
+      recordAvailability(sequence,false);listFailure.remove();
+      if(!append)list.replaceChildren();for(const item of data.items)list.append(messageCard(item));
+      if(!data.total)list.append(element('p','community-empty','还没有公开的留言。第一道回声，留给你。'));
+      $('[data-comment-total]',root).textContent=String(data.total).padStart(2,'0');next=data.next;more.hidden=next===null;
+      // Only replace focus owned by a disappearing recovery control. A reader
+      // who resumed typing or navigated elsewhere keeps their current focus.
+      if(recoveringList){list.tabIndex=-1;list.setAttribute('role','region');list.setAttribute('aria-label','公开留言');list.focus({preventScroll:true});}
+    }catch(error){
+      if(!currentView())return;
+      initialPlaceholder?.remove();
+      if(sequence>=availabilitySequence&&!unavailable)showConnection('暂时无法确认留言服务，请稍后重试。');
+      if(notConfigured(error)){
+        if(!recordAvailability(sequence,true)&&!unavailable)list.append(listFailure);else listFailure.remove();
+      }else if(!append)friendlyFailure(list,error.message,()=>load());
+      else if(!inFlight&&statusOwner!=='receipt'&&!unavailable)setStatus(error.message,'load');
+    }finally{
+      if(loading===attempt){loading=null;more.disabled=false;recheck.disabled=false;listRetry.disabled=false;list.removeAttribute('aria-busy');}
+    }
+  }
+  more.addEventListener('click',()=>load(true));
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();if(unavailable||submit.disabled||inFlight)return;
+    const readDraft=()=>{const data=new FormData(form);return {page,nickname:String(data.get('nickname')).trim(),message:String(data.get('message')).trim(),stamp:data.get('stamp'),website:data.get('website')};};
+    const snapshot=JSON.stringify([...new FormData(form)]);
+    const body=readDraft();
+    if([...body.nickname].length>24||[...body.message].length>1200){setStatus('昵称最多 24 个字，留言最多 1200 个字。','validation');return;}
+    const current=JSON.stringify(body);if(current!==draft){submissionId=crypto.randomUUID();draft=current;}
+    const sentId=submissionId,epoch=navigationEpoch,attempt={},sequence=++requestSequence;
+    inFlight=attempt;recoveryNeeded=false;
+    const currentView=()=>inFlight===attempt&&navigationEpoch===epoch&&visibleView();
+    syncSubmit();setStatus('正在投递……','submission');
+    try{
+      const receipt=await communityAPI('comments',{...body,submissionId:sentId});
+      if(!currentView())return;
+      recordAvailability(sequence,false);
+      if(receipt.status==='rejected'){setStatus('这条留言已被收起，未公开。内容仍在当前表单中。','receipt');return;}
+      let message=receipt.status==='approved'?'这条留言已公开。':'已收到，审核后会出现在这里。谢谢你留下回声。';
+      // Typing remains possible during delivery. Never erase a newer draft.
+      if(JSON.stringify([...new FormData(form)])===snapshot){input.value='';$('[data-comment-length]',form).textContent='0 / 1200';}
+      else message+=' 当前修改的草稿已保留，尚未投递。';
+      setStatus(message,'receipt');draft='';
+    }
+    catch(error){
+      if(!currentView())return;
+      // A confirmed conflict permits a new explicit submission, never an automatic
+      // resend. Uncertain outcomes retain the nonce so retries cannot double-write.
+      if(error.status===409&&error.code==='submission_conflict'&&submissionId===sentId&&draft===current&&JSON.stringify(readDraft())===current)draft='';
+      if(notConfigured(error)){
+        recordAvailability(sequence,true);
+        setStatus('此次投递未完成。内容仍在当前表单中。','failure');
+      }else setStatus(error.message+' 内容仍在当前表单中，可再次投递。','failure');
+    }finally{
+      // Navigation never unlocks a still-running request. Only its own completion
+      // can release the form, then restore honest feedback in the returned view.
+      if(inFlight===attempt){inFlight=null;syncSubmit();if(visibleView())syncAvailabilityStatus();restoreInterruptedStatus();}
+    }
+  });
+  $('fieldset[data-form-guard]',form).disabled=false;
+  load();
+}

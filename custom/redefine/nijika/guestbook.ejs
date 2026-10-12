@@ -1,0 +1,3 @@
+<section class="atelier-room room-guestbook" aria-label="留言板">
+  <div class="guestbook-scene-grid"><header class="room-scene guestbook-scene" data-reveal><img src="<%= url_for('atelier/images/v3/guestbook.webp') %>" srcset="<%= url_for('atelier/images/v3/guestbook-960.webp') %> 960w, <%= url_for('atelier/images/v3/guestbook.webp') %> 1916w" sizes="(max-width:760px) calc(min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) * 1.643479), min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px)))" alt="虹夏在暮色屋顶上的留言板主题插画" width="1916" height="821" fetchpriority="high"><h1 tabindex="-1">留言</h1></header><div class="guestbook-compose"><p class="guestbook-rules">昵称与留言将公开显示。请别留下电话、住址等私人信息。</p><%- partial('nijika/comments') %></div></div>
+</section>

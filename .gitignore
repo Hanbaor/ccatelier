@@ -3,3 +3,10 @@ node_modules/
 public/
 db.json
 .deploy_git/
+.nijika-qa/
+.nijika-import/
+*-nijika.log
+
+__pycache__/
+.dev.vars*
+.env*

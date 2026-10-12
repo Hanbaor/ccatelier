@@ -1,0 +1,80 @@
+// Build into a separate, ignored sandbox. Never change published source content.
+const fs=require('node:fs');
+const path=require('node:path');
+const {execFileSync}=require('node:child_process');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const sandbox=path.join(root,'.nijika-qa');
+fs.mkdirSync(sandbox,{recursive:true});
+fs.cpSync(path.join(root,'source'),path.join(sandbox,'source'),{recursive:true});
+fs.copyFileSync(path.join(__dirname,'fixtures/reading.md'),path.join(sandbox,'source/_posts/fixture-reading.md'));
+fs.mkdirSync(path.join(sandbox,'source/verification-page'),{recursive:true});
+fs.writeFileSync(path.join(sandbox,'source/verification-page/index.md'),'---\ntitle: 写作模块页面\nlayout: page\n---\n\n{% folding title="页面折叠模块" %}\n普通 Markdown 页面也应加载写作模块样式。\n{% endfolding %}\n');
+for(let i=0;i<8;i++) fs.writeFileSync(path.join(sandbox,`source/_posts/fixture-${i}.md`),`---\ntitle: "验证文章 ${i} & <img onerror=alert(1)>"\ndate: 2026-09-${String(10+i).padStart(2,'0')} 12:00:00\npermalink: verification/post-${i}/\ncategories: [验证分类]\ntags: [排版]\n---\n\nFixture ${i}. 只在验证构建中存在。\n`);
+// The real template's url_for helpers must respect installations below a prefix.
+const config=path.join(sandbox,'config.yml');
+fs.writeFileSync(config,'source_dir: .nijika-qa/source\npublic_dir: .nijika-qa/public\nurl: https://ccatelier.top/lab\nroot: /lab/\nindex_generator:\n  path: notes\n  per_page: 3\n');
+const log=execFileSync(process.execPath,['--require',path.join(root,'tools/offline-build.cjs'),path.join(root,'node_modules/hexo/bin/hexo'),'generate','--config',`_config.yml,${config}`,'--output',sandbox],{cwd:root,encoding:'utf8',timeout:120000});
+fs.writeFileSync(path.join(sandbox,'build.log'),log);
+const read=file=>fs.readFileSync(path.join(sandbox,'public',file),'utf8');
+assert.match(read('notes/page/2/index.html'),/href="\/lab\//);
+assert.match(read('notes/index.html'),/href="\/lab\/notes\/page\/2\/"/);
+const article=read('verification/reading/index.html');
+for(const expression of [/reading-toc/,/class="[^"\n]*highlight/,/data-rel="Javascript"/,/<table>/,/<img[^>]+ep08-4/,/role="tablist"/,/第二页内容/]) assert.match(article,expression);
+assert.match(article, /src="\/lab\/atelier\/images\/ep08-4.jpg"/);
+assert.match(read('verification/post-0/index.html'),/&lt;img onerror=alert\(1\)&gt;/);
+assert.doesNotMatch(read('verification/post-0/index.html'),/<img onerror=alert\(1\)>/);
+assert.match(read('index.html'),/href="\/lab\/atelier\/"/);
+const index=JSON.parse(read('search.json'));
+const published=JSON.parse(fs.readFileSync(path.join(root,'public/search.json'),'utf8')).length;
+assert.equal(index.length,published+9);
+assert.ok(index.every(item=>item.url.startsWith('/lab/')));
+assert.ok(index.every(item=>!item.url.includes('//')), 'custom permalinks must not become protocol-relative search URLs');
+assert.match(read('tags/排版/index.html'),/验证文章/);
+// Paginated legacy indexes must label the current page, never call its length the total.
+for(const route of ['archives/index.html','archives/page/2/index.html','tags/排版/index.html','categories/验证分类/index.html']) {
+ const dom=new (require('jsdom').JSDOM)(read(route)),doc=dom.window.document;
+ const rows=[...doc.querySelectorAll('.post-row')];
+ assert.equal(doc.querySelector('.archive-count').textContent,'本页 '+rows.length+' 篇');
+ assert.equal(doc.querySelector('.archive-return').getAttribute('href'),'/lab/notes/');
+ assert.ok(rows.length>0);
+ assert.ok(rows.every(row=>row.getAttribute('href').startsWith('/lab/')));
+ for(const link of doc.querySelectorAll('.pagination a'))assert.ok(link.getAttribute('href').startsWith('/lab/'));
+ if(route==='archives/index.html')assert.ok(doc.querySelector('.pagination .next'));
+ dom.window.close();
+}
+
+assert.match(read('verification-page/index.html'),/css\/build\/tailwind.css/);
+assert.match(read('hot100/001/index.html'), /href="\/lab\/series\/hot100\/">返回目录/);
+const discovery=JSON.parse(read('atelier/data/discovery.json'));
+assert.equal(discovery.length,published+9);
+assert.ok(discovery.every(p=>p.path.startsWith('/lab/')));
+const rich=JSON.parse(read('atelier/data/archive.json'));
+assert.equal(rich.posts.length,published+9);
+assert.ok(rich.posts.every(p=>p.path.startsWith('/lab/')&&typeof p.text==='string'&&Array.isArray(p.tags)));
+assert.equal(rich.posts.filter(p=>p.kind==='technical').length,8);
+assert.equal(rich.posts.filter(p=>p.exercise?.hasCode).length,29);
+assert.equal(rich.posts.filter(p=>p.exercise?.analysisPlaceholder).length,100);
+assert.ok(rich.posts.filter(p=>p.group==='hot100').every(p=>!p.text.includes('在这里填写你的代码')));
+assert.match(read('notes/index.html'),/href="\/lab\/atelier\/css\/content-catalog.css"/);
+assert.match(read('hot100/031/index.html'),/class="exercise-readiness"/);
+assert.doesNotMatch(read('hot100/031/index.html'),/在这里填写你的代码|在这里补充：/);
+assert.match(read('series/hot100/index.html'),/29 题已有代码/);
+const offlineShell=JSON.parse(read('atelier/data/offline-shell.json'));
+assert.ok(offlineShell.every(p=>p.startsWith('/lab/')));
+for(const file of ['route-features.js','archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','practice.js','livehouse.js']){
+ assert.ok(offlineShell.includes('/lab/atelier/js/'+file),file+' must be available to offline snapshots');
+ assert.ok(fs.existsSync(path.join(sandbox,'public/atelier/js',file)));
+}
+assert.match(read('atelier/js/route-features.js'),/import\('\.\/archive\.js'\)/);
+assert.ok(require('../tools/browser-module-analysis.cjs').analyzeModule(read('atelier/js/main.js')).imports.some(item=>item.kind==='dynamic-import'&&item.path==='./archive.js'),'built main retains route feature loading under /lab/');
+assert.match(fs.readFileSync(path.join(root,'source/atelier/js/main.js'),'utf8'),/from '\.\/route-features\.js'/);
+assert.match(read('live-sw.js'),/ROOT="\/lab\/"/);
+assert.match(read('studio/index.html'),/data-studio/);
+assert.match(read('studio/practice/index.html'),/data-practice/);
+assert.match(read('studio/practice/index.html'),/href="\/lab\/studio\/"/);
+assert.doesNotMatch(read('verification/reading/index.html'),/reader-workbench/);
+assert.match(read('verification/reading/index.html'),/reader-options/);
+assert.match(require('hexo-util').unescapeHTML(read('atom.xml')),/https:\/\/ccatelier.top\/lab\/atom.xml/);
+assert.match(read('lounge/index.html'),/href="\/lab\/guestbook\/"/);
+console.log('PASS: fixture build, all published posts plus 9 fixtures, pagination, Unicode taxonomy, escaped titles, Redefine code/tabs, TOC and /lab/ URLs.');

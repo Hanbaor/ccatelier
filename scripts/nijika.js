@@ -1,0 +1,127 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const {pageMetadata}=require('../tools/site-metadata.cjs');
+const {plain,articleContent}=require('../tools/content-catalog.cjs');
+hexo.extend.helper.register('nijika_page_metadata',function(){return pageMetadata(this);});
+let searchPatched = false;
+let indexPatched = false;
+
+hexo.extend.filter.register('stylus:renderer', style => style.include(hexo.base_dir));
+hexo.extend.filter.register('after_post_render', data => {
+  const root = hexo.config.root || '/';
+  if (root !== '/' && data.content) {
+    data.content = data.content.replace(/(<a\b[^>]*\bhref=["'])\/(hot100\/|series\/hot100\/)/g, '$1'+root+'$2');
+  }
+  return data;
+});
+
+// Keep the upstream npm theme intact. Load tracked customizations after its views.
+hexo.extend.filter.register('before_generate', function () {
+  if (this.config.theme !== 'redefine') return;
+  // Exercise series have their own index, keeping other writing discoverable.
+  if (!indexPatched) {
+    const index = hexo.extend.generator.get('index');
+    if (index) hexo.extend.generator.register('index', function (locals) {
+      return index.call(this, {...locals, posts:locals.posts.filter(post => post.series !== 'hot100')});
+    });
+    indexPatched = true;
+  }
+  // SearchDB joins root + post.path literally. Hexo 8 custom permalinks can
+  // start with '/', producing //post/ on root deployments. Normalize only
+  // those server-generated local paths. For plain-text indexing, retain HTML
+  // until our parser can strip markup and decode entities in one safe pass.
+  if (!searchPatched && path.extname(this.config.search.path) === '.json') {
+    const generateSearch = hexo.extend.generator.get('json');
+    if (generateSearch) {
+      hexo.extend.generator.register('json', async function (locals) {
+        const plainContent=this.config.search.format==='striptags';
+        const context=Object.create(this);
+        context.config={...this.config,search:{...this.config.search,...(plainContent?{format:'html'}:{})}};
+        // Index the same authored content as the archive/reader, excluding only
+        // its verified empty exercise scaffolding. Preserve model getters and
+        // let SearchDB remove code gutters; never mutate the original posts.
+        const searchLocals=plainContent&&this.config.search.content!==false&&['post','all'].includes(this.config.search.field)
+          ? {...locals,posts:locals.posts.map(post=>Object.create(post,{content:{value:articleContent(post)}}))}
+          : locals;
+        const route = await generateSearch.call(context, searchLocals);
+        const entries = JSON.parse(route.data);
+        for (const entry of entries) {
+          if (entry.url?.startsWith('/')) entry.url = entry.url.replace(/\/{2,}/g, '/');
+          if (plainContent&&typeof entry.content==='string') entry.content=plain(entry.content);
+        }
+        return {...route, data:JSON.stringify(entries)};
+      });
+      searchPatched = true;
+    }
+  }
+  const root = path.join(this.base_dir, 'custom/redefine');
+  function load(directory) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes:true})) {
+      const filename = path.join(directory, entry.name);
+      if (entry.isDirectory()) load(filename);
+      else if (entry.name.endsWith('.ejs')) {
+        hexo.theme.setView(path.relative(root, filename).replaceAll('\\', '/'), fs.readFileSync(filename, 'utf8'));
+      }
+    }
+  }
+  load(root);
+}, 100);
+
+hexo.extend.generator.register('nijika-cover', function () {
+  return {path:'index.html', layout:['nijika/cover'], data:{nijika:'cover', title:'CC Atelier'}};
+});
+
+hexo.extend.generator.register('nijika-practice', async function () {
+  const {buildPracticeScores}=require('../tools/build-practice-scores.cjs');
+  const scores=await buildPracticeScores(path.join(this.source_dir,'atelier/js'));
+  return [
+    {path:'studio/practice/index.html',layout:['nijika/practice'],data:{nijika:'practice',title:'鼓谱排练室',practiceScores:scores.map(({path,score})=>({...score,path}))}},
+    ...scores.map(({path,data})=>({path,data})),
+  ];
+});
+
+hexo.extend.helper.register('nijika_count', count => String(count).padStart(2, '0'));
+hexo.extend.generator.register('nijika-stage', function () {
+  return {path:'atelier/index.html', layout:['nijika/stage'], data:{nijika:'atelier', title:'创作室'}};
+});
+hexo.extend.generator.register('nijika-after-hours', function () {
+  return [['guestbook','散场留言板'],['lounge','后台小屋'],['admin','留言管理']].map(([route,title])=>({path:route+'/index.html',layout:['nijika/'+route],data:{nijika:route,title}}));
+});
+hexo.extend.generator.register('nijika-hot100', function (locals) {
+  const posts = locals.posts.toArray().filter(post => post.series === 'hot100').sort((a,b) => a.series_order-b.series_order);
+  if (!posts.length) return [];
+  const introHtml = this.render.renderSync({text:locals.data.hot100?.introduction || '',engine:'md'});
+  return {path:'series/hot100/index.html', layout:['nijika/series'], data:{nijika:'notes', title:'LeetCode Hot100', seriesPosts:posts, introHtml}};
+});
+hexo.extend.helper.register('nijika_writing', function () {
+  return this.site.posts.sort('date', -1).toArray().filter(post => post.series !== 'hot100');
+});
+hexo.extend.helper.register('nijika_series', function () {
+  return this.site.posts.toArray().filter(post => post.series === 'hot100').sort((a,b) => a.series_order-b.series_order);
+});
+hexo.extend.helper.register('nijika_label', function () {
+  if (this.is_post()) return '笔记 / 阅读';
+  if (this.is_archive()) return '归档';
+  if (this.is_category()) return `分类 / ${this.page.category}`;
+  if (this.is_tag()) return `标签 / ${this.page.tag}`;
+  return '';
+});
+hexo.extend.helper.register('nijika_section', function () {
+  if (this.is_post() || this.is_home() || this.is_archive() || this.is_category() || this.is_tag()) return 'notes';
+  return this.page.nijika || '';
+});
+hexo.extend.helper.register('nijika_list_title', function () {
+  if (this.is_category()) return this.page.category;
+  if (this.is_tag()) return `# ${this.page.tag}`;
+  if (this.is_archive()) return this.page.year ? String(this.page.year) + (this.page.month ? ` / ${this.page.month}` : '') : '归档';
+  return '笔记';
+});
+// Responsive assets are curated; custom images keep their original source.
+hexo.extend.helper.register('nijika_art_srcset', function (source) {
+  const widths={v2:{hero:1672,stage:1672,notes:1536,research:1536,life:1536,lounge:1536},v3:{hero:1916,projects:1672,about:1024,guestbook:1916},v5:{'practice-room':1536}};
+  const match=String(source || '').match(/^\/atelier\/images\/(v[235])\/([a-z-]+)\.webp$/);
+  const width=match && widths[match[1]][match[2]];
+  if (!Number.isInteger(width)) return '';
+  return this.url_for(source.replace(/\.webp$/, '-960.webp')) + ' 960w, ' + this.url_for(source) + ' ' + width + 'w';
+});

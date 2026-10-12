@@ -1,0 +1,219 @@
+import {cacheableURL} from './atelier/js/offline-core.mjs';
+import {articleResources} from './atelier/js/offline-resources.mjs';
+const ROOT=__ROOT__,BASE=new URL(ROOT,self.location.origin).href,CACHE='cc-live-shelf-v1-'+encodeURIComponent(ROOT),META=new URL(ROOT+'atelier/offline-records.json',BASE).href;
+let serial=Promise.resolve();
+function publicPath(path){return !(typeof path!=='string'||!path.startsWith(ROOT)||!/^\/(?!\/)/.test(path)||/[\\?#\u0000-\u0020]/.test(path)||/%2e|%2f|%5c/i.test(path)||path.split('/').some(part=>part==='.'||part==='..')||/^(?:api|admin)(?:\/|$)/.test(path.slice(ROOT.length)));}
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+async function readMeta(cache){const response=await cache.match(META);return response?response.json():[];}
+async function writeMeta(cache,rows){await cache.put(META,new Response(JSON.stringify(rows),{headers:{'Content-Type':'application/json'}}));}
+async function cleanSnapshots(rows){const used=new Set(rows.map(r=>r?.snapshot));for(const name of await caches.keys())if(name.startsWith(CACHE+'-snapshot-')&&!used.has(name))await caches.delete(name);}
+// Snapshot resource sizes are committed with the pointer. Listing validates keys and
+// response availability, but never consumes resource bodies on the modern path.
+const MAX_BYTES=35*1024*1024;
+function validSize(value){return Number.isSafeInteger(value)&&value>=0&&value<=MAX_BYTES;}
+async function shelfList(cache,rows){
+ if(!Array.isArray(rows))throw Error('离线书架记录无法读取，请稍后重试');
+ const available=new Set(await caches.keys()),next=[],counted=new Set();let bytes=0,changed=false;
+ for(const row of rows){
+  const unavailable=()=>{next.push({...row,bytes:0,unavailable:true});changed=true;};
+  if(!row||!publicPath(row.path)){unavailable();continue;}
+  const name=row.snapshot||CACHE,articleURL=new URL(row.path,BASE).href;
+  if(typeof name!=='string'||(name!==CACHE&&!name.startsWith(CACHE+'-snapshot-'))||!available.has(name)){unavailable();continue;}
+  const snapshot=await caches.open(name),keys=(await snapshot.keys()).map(key=>key.url).filter(url=>url!==META).sort();
+  const page=await snapshot.match(articleURL);
+  let resources=row.resources,valid=name!==CACHE&&Array.isArray(resources)&&resources.length===keys.length&&resources.length>0&&resources.length<=400&&validSize(row.bytes),sum=0;
+  if(valid)for(let i=0;i<resources.length;i++){
+   const entry=resources[i];if(!Array.isArray(entry)||entry.length!==2||entry[0]!==keys[i]||(i&&keys[i]===keys[i-1])||!validSize(entry[1])||(entry[0]!==articleURL&&!cacheableURL(entry[0],BASE))){valid=false;break;}sum+=entry[1];
+  }
+  valid=valid&&sum===row.bytes&&validSize(sum)&&keys.includes(articleURL);
+  let complete=!!page?.ok;
+  if(name!==CACHE&&Array.isArray(resources)&&resources.some(entry=>Array.isArray(entry)&&typeof entry[0]==='string'&&!keys.includes(entry[0])))complete=false;
+  const responses=[];
+  for(const url of keys){const response=url===articleURL?page:await snapshot.match(url);if(!response?.ok)complete=false;if(response)responses.push([url,response]);}
+  let total=valid&&complete?row.bytes:0,updated=row;
+  if(!valid||!complete){
+   resources=[];for(const [url,response] of responses){const size=(await response.arrayBuffer()).byteLength;total+=size;resources.push([url,size]);}
+   // Reconcile the reported accounting without mutating a user's recovery pointer.
+   // Legacy shared caches stay on the accurate body fallback on every listing.
+   updated={...row,bytes:total,...(!complete?{unavailable:true}:{})};changed=true;
+  }
+  next.push(updated);if(!counted.has(name)){bytes+=total;counted.add(name);}
+ }
+ return {rows:changed?next:rows,bytes};
+}
+function notesNavigation(search){
+ if(search.length>16384)return false;
+ const outer=new URLSearchParams(search),entries=[...outer];if(entries.length!==1||entries[0][0]!=='notes')return false;
+ const href=entries[0][1];if(href.length>4096||/[\\\u0000-\u0020\u007f]/.test(href))return false;
+ const path=href.split(/[?#]/,1)[0];if(path!==ROOT+'notes/'||!publicPath(path))return false;
+ try{
+  decodeURIComponent(search);const url=new URL(href,BASE);decodeURIComponent(url.search);
+  if(url.origin!==self.location.origin||!['','#notes-catalog','#reading-paths'].includes(url.hash))return false;
+  const choices={group:['all','writing','hot100'],duration:['all','short','medium','long'],sort:['newest','oldest','minutes','title'],view:['list','grid','graph']},seen=new Set();
+  for(const [key,value] of url.searchParams){if(seen.has(key)||/[\u0000-\u001f\u007f]/.test(value))return false;seen.add(key);if(key==='q'||key==='tag'){if(value.length>(key==='q'?200:80))return false;}else if(!Object.hasOwn(choices,key)||!choices[key].includes(value))return false;}
+  return true;
+ }catch{return false;}
+}
+function rawTextEnd(lower,at,tag){
+ if(tag!=='script'){const end=new RegExp('</'+tag+'(?=[\\s/>])','g');end.lastIndex=at;return end.exec(lower)?.index??lower.length;}
+ // HTML's legacy escaped-script states can contain a literal </script> without
+ // ending the element. Treating that text as markup would invent image requests.
+ const tokens=/<!--|-->|<\/?script(?=[\s/>])/g;tokens.lastIndex=at;let state='data',match;
+ while((match=tokens.exec(lower))){
+  const token=match[0];
+  if(token==='<!--'&&state==='data')state='escaped';
+  else if(token==='-->')state='data';
+  else if(token==='<script'&&state==='escaped')state='double';
+  else if(token==='</script'){if(state==='double')state='escaped';else return match.index;}
+ }
+ return lower.length;
+}
+
+function articleMarkers(html){
+ const markers=new Set(),lower=html.toLowerCase();let at=0,templateDepth=0,foreignDepth=0,selectDepth=0;
+ while(at<html.length){
+  const start=html.indexOf('<',at);if(start<0)break;at=start+1;
+  if(html.startsWith('!--',at)){
+   if(html[at+3]==='>'){at+=4;continue;}
+   if(html.startsWith('->',at+3)){at+=5;continue;}
+   const end=/--!?>/g;end.lastIndex=at+3;const match=end.exec(html);at=match?end.lastIndex:html.length;continue;
+  }
+  if(html[at]==='!'||html[at]==='?'){const end=html.indexOf('>',at);at=end<0?html.length:end+1;continue;}
+  const closing=html[at]==='/';if(closing)at++;
+  const name=/^[a-z][a-z\d:-]*/i.exec(html.slice(at));if(!name)continue;
+  const tag=name[0].toLowerCase();at+=name[0].length;
+  const attributes=new Map();let complete=false;
+  while(at<html.length){
+   while(/[\t\n\f\r ]/.test(html[at]||'')&&at<html.length)at++;
+   if(html[at]==='>'){at++;complete=true;break;}
+   if(html[at]==='/'){at++;continue;}
+   const attr=/^[^\t\n\f\r =/>]+/.exec(html.slice(at));if(!attr){at++;continue;}
+   const key=attr[0].toLowerCase();at+=attr[0].length;
+   while(/[\t\n\f\r ]/.test(html[at]||'')&&at<html.length)at++;
+   let value='';
+   if(html[at]==='='){
+    at++;while(/[\t\n\f\r ]/.test(html[at]||'')&&at<html.length)at++;
+    const quote=html[at];
+    if(quote==='"'||quote==="'"){at++;const end=html.indexOf(quote,at);if(end<0){at=html.length;break;}value=html.slice(at,end);at=end+1;}
+    else{const begin=at;while(at<html.length&&!/[\t\n\f\r >]/.test(html[at]))at++;value=html.slice(begin,at);}
+   }
+   if(!attributes.has(key))attributes.set(key,value); // HTML keeps the first duplicate.
+  }
+  if(!complete)break;
+  if(tag==='svg'||tag==='math')foreignDepth=Math.max(0,foreignDepth+(closing?-1:1));
+  if(foreignDepth&&/^(?:title|style|script|foreignobject)$/.test(tag))throw Error('需要兼容资源清单');
+  if(tag==='select')selectDepth=Math.max(0,selectDepth+(closing?-1:1));
+  else if(selectDepth&&!/^(?:option|optgroup|script|template|hr)$/.test(tag))throw Error('需要兼容资源清单');
+  if(tag==='template'){templateDepth=Math.max(0,templateDepth+(closing?-1:1));continue;}
+  if(!closing&&!templateDepth)for(const key of attributes.keys())markers.add(key);
+  // These elements contain text, not child tags. A script's own src was handled.
+  if(!closing&&/^(?:script|style|textarea|title|xmp|iframe|noembed|noframes|noscript|plaintext)$/.test(tag)){
+   if(tag==='plaintext')break;
+   at=rawTextEnd(lower,at,tag);
+  }
+ }
+ return markers;
+}
+function validProfile(profile){
+ const fail=()=>{throw Error('离线资源清单无法读取');},main=ROOT+'atelier/js/main.js';
+ if(!profile||profile.version!==2||!Array.isArray(profile.entries)||profile.entries.length!==1||profile.entries[0]!==main||!profile.dependencies||typeof profile.dependencies!=='object'||Array.isArray(profile.dependencies))fail();
+ const graph=profile.dependencies,nodes=Object.keys(graph),unsupported=profile.unsupported??[];
+ if(nodes.length<1||nodes.length>400||!Array.isArray(unsupported)||unsupported.length>400)fail();
+ const canonical=url=>typeof url==='string'&&url.startsWith(ROOT)&&cacheableURL(url,BASE)&&new URL(url,BASE).pathname===url;
+ let count=0;
+ for(const node of nodes){
+  if(!canonical(node)||!Array.isArray(graph[node])||graph[node].length>400)fail();
+  for(const edge of graph[node]){
+   const target=typeof edge==='string'?edge:edge?.url;
+   if(!canonical(target)||typeof edge!=='string'&&(!edge||typeof edge.when!=='string'||!/^data-[a-z0-9-]+$/.test(edge.when)))fail();
+   if(/\.m?js$/.test(target)&&!Object.hasOwn(graph,target))fail();
+   if(++count>4000)fail();
+  }
+ }
+ if(!Object.hasOwn(graph,main)||unsupported.some(node=>!canonical(node)||!Object.hasOwn(graph,node)))fail();
+ return profile;
+}
+function profileResources(shell,html,discovered){
+ if(Array.isArray(shell))return shell;
+ const markers=articleMarkers(html),urls=new Set(),queue=[...shell.entries,...discovered],unsupported=new Set(shell.unsupported||[]);
+ for(let at=0;at<queue.length;at++){
+  const value=queue[at];if(!cacheableURL(value,BASE))continue;const url=new URL(value,BASE).href;if(urls.has(url))continue;urls.add(url);if(urls.size>400)throw Error('资源数量超出限制');
+  const node=new URL(url).pathname;
+  if(unsupported.has(node))throw Error('这篇文章包含暂不支持离线保存的资源：'+node);
+  const deps=shell.dependencies[node]??[];
+  if(/\.m?js$/.test(node)&&!Object.hasOwn(shell.dependencies,node))throw Error('离线资源清单缺少文章脚本：'+node);
+  for(const edge of deps){if(typeof edge==='string')queue.push(edge);else if(markers.has(edge.when))queue.push(edge.url);}
+ }
+ return [...urls];
+}
+async function get(url){const response=await fetch(url,{credentials:'omit',cache:'no-cache'});if(!response.ok||response.type==='opaque'||response.redirected)throw Error('资源未能完整下载：'+new URL(url).pathname);return response;}
+function supportedExplicitClosure(profile,seeds,markers=new Set()){
+ const unsupported=new Set(profile.unsupported||[]),seen=new Set(),queue=[...seeds];
+ for(let at=0;at<queue.length;at++){
+  const node=new URL(queue[at],BASE).pathname;if(seen.has(node))continue;seen.add(node);
+  if(unsupported.has(node))throw Error('这篇文章包含暂不支持离线保存的资源：'+node);
+  for(const edge of profile.dependencies[node]||[]){if(typeof edge==='string')queue.push(edge);else if(markers.has(edge.when))queue.push(edge.url);}
+ }
+}
+async function legacyProfile(){return (await get(new URL(ROOT+'atelier/data/offline-shell.json',BASE).href)).json();}
+async function resourceProfile(html,discovered){
+ let profile;
+ try{profile=validProfile(await (await get(new URL(ROOT+'atelier/data/offline-profile.json',BASE).href)).json());}catch{return legacyProfile();}
+ // Do not let an unrelated ambiguous marker or skewed script hide a known
+ // unsupported runtime required by an explicitly exposed article entry.
+ const seeds=[...profile.entries,...discovered];supportedExplicitClosure(profile,seeds);
+ let markers;
+ try{markers=articleMarkers(html);}catch{
+  // A conservative syntax scan is only for rejection on ambiguous markup, never
+  // for deciding which resources may safely be omitted from a saved snapshot.
+  const possible=new Set([...html.matchAll(/\b(data-[a-z0-9-]+)(?=[\t\n\f\r =/>])/gi)].map(match=>match[1].toLowerCase()));
+  supportedExplicitClosure(profile,seeds,possible);return legacyProfile();
+ }
+ supportedExplicitClosure(profile,seeds,markers);
+ for(const url of discovered){const node=new URL(url,BASE).pathname;if(/\.m?js$/.test(node)&&!Object.hasOwn(profile.dependencies,node))return legacyProfile();}
+ return profile;
+}
+async function handle(data){const cache=await caches.open(CACHE),rows=await readMeta(cache);
+ if(data.type==='search-index'){
+  if(!Array.isArray(rows))throw Error('离线书架记录无法读取，请稍后重试');
+  const entries=[],seen=new Set();let unavailable=0;const available=new Set(await caches.keys());
+  for(const row of rows){try{
+   const path=row?.path;if(!publicPath(path))throw Error();
+   const name=row.snapshot||CACHE;if(typeof name!=='string'||(name!==CACHE&&!name.startsWith(CACHE+'-snapshot-'))||!available.has(name))throw Error();
+   const snapshot=await caches.open(name),page=await snapshot.match(new URL(path,BASE).href),index=await snapshot.match(new URL(ROOT+'atelier/data/archive.json',BASE).href);
+   if(!page?.ok||!index?.ok)throw Error();
+   const data=await index.json(),post=Array.isArray(data.posts)&&data.posts.find(p=>p.path===path&&p.published!==false);
+   if(!post||typeof post.title!=='string'||typeof post.text!=='string')throw Error();
+   if(!seen.has(path)){entries.push({url:path,title:post.title,content:post.text,savedAt:row.updated});seen.add(path);}
+  }catch{unavailable++;}}
+  return {version:1,entries,unavailable};
+ }
+ if(data.type==='list'){if(data.metadataOnly===true)return {rows};return shelfList(cache,rows);}
+ if(data.type==='clear'){await caches.delete(CACHE);await cleanSnapshots([]);return {rows:[]};}
+ if(data.type==='remove'){const next=rows.filter(r=>r?.path!==data.path);await writeMeta(cache,next);await cleanSnapshots(next);if(!rows.find(r=>r?.path===data.path)?.snapshot)await cache.delete(new URL(data.path,BASE).href);return {rows:next};}
+ if(data.type!=='save')throw Error('未知离线操作');
+ const indexURL=new URL(ROOT+'atelier/data/archive.json',BASE).href,indexResponse=await get(indexURL),index=await indexResponse.clone().json(),post=index.posts.find(p=>p.path===data.path&&p.published!==false);
+ if(!post||!publicPath(post.path))throw Error('只能保存档案中的公开文章');if(rows.length>=30&&!rows.some(p=>p?.path===post.path))throw Error('离线书架已满（30 篇），请先移除一些文章');
+ const articleURL=new URL(post.path,BASE).href,page=await get(articleURL),html=await page.clone().text(),discovered=articleResources(html,articleURL,BASE),shell=await resourceProfile(html,discovered);
+ const urls=new Set(profileResources(shell,html,discovered).filter(url=>cacheableURL(url,BASE)).map(url=>new URL(url,BASE).href));urls.add(indexURL);
+ for(const url of discovered)urls.add(url);
+ const staged=new Map([[articleURL,page],[indexURL,indexResponse]]);let bytes=0;
+ for(const url of urls){if(!staged.has(url)){const response=await get(url);staged.set(url,response);if(/\.css$/.test(new URL(url).pathname)){const css=await response.clone().text();for(const m of css.matchAll(/url\(["']?([^\s'"()]+)["']?\)/g)){const asset=new URL(m[1],url).href;if(cacheableURL(asset,BASE))urls.add(asset);}}}if(staged.size>400)throw Error('资源数量超出限制');}
+ const resources=[];for(const [url,response] of staged){const size=(await response.clone().arrayBuffer()).byteLength;bytes+=size;resources.push([url,size]);if(bytes>MAX_BYTES)throw Error('单篇资源超过 35 MB，未保存');}
+ // Each article owns an immutable snapshot. The metadata pointer is the commit.
+ // A quota failure cannot replace a previous working document or any shared script.
+ const snapshotName=CACHE+'-snapshot-'+crypto.randomUUID(),snapshot=await caches.open(snapshotName);
+ const next=[...rows.filter(p=>p?.path!==post.path),{path:post.path,title:post.title,updated:Date.now(),bytes,resources:resources.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0),snapshot:snapshotName}];
+ try{for(const [url,response] of staged)await snapshot.put(url,response);await writeMeta(cache,next);}catch(error){await caches.delete(snapshotName);throw error;}
+ await cleanSnapshots(next);return {rows:next};
+}
+self.addEventListener('message',event=>{const port=event.ports[0];if(!port)return;const operation=serial.then(()=>handle(event.data));serial=operation.catch(()=>{});event.waitUntil(operation.then(result=>port.postMessage({ok:true,...result})).catch(error=>port.postMessage({ok:false,error:error.message||'离线保存未完成'})).finally(async()=>{if(['save','remove','clear'].includes(event.data?.type))for(const client of await self.clients.matchAll())client.postMessage({type:'atelier:offline'});}));});
+self.addEventListener('fetch',event=>{const request=event.request,url=new URL(request.url);if(request.method!=='GET'||url.origin!==self.location.origin||(url.search&&!(request.mode==='navigate'&&notesNavigation(url.search)))||!url.pathname.startsWith(ROOT)||/^\/?(?:api|admin)(?:\/|$)/.test(url.pathname.slice(ROOT.length)))return;
+ event.respondWith((async()=>{try{return await fetch(request);}catch(error){
+  const cache=await caches.open(CACHE),rows=await readMeta(cache);
+  if(request.mode==='navigate'){const row=rows.find(r=>r.path===url.pathname);if(row){const snapshot=await caches.open(row.snapshot||CACHE),saved=await snapshot.match(new URL(url.pathname,BASE).href);if(saved)return saved;}return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>尚未离线保存</title><body style="background:#111114;color:#f5f5f7;font:16px/1.8 sans-serif;padding:10vw"><h1>这一页还没收进书架。</h1><p>恢复网络后，在文章文末展开「阅读工具」，选择「离线保存」。</p><button onclick="history.back()">返回上一页</button>',{status:503,headers:{'Content-Type':'text/html;charset=utf-8'}});}
+  if(cacheableURL(url.href,BASE)){const client=await self.clients.get(event.clientId),path=client?new URL(client.url).pathname:'';const row=rows.find(r=>r.path===path);if(row){const snapshot=await caches.open(row.snapshot||CACHE),saved=await snapshot.match(request);if(saved)return saved;}}
+  throw error;
+ }})());
+});

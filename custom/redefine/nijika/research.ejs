@@ -1,0 +1,177 @@
+<%
+// Tests compare this no-script content with the worker's canonical fixtures.
+const sqlCases = [
+  {id:'empty-count',label:'空集计数',question:'列出每位创作者的曲目数，包含 0 首，按 id 排序。',
+   tables:[{name:'artists',columns:['id','name'],rows:[[1,'Aster'],[2,'Lumen'],[3,'Moss']]},{name:'tracks',columns:['id','artist_id','title'],rows:[[101,1,'Blue'],[102,1,'Gold'],[103,2,'Echo']]}],
+   candidate:'SELECT a.name, COUNT(*) AS tracks\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+   reference:'SELECT a.name, COUNT(t.id) AS tracks\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+   expected:{columns:['name','tracks'],rows:[['Aster',2],['Lumen',1],['Moss',0]]},
+   insight:'LEFT JOIN 为 Moss 留下一行，t.id 是 NULL。COUNT(*) 数行；COUNT(t.id) 只数非空值。',source:'https://sqlite.org/lang_aggfunc.html'},
+  {id:'top-ties',label:'并列第一',question:'列出所有最高分曲目，保留并列，按曲名排序。',
+   tables:[{name:'scores',columns:['track','points'],rows:[['Blue',95],['Gold',95],['Echo',88]]}],
+   candidate:'SELECT track, points\nFROM scores\nORDER BY points DESC, track\nLIMIT 1',
+   reference:'SELECT track, points\nFROM scores\nWHERE points = (SELECT MAX(points) FROM scores)\nORDER BY track',
+   expected:{columns:['track','points'],rows:[['Blue',95],['Gold',95]]},
+   insight:'LIMIT 1 只保留一行。先取最高分，再筛选同分曲目，才能保留全部并列。',source:'https://sqlite.org/lang_select.html#the_limit_clause'},
+  {id:'null-exclusion',label:'空值陷阱',question:'列出尚未排练的曲目，忽略未指定曲目的记录，按 id 排序。',
+   tables:[{name:'tracks',columns:['id','title'],rows:[[101,'Blue'],[102,'Gold'],[103,'Echo']]},{name:'rehearsals',columns:['id','track_id'],rows:[[1,102],[2,null]]}],
+   candidate:'SELECT t.id, t.title\nFROM tracks AS t\nWHERE t.id NOT IN (SELECT track_id FROM rehearsals)\nORDER BY t.id',
+   reference:'SELECT t.id, t.title\nFROM tracks AS t\nWHERE NOT EXISTS (\n  SELECT 1 FROM rehearsals AS r WHERE r.track_id = t.id\n)\nORDER BY t.id',
+   expected:{columns:['id','title'],rows:[[101,'Blue'],[103,'Echo']]},
+   insight:'本例曲目 id 非空。子查询含 NULL，未命中的 NOT IN 得到未知值，WHERE 不保留；已命中的也被排除。NOT EXISTS 只检查匹配行，本例保留 Blue 和 Echo。',source:'https://sqlite.org/lang_expr.html#the_in_and_not_in_operators'},
+  {
+    id:'join-fanout', label:'关联倍增',
+    question:'列出每位创作者的曲目数与排练次数，包含 0，按创作者 id 排序；排练按创作者记录，不关联具体曲目。',
+    tables:[
+      {name:'artists', columns:['id','name'], rows:[[1,'Aster'],[2,'Moss']]},
+      {name:'tracks', columns:['id','artist_id','title'], rows:[[101,1,'Blue'],[102,1,'Gold']]},
+      {name:'rehearsals', columns:['id','artist_id'], rows:[[1,1],[2,1]]}
+    ],
+    candidate:'SELECT a.name, COUNT(t.id) AS tracks, COUNT(r.id) AS rehearsals\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nLEFT JOIN rehearsals AS r ON r.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+    reference:'SELECT a.name, COUNT(DISTINCT t.id) AS tracks, COUNT(DISTINCT r.id) AS rehearsals\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nLEFT JOIN rehearsals AS r ON r.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+    expected:{columns:['name','tracks','rehearsals'], rows:[['Aster',2,2],['Moss',0,0]]},
+    insight:'Aster 的 2 首曲目与 2 次排练组合成 4 行，直接 COUNT 会重复计数。本例按各表主键 DISTINCT，分别数曲目与排练；同名曲目仍是不同实体。这只修复本例的实体计数，不能推广为 SUM 的通用修复。',
+    source:'https://sqlite.org/lang_aggfunc.html'
+  }
+];
+%>
+<link rel="stylesheet" href="<%= url_for('atelier/css/research-sql.css') %>">
+<link rel="stylesheet" href="<%= url_for('atelier/css/research-local-table.css') %>">
+<section class="atelier-room room-research" aria-label="研究">
+  <aside class="sql-arrival" data-sql-arrival hidden aria-label="收到实验链接">
+    <p data-sql-arrival-info>收到一个 SQL 实验链接。</p>
+    <button type="button" data-sql-arrival-view aria-controls="sql-incoming">查看实验</button>
+  </aside>
+  <header class="personal-research-opening">
+    <div class="personal-research-copy">
+      <p class="personal-eyebrow">RESEARCH NOTES / 关注与练习</p>
+      <h1 tabindex="-1">研究</h1>
+      <p class="personal-intro">Database · Text-to-SQL</p>
+      <p class="research-opening-question">从一句问题，<br>到一个可信的答案。</p>
+      <p class="research-opening-note">关注查询如何表达意图，也关心结果为什么成立。</p>
+      <a class="personal-research-link" href="#sql-lab-title">打开 SQL 实验 <span aria-hidden="true">↓</span></a>
+    </div>
+    <figure class="personal-research-art"><img src="<%= url_for('atelier/images/v2/research.webp') %>" srcset="<%= url_for('atelier/images/v2/research-960.webp') %> 960w, <%= url_for('atelier/images/v2/research.webp') %> 1536w" sizes="(max-width:650px) min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))), min(660px, calc((min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) - clamp(30px, 6vw, 80px)) * 0.576924))" alt="虹夏抱着笔记本，在星图与暖灯之间沉思的研究室主题插画" width="1536" height="1024" fetchpriority="high"><figcaption><span>问题 / 表达 / 验证</span><span>CC 的研究笔记</span></figcaption></figure>
+  </header>
+  <p class="personal-research-caption">SQL 教学示例 · 在浏览器中运行与验证。</p>
+  <section class="sql-lab" data-sql-lab aria-labelledby="sql-lab-title">
+    <header class="sql-lab-heading"><div><p>QUERY / RESULT</p><h2 id="sql-lab-title" tabindex="-1">能运行，然后呢？</h2></div><span>SQLite · 浏览器内运行</span></header>
+    <div class="sql-case-switch" data-sql-switch hidden aria-label="选择 SQL 教学示例">
+      <% sqlCases.forEach((item,index) => { %><button type="button" data-sql-select="<%= item.id %>" aria-controls="sql-case-<%= item.id %>" aria-pressed="<%= index === 0 ? 'true' : 'false' %>"><span>0<%= index + 1 %></span><%= item.label %></button><% }); %>
+    </div>
+    <div class="sql-draft-tools" data-sql-draft-tools hidden>
+      <label>数据集 <select data-sql-dataset aria-label="当前案例的数据集"></select></label>
+      <button type="button" class="sql-text-button" data-sql-share>分享实验</button>
+      <button type="button" class="sql-text-button" data-sql-export>导出草稿</button>
+      <button type="button" class="sql-text-button" data-sql-import title="替换当前案例草稿；原草稿可恢复">导入草稿</button>
+      <button type="button" class="sql-text-button" data-sql-restore-draft hidden>恢复导入前草稿</button>
+      <input type="file" data-sql-file accept=".json,application/json" hidden aria-label="选择 SQL 草稿 JSON 文件">
+    </div>
+    <section class="sql-share-panel" data-sql-share-panel hidden aria-label="分享实验输入">
+      <p>分享案例、固定数据集与 SQL，不含结果或等价证明。</p>
+      <p id="sql-share-privacy">链接含未加密 SQL，收件人可读；请勿放入敏感信息。</p>
+      <details><summary>链接隐私</summary><p>链接片段不随首次 HTTP 请求发送，但浏览器历史与页面脚本可读取。</p></details>
+      <label>实验链接 <input data-sql-share-url type="text" readonly aria-describedby="sql-share-privacy"></label>
+      <div class="sql-draft-tools"><button type="button" class="sql-text-button" data-sql-share-copy>复制链接</button><button type="button" class="sql-text-button" data-sql-share-close>关闭</button></div>
+      <p data-sql-share-status role="status" aria-live="polite" aria-atomic="true"></p>
+    </section>
+    <section class="sql-share-panel" id="sql-incoming" tabindex="-1" data-sql-incoming hidden aria-label="链接中的实验输入">
+      <p data-sql-incoming-info role="status" aria-live="polite" aria-atomic="true"></p>
+      <details data-sql-incoming-preview><summary>预览 SQL</summary><pre data-sql-incoming-sql tabindex="0"></pre></details>
+      <p>仅载入输入，不自动运行；当前全部案例草稿可恢复。</p>
+      <div class="sql-draft-tools"><button type="button" class="sql-text-button" data-sql-incoming-load>载入此实验</button><button type="button" class="sql-text-button" data-sql-incoming-ignore>忽略</button></div>
+    </section>
+    <div class="sql-run-bar" data-sql-run-bar hidden><button type="button" class="sql-run" data-sql-run><span aria-hidden="true">▶</span>运行对照</button><button type="button" class="sql-text-button" data-sql-cancel hidden>停止</button><p data-sql-status role="status" aria-live="polite" aria-atomic="true">修改候选 SQL，再与预期比较。</p></div>
+    <details class="sql-insight sql-suite" data-sql-suite hidden>
+      <summary>跨数据集验证</summary>
+      <p>用当前 SQL 检查本例全部数据集；结果只适用于这些样例。</p>
+      <button type="button" class="sql-text-button" data-sql-suite-run>验证全部数据集</button>
+      <p data-sql-suite-status role="status" aria-live="polite" aria-atomic="true">点击后开始验证。</p>
+      <div class="sql-suite-output" data-sql-suite-output tabindex="0" role="region" aria-label="固定数据集验证结果，可横向滚动"></div>
+    </details>
+    <% sqlCases.forEach((item,index) => { %>
+    <article class="sql-case" id="sql-case-<%= item.id %>" data-sql-case="<%= item.id %>" aria-labelledby="sql-question-<%= item.id %>">
+      <div class="sql-question"><span aria-hidden="true">0<%= index + 1 %></span><h3 id="sql-question-<%= item.id %>"><%= item.question %></h3></div>
+      <div class="sql-fixtures" aria-label="本例全部数据">
+        <% item.tables.forEach(table => { %>
+        <div class="sql-table-wrap" tabindex="0" role="region" aria-label="<%= item.label %>：<%= table.name %> 示例数据，可滚动"><table data-sql-fixture="<%= table.name %>"><caption><%= table.name %><span><%= table.rows.length %> rows</span></caption><thead><tr><% table.columns.forEach(column => { %><th scope="col"><%= column %></th><% }); %></tr></thead><tbody><% table.rows.forEach(row => { %><tr><% row.forEach(value => { %><td><%= value === null ? 'NULL' : value %></td><% }); %></tr><% }); %></tbody></table></div>
+        <% }); %>
+      </div>
+      <div class="sql-comparison">
+        <section class="sql-query-panel" aria-labelledby="sql-candidate-<%= item.id %>">
+          <header><h4 id="sql-candidate-<%= item.id %>">候选 SQL</h4><button type="button" class="sql-text-button" data-sql-reset hidden>恢复示例</button></header>
+          <label class="sr-only" for="sql-editor-<%= item.id %>">编辑 <%= item.label %> 的候选 SQL</label>
+          <textarea id="sql-editor-<%= item.id %>" data-sql-editor readonly maxlength="4000" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="sql-editor-help"><%= item.candidate %></textarea>
+          <div class="sql-result-heading"><h5>实际结果</h5><span data-sql-result-count>尚未运行</span></div>
+          <div class="sql-result sql-result-actual" role="region" aria-label="<%= item.label %>：实际结果，可滚动" data-sql-actual><p class="sql-result-empty">运行查询，看看哪些行不同。</p></div>
+        </section>
+        <section class="sql-query-panel sql-reference-panel" aria-labelledby="sql-reference-<%= item.id %>">
+          <header><h4 id="sql-reference-<%= item.id %>">参考 SQL</h4><button type="button" class="sql-text-button" data-sql-use-reference hidden>放入编辑器</button></header>
+          <pre data-sql-reference tabindex="0" aria-label="<%= item.label %> 的参考 SQL"><code><%= item.reference %></code></pre>
+          <div class="sql-result-heading"><h5>预期结果</h5><span><%= item.expected.rows.length %> 行</span></div>
+          <div class="sql-result" tabindex="0" role="region" aria-label="<%= item.label %>：预期结果，可滚动" data-sql-expected><table><caption class="sr-only">根据题意和全部示例数据得到的预期结果</caption><thead><tr><th scope="col" class="sql-mark-column"><span class="sr-only">比较状态</span></th><% item.expected.columns.forEach(column => { %><th scope="col"><%= column %></th><% }); %></tr></thead><tbody><% item.expected.rows.forEach(row => { %><tr><td class="sql-mark-column" data-sql-row-mark></td><% row.forEach(value => { %><td><%= value === null ? 'NULL' : value %></td><% }); %></tr><% }); %></tbody></table></div>
+        </section>
+      </div>
+      <details class="sql-plan" data-sql-plan hidden><summary>当前查询的 SQLite 执行计划</summary><span class="sr-only" data-sql-plan-status role="status" aria-live="polite" aria-atomic="true"></span><div data-sql-plan-output></div><p>对应实际执行的 SELECT 包装与 LIMIT 101，仅观察访问路径，不证明结果正确或速度更快。<a href="https://www.sqlite.org/eqp.html" target="_blank" rel="noopener noreferrer">SQLite 计划说明 ↗</a></p></details>
+      <details class="sql-insight" data-sql-insight><summary>为什么会不同？</summary><p><%= item.insight %> <a href="<%= item.source %>" target="_blank" rel="noopener noreferrer">SQLite 文档 ↗</a></p></details>
+    </article>
+    <% }); %>
+    <p class="sql-editor-help" id="sql-editor-help">只读 SELECT / WITH · 不含分号 · 最多 100 行 · Ctrl / ⌘ + Enter 运行</p>
+    <details class="sql-boundaries"><summary>运行边界与来源</summary><p>本站原创小数据，比较只对本例成立。列按位置对应，值类型、重复次数和顺序都参与比较。</p><p>首次运行按需下载约 705 KB 的本地 SQLite 资源；需要支持 WebAssembly 和 Worker 的浏览器。查询仅在当前浏览器运行，不自动保存或上传；导出会保存到本机文件。导入只恢复数据集与 SQL，不自动运行；仅支持匹配版本的内置数据集。随机数、当前时间或未指定排序的查询不保证结果相同。离线时不保证可用。</p><p>跨数据集验证依次检查最多 8 个固定数据集；每个数据集限时 1.5 秒，载入另计。比较值、重复次数与行顺序；全部一致也不代表 SQL 普遍等价。</p><p>查询限 4,000 字符；所有分号都需删除，包括注释和字符串中的分号。执行超过 1.5 秒即停止；SQLite 分配限 16 MiB，结果限 16 列，每格最多 512 字符。</p><p><a href="https://github.com/sql-js/sql.js/releases/tag/v1.14.2" target="_blank" rel="noopener noreferrer">sql.js 1.14.2 / MIT ↗</a></p></details>
+    <noscript><p class="sql-noscript">启用 JavaScript 后可编辑并执行查询；上方保留了全部示例的完整数据与预期结果。</p></noscript>
+  </section>
+  <details class="local-table-lab" data-local-lab>
+    <summary><span>用自己的表比较 SQL</span><span class="local-table-summary-note">CSV / TSV · 只在当前页面</span></summary>
+    <div class="local-table-body">
+      <p class="local-table-intro">选一张小表，分别运行 A / B，看看当前数据上的结果是否一致。</p>
+      <div class="local-table-file-controls">
+        <label>分隔符 <select data-local-delimiter><option value=",">逗号 CSV</option><option value="tab">制表符 TSV</option></select></label>
+        <label class="local-table-file-label">选择文件 <input type="file" data-local-file accept=".csv,.tsv,text/csv,text/tab-separated-values" disabled aria-describedby="local-table-file-help"></label>
+        <button type="button" data-local-clear disabled>清除本地表</button>
+      </div>
+      <p class="local-table-help" id="local-table-file-help">UTF-8 · 首行为表头 · 最多 256 KiB、500 行、16 列。选择分隔符后再选文件。</p>
+      <p data-local-file-status role="status" aria-live="polite" aria-atomic="true">选择文件后先预览，不会自动运行。</p>
+      <section data-local-preview-section hidden aria-label="本地表预览">
+        <h3>local_data <span data-local-table-count></span></h3>
+        <p class="local-table-help">SQL 使用 c1、c2…列名；原表头显示在下方。所有源值均为 TEXT。</p>
+        <div class="local-table-scroll" data-local-preview tabindex="0" role="region" aria-label="前 20 行预览，可滚动"></div>
+      </section>
+      <div class="local-table-editors">
+        <label for="local-table-a">SQL A<textarea id="local-table-a" data-local-a rows="5" maxlength="4000" spellcheck="false" autocapitalize="off" autocomplete="off" disabled aria-describedby="local-table-query-help">SELECT * FROM local_data ORDER BY rowid</textarea></label>
+        <label for="local-table-b">SQL B<textarea id="local-table-b" data-local-b rows="5" maxlength="4000" spellcheck="false" autocapitalize="off" autocomplete="off" disabled aria-describedby="local-table-query-help">SELECT * FROM local_data ORDER BY rowid</textarea></label>
+      </div>
+      <p class="local-table-help" id="local-table-query-help">只读 SELECT / WITH · 不含分号 · Ctrl / ⌘ + Enter 运行</p>
+      <div class="local-table-actions"><button type="button" data-local-run disabled>运行 A / B 比较</button><button type="button" data-local-stop hidden>停止</button></div>
+      <p data-local-status role="status" aria-live="polite" aria-atomic="true">等待选择文件。</p>
+      <section data-local-results hidden aria-label="本地表 SQL 比较结果">
+        <div class="local-table-result-grid">
+          <div><h3>A 的结果</h3><div class="local-table-scroll" data-local-result-a tabindex="0" role="region" aria-label="A 的结果，可滚动"></div></div>
+          <div><h3>B 的结果</h3><div class="local-table-scroll" data-local-result-b tabindex="0" role="region" aria-label="B 的结果，可滚动"></div></div>
+        </div>
+      </section>
+      <section data-local-reduction hidden aria-label="缩小差异样本">
+        <div class="local-table-reduction-actions"><button type="button" data-local-reduce disabled>缩小差异样本</button><span>仅删当前表中的记录，保留源记录号；限额搜索，不保证最少。</span><button type="button" data-local-replay hidden>重新验证此样本</button></div>
+        <p data-local-sample-status role="status" aria-live="polite" aria-atomic="true"></p>
+        <details class="local-table-boundaries" data-local-sample-details hidden>
+          <summary>查看样本与 A / B 差异</summary>
+          <p>源记录号指 CSV 解析后的数据记录，不是文件物理行号。原表未被替换。每张表仅预览前 20 行，标题列出全部数量。</p>
+          <div class="local-table-scroll" data-local-sample-rows tabindex="0" role="region" aria-label="缩小样本的前 20 条记录，可滚动"></div>
+          <p data-local-sample-difference></p>
+          <div class="local-table-result-grid">
+            <div><h3>样本 A</h3><div class="local-table-scroll" data-local-sample-a tabindex="0" role="region" aria-label="样本 A 结果前 20 行，可滚动"></div></div>
+            <div><h3>样本 B</h3><div class="local-table-scroll" data-local-sample-b tabindex="0" role="region" aria-label="样本 B 结果前 20 行，可滚动"></div></div>
+          </div>
+        </details>
+      </section>
+      <details class="local-table-boundaries"><summary>数据、比较与隐私边界</summary>
+        <p>原表头仅用于显示，不作为 SQL 标识符。空单元格保留为空字符串；数字、日期和 NULL 字样也都是 TEXT，需要时显式转换类型。每格最多 512 字符，表头最多 128 字符。</p>
+        <p>按列位置比较类型、值、重复次数与行顺序；列标题不参与判断；INTEGER 1 与 REAL 1.0 属于不同类型。REAL 使用二进制双精度，并非任意精度小数。最多显示每侧 100 行，任一侧截断时不作一致判断。当前数据一致不代表 SQL 普遍等价，也不代表 A 或 B 符合你的题意。没有 ORDER BY、随机数或当前时间可能产生不稳定结果。</p>
+        <p>文件数据与 SQL 只保留在当前页面内存，不进入分享链接、历史、导入导出或剪贴板，也不会作为遥测上传。首次运行可能载入本站 SQLite 资源；离线时不保证可用。关闭此折叠面板不会运行查询；清除或刷新页面会丢弃数据。</p>
+        <p>需要支持 Worker 和 WebAssembly 的浏览器。SQLite 载入最多等待 10 秒，建表与完整 A / B 执行合计最多 1.5 秒。可停止后修改再试。每条 SQL 最多 4,000 字符，结果最多 16 列、每格 512 字符；SQLite 分配限 16 MiB，不是浏览器总内存上限。</p>
+      </details>
+      <noscript><p>启用 JavaScript 后可选择本地文件与运行 SQL。</p></noscript>
+    </div>
+  </details>
+</section>
+<script type="module" src="<%= url_for('atelier/js/research-sql.js') %>"></script>
+<script type="module" src="<%= url_for('atelier/js/research-local-table.js') %>"></script>

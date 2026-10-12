@@ -4,17 +4,12 @@
 
 # Site
 title: CC Atelier
-subtitle: Code · Research · Life · Rhythm
-description: 记录代码、研究、项目、生活，以及一些喜欢的东西.
+subtitle: ''
+description: '记录代码、研究与生活。'
 keywords:
-  - AI Agent
-  - Database
-  - Text-to-SQL
-  - Projects
-  - Notes
 author: CC
 language: zh-CN
-timezone: ''
+timezone: Asia/Shanghai
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
@@ -65,8 +60,8 @@ prismjs:
 # per_page: Posts displayed per page. (0 = disable pagination)
 # order_by: Posts order. (Order by date descending by default)
 index_generator:
-  path: ''
-  per_page: 10
+  path: notes
+  per_page: 6
   order_by: -date
 
 # Category & Tag
@@ -102,6 +97,12 @@ ignore:
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
 theme: redefine
+
+search:
+  path: search.json
+  field: post
+  content: true
+  format: striptags
 
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment

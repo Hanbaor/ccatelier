@@ -1,0 +1,40 @@
+<section class="live-archive catalog-v3 content-view" data-archive aria-label="笔记目录">
+  <link rel="stylesheet" href="<%= url_for('atelier/css/editorial-index.css') %>">
+  <header class="catalog-heading-v3 notes-editorial-heading">
+    <div><p class="index-eyebrow">FIELD NOTES / 学习与验证</p><h1 tabindex="-1">笔记<span>把思路，写清楚。</span></h1><p class="notes-deck">从容器到算法，从张量到模型。<br>顺着一个问题，读到它的实现。</p><nav aria-label="笔记页导航"><a href="#reading-paths">选一条阅读路径 ↓</a><a href="#notes-catalog">查找笔记 ↗</a><a data-notes-resume hidden>继续阅读</a></nav></div>
+    <figure><img src="<%= url_for(theme.nijika.reading_art) %>" srcset="<%= nijika_art_srcset(theme.nijika.reading_art) %>" sizes="(max-width:700px) min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))), (max-width:900px) calc((min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) - 30px) * 21 / 41), calc((min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) - 55px) * 21 / 41)" width="1536" height="1024" alt="日光窗边写笔记的虹夏主题插画" decoding="async" fetchpriority="high"><figcaption>READ / TRACE / TRY<span>CC 的学习手记</span></figcaption></figure>
+  </header>
+  <section class="notes-paths" id="reading-paths" aria-labelledby="reading-paths-title">
+    <header class="index-section-heading"><h2 id="reading-paths-title">从这里读起</h2><span>编辑选读 / 按问题串起的线索</span></header>
+    <div class="notes-path-grid">
+    <% const paths=[
+      {number:'01',label:'CONTAINERS',title:'数据，如何组织？',description:'从基本操作走到一道真实题目。',shape:'[ ] → { }',steps:[['writing/csdn-124387071/','vector · 连续存储'],['writing/csdn-124460411/','set · 有序与去重'],['writing/csdn-124514677/','列车调度 · 边界查找']]},
+      {number:'02',label:'ALGORITHMS',title:'问题，如何拆开？',description:'沿着状态、递归与拆分往下走。',shape:'n → n/2',steps:[['writing/csdn-124338541/','全排列 · 搜索与回溯'],['writing/csdn-154834561/','分治 · 拆分与合并'],['series/hot100/','Hot100 · 按主题练习']]},
+      {number:'03',label:'MACHINE LEARNING',title:'模型，如何学习？',description:'从张量与梯度，走向翻译模型。',shape:'x → f(x)',steps:[['writing/csdn-149880710/','PyTorch · 张量与梯度'],['projects/#project-transformer','Transformer · 德英翻译']]}
+    ]; paths.forEach(path=>{ %>
+      <article class="notes-path"><div class="path-topline"><span><%= path.number %> / <%= path.label %></span><span class="path-formula" aria-hidden="true"><%= path.shape %></span></div><h3><%= path.title %></h3><p><%= path.description %></p><details open><summary>展开选读 <span><%= path.steps.length %> 个入口</span></summary><ol><% path.steps.forEach(([route,label])=>{ const article=route.startsWith('writing/'); %><li><a href="<%= url_for(route)+(article?'?notes='+encodeURIComponent(url_for('notes/')+'#reading-paths'):'') %>"<% if(article){ %> data-notes-path-link<% } %>><%= label %><span aria-hidden="true">↗</span></a></li><% }) %></ol></details></article>
+    <% }) %>
+    </div>
+  </section>
+  <section class="notes-catalog-shell" id="notes-catalog" aria-labelledby="notes-catalog-title"><header class="index-section-heading"><h2 id="notes-catalog-title">全部笔记</h2><a href="<%= url_for('series/hot100/') %>">Hot100 专题 ↗</a></header>
+  <div class="archive-app" hidden>
+    <div class="archive-discovery">
+      <div class="archive-group" role="group" aria-label="文章类型"><button type="button" data-group="writing">笔记</button><button type="button" data-group="hot100">Hot100</button><button type="button" data-group="all">全部</button></div>
+      <form class="archive-search" role="search"><label class="sr-only" for="archive-q">搜索文章</label><div><input id="archive-q" type="search" maxlength="200" placeholder="搜索笔记" autocomplete="off"><kbd aria-hidden="true">/</kbd></div><button type="reset" hidden>清空筛选</button></form>
+    </div>
+    <div class="archive-controls">
+      <details class="archive-options"><summary>筛选与排序</summary><div class="archive-options-body">
+        <div class="archive-filters" aria-label="文章筛选"><label>阅读时长<select data-duration><option value="all">任意时长</option><option value="short">5 分钟以内</option><option value="medium">6–15 分钟</option><option value="long">15 分钟以上</option></select></label><label>主题<select data-tag><option value="">所有主题</option></select></label><label for="archive-sort">排序<select id="archive-sort"><option value="newest">最近发布</option><option value="oldest">最早发布</option><option value="minutes">阅读时长</option><option value="title">按标题</option></select></label></div>
+        <div class="archive-filter-tags" aria-label="热门主题"></div>
+      </div></details>
+      <div class="archive-toolbar"><div role="group" aria-label="浏览方式"><button type="button" data-view="grid" title="卡片" aria-label="卡片">卡片</button><button type="button" data-view="list" title="列表" aria-label="列表">列表</button><button type="button" data-view="graph" title="主题星图" aria-label="主题星图">星图</button></div><button type="button" class="queue-open archive-queue-link">阅读队列 <span data-queue-count>0</span></button></div>
+    </div>
+    <p class="archive-feedback sr-only" data-archive-count role="status" aria-live="polite">正在加载目录…</p>
+    <div class="archive-layout"><div class="archive-main">
+      <div data-archive-results class="archive-results"></div><button data-archive-more class="archive-more" hidden>查看更多</button>
+      <section class="constellation" hidden aria-label="主题星图"><div class="constellation-top"><span><i></i> CONSTELLATION / 真实主题关联</span><div><button type="button" data-graph-zoom="in" aria-label="放大星图">+</button><button type="button" data-graph-zoom="out" aria-label="缩小星图">−</button><button type="button" data-graph-reset>复位</button></div></div><canvas tabindex="0" aria-label="可拖动的主题星图；方向键平移，加减键缩放。也可使用下方列表选择"></canvas><div class="constellation-detail"><span>选择一颗星，循着关联继续阅读。</span></div><div class="constellation-bottom"><span>拖动节点 · 拖动空白平移 · Ctrl + 滚轮缩放</span><label>直接选择<select data-graph-select><option value="">选择文章或主题</option></select></label></div></section>
+    </div></div>
+  </div>
+  <div class="archive-fallback"><p>笔记 · 按发布时间排序 · <a href="<%= url_for('archives/') %>">完整归档 <%- partial('nijika/editorial-arrow') %></a></p><div class="archive-results" data-mode="list"><% page.posts.each((post,index)=>{ %><%- partial('nijika/archive-row',{post,index}) %><% }) %></div><%- partial('nijika/pagination') %></div>
+  </section>
+</section>

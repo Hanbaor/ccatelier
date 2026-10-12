@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<%- partial('nijika/head') %>
+<body class="nijika light light-mode<%= page.nijika === 'cover' ? ' on-cover' : '' %>" data-root="<%= url_for('/') %>" data-search="<%= url_for(config.search.path) %>" data-section="<%= nijika_section() %>" data-cursor="<%= theme.nijika.cursor %>" data-motion="<%= theme.nijika.motion %>">
+  <script>try{if(localStorage.getItem('cc-theme')==='dark'){document.body.classList.remove('light','light-mode');document.body.classList.add('dark-mode')}if(localStorage.getItem('cc-motion')==='off'||matchMedia('(prefers-reduced-motion: reduce)').matches)document.body.classList.add('motion-off')}catch{}</script>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="curtain" aria-hidden="true"></div><div class="surface-noise" aria-hidden="true"></div>
+  <%- partial('nijika/header') %>
+  <main id="main-content" tabindex="-1"><%- body %></main>
+  <%- partial('nijika/footer') %>
+  <noscript>
+    <style>.header-controls>:not(.menu-fallback),.utility-controls,.photo-index,.article-toolbox,.reader-options,.encore-form,.owner-login{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}</style>
+  </noscript>
+    <nav class="no-script-nav" id="site-navigation" tabindex="-1" aria-label="主导航"><% for (const [route, label] of [['','首页'],['atelier','创作室'],['notes','笔记'],['projects','项目'],['research','研究'],['studio','音乐'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route ? route + '/' : '') %>"><%= label %></a><% } %></nav>
+  <%- partial('nijika/dialogs') %>
+  <% if (['cover','studio'].includes(page.nijika)) { %><%- partial('nijika/livehouse') %><% } %>
+  <div class="cursor-ring" aria-hidden="true"></div><div class="click-effects" aria-hidden="true"></div>
+  <div class="toast" role="status" id="toast"></div><div class="reading-progress" aria-hidden="true"><span></span></div>
+  <script type="module" src="<%= url_for('atelier/js/main.js') %>"></script>
+</body>
+</html>

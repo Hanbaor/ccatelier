@@ -1,0 +1,5 @@
+<section class="after-page moderation-page">
+  <header class="after-page-heading"><span class="after-eyebrow">STAFF ONLY / CC ATELIER</span><h1 tabindex="-1">后台<span>值班室。</span></h1><p>审核留言，让每一道回声都有着落。</p></header>
+  <form class="owner-login" data-owner-login method="post" action="/api/admin/login"><fieldset data-form-guard disabled><label for="owner-password">管理口令</label><input id="owner-password" name="password" type="password" required autocomplete="current-password"><button type="submit">进入值班室 ↗</button><p role="status" data-owner-status></p></fieldset></form><noscript><p class="community-empty">管理功能需要 JavaScript；口令表单已停用。</p></noscript>
+  <div data-moderation hidden><div class="moderation-toolbar"><label>留言状态<select data-moderation-filter><option value="pending">待审核</option><option value="approved">已公开</option><option value="rejected">已收起</option></select></label><span data-moderation-total></span><button data-owner-logout>退出登录</button></div><p role="status" data-moderation-status></p><div data-moderation-list></div><button class="comment-more" data-moderation-more hidden>再翻一页 ↓</button></div>
+</section>

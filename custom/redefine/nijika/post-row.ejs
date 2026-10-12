@@ -1,0 +1,1 @@
+<a class="post-row" href="<%= url_for(post.path) %>"><time datetime="<%= date_xml(post.date) %>"><%= date(post.date,'YYYY.MM.DD') %></time><h2><%= post.title || '未命名文章' %></h2><span aria-hidden="true">↗</span></a>

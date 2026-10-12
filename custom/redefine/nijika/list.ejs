@@ -1,0 +1,7 @@
+<% const archiveView = is_tag() ? 'tags' : is_category() ? 'categories' : 'archives'; %>
+<section class="content-view archive-page">
+  <header class="archive-heading"><div><h1 tabindex="-1"><%= nijika_list_title() %></h1><p class="archive-count">本页 <%= page.posts.length %> 篇</p></div><a class="archive-return" href="<%= url_for('notes/') %>">返回笔记</a></header>
+  <nav class="taxonomy-nav" aria-label="浏览文章"><% for (const [route,label] of [['archives','时间'],['categories','分类'],['tags','标签']]) { %><a href="<%= url_for(route + '/') %>"<%- archiveView === route ? ' aria-current="page"' : '' %>><%= label %></a><% } %></nav>
+  <div class="post-list"><% page.posts.each(post => { %><%- partial('nijika/post-row',{post}) %><% }) %></div>
+  <%- partial('nijika/pagination') %>
+</section>
