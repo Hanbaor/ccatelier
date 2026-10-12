@@ -64,7 +64,7 @@ export function initPracticeChallenge({host, listen, start, stop, elapsed, sound
  listen(window,'blur',()=>{clearHeld();if(busy())stop('窗口已离开，挑战已暂停。');});
  listen(document,'keyup',event=>pressedKeys.delete(event.key.toLowerCase()));
  listen(document,'keydown',event=>{
-  if(!ready||!panel.open||$('dialog[open]'))return;
+  if(event.defaultPrevented||event.keyCode===229||!ready||!panel.open||$('dialog[open]'))return;
   if(event.repeat&&event.target.closest('[data-challenge-pad]')&&['Enter',' '].includes(event.key)){event.preventDefault();return;}
   if(event.repeat||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||event.isComposing||event.target.closest('input,select,textarea,[contenteditable]'))return;
   const key=event.key.toLowerCase(),type=keys[key];if(!type)return;event.preventDefault();if(pressedKeys.has(key))return;pressedKeys.add(key);strike(type,event);

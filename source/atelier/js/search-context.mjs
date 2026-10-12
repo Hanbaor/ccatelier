@@ -2,9 +2,20 @@ const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCa
 const queryTerms = query => [...new Set(normalize(query).trim().split(/\s+/).filter(Boolean))];
 const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity:'grapheme'}) : null;
 
-function matchedText(value, terms) {
-  const text = String(value ?? ''), normalized = normalize(text);
-  if (!terms.length) return {text,boundaries:[0,text.length],matches:[]};
+// RAM-only LRU of query-independent display text, never entries or queries.
+// Bound both strings (UTF-16 units) and offset arrays (numeric slots).
+const preparedTexts=new Map();
+const MAX_PREPARED_TEXTS=64,MAX_PREPARED_INPUT=32768;
+const MAX_PREPARED_UNITS=262144,MAX_PREPARED_SLOTS=262144;
+let preparedUnits=0,preparedSlots=0;
+function preparedText(text) {
+  const cacheable=text.length<=MAX_PREPARED_INPUT;
+  if(cacheable && preparedTexts.has(text)){
+    const prepared=preparedTexts.get(text);
+    preparedTexts.delete(text);preparedTexts.set(text,prepared);
+    return prepared;
+  }
+  const normalized=normalize(text);
   // Map normalized UTF-16 offsets back to whole original graphemes. NFKC may
   // expand a ligature or compose combining marks; neither may split the display.
   const segments = segmenter ? segmenter.segment(text) : conservativeSegments(text);
@@ -27,7 +38,24 @@ function matchedText(value, terms) {
   }
   // Contextual lowercasing (e.g. final Greek sigma) changes letters but not
   // offsets. Keep a conservative, unmarked fallback if a locale changes length.
-  if(length!==normalized.length)return {text,boundaries,matches:[]};
+  const prepared={text,normalized,boundaries,offsets,aligned:length===normalized.length};
+  const retainedUnits=text.length+normalized.length,slots=boundaries.length+offsets.length;
+  if(cacheable && retainedUnits<=MAX_PREPARED_UNITS && slots<=MAX_PREPARED_SLOTS){
+    while(preparedTexts.size>=MAX_PREPARED_TEXTS || preparedUnits+retainedUnits>MAX_PREPARED_UNITS || preparedSlots+slots>MAX_PREPARED_SLOTS){
+      const oldest=preparedTexts.keys().next().value,previous=preparedTexts.get(oldest);
+      preparedUnits-=previous.text.length+previous.normalized.length;
+      preparedSlots-=previous.boundaries.length+previous.offsets.length;
+      preparedTexts.delete(oldest);
+    }
+    preparedTexts.set(text,prepared);preparedUnits+=retainedUnits;preparedSlots+=slots;
+  }
+  return prepared;
+}
+function matchedText(value, terms) {
+  const text=String(value ?? '');
+  if(!terms.length)return {text,boundaries:[0,text.length],matches:[]};
+  const {normalized,boundaries,offsets,aligned}=preparedText(text);
+  if(!aligned)return {text,boundaries,matches:[]};
   const matches = [];
   for (const term of terms) {
     let from = 0, index;
@@ -78,6 +106,8 @@ function textParts(text, matches, start=0, end=text.length) {
   return parts;
 }
 function excerptStart(content, normalizedTitle) {
+  // Preserve complete short bodies only when they also fit the display cap.
+  if(content.boundaries.length-1<=70 && content.text.length<=(segmenter ? 2048 : 280))return 0;
   // A frequent word near the opening should not hide a later passage that
   // explains several requested concepts. Count distinct terms, prioritizing
   // evidence not already visible in the title, within the same 70-unit budget.

@@ -130,7 +130,7 @@ export function initLivehouse({loadStage=()=>import('./livehouse-stage.js')}={})
   // Native keyboard/assistive clicks have detail 0; pointer clicks already hit.
   pad.addEventListener('click',e=>{if(e.detail===0)hit(type);});
  });
- dialog.addEventListener('keydown',e=>{if(e.repeat&&e.target.closest('[data-live-pad]')&&['Enter',' '].includes(e.key)){e.preventDefault();return;}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing||e.target.closest('input,select,textarea,[contenteditable],[data-live-director]'))return;const type={a:'kick',s:'snare',d:'hat',f:'tom'}[e.key.toLowerCase()];if(type){e.preventDefault();hit(type);}});
+ dialog.addEventListener('keydown',e=>{if(e.defaultPrevented||e.isComposing||e.keyCode===229)return;if(e.repeat&&e.target.closest('[data-live-pad]')&&['Enter',' '].includes(e.key)){e.preventDefault();return;}if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing||e.target.closest('input,select,textarea,[contenteditable],[data-live-director]'))return;const type={a:'kick',s:'snare',d:'hat',f:'tom'}[e.key.toLowerCase()];if(type){e.preventDefault();hit(type);}});
  dialog.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&animated()&&transportClock.state==='stopped'){target=(e.clientX-dialog.getBoundingClientRect().left)/Math.max(width,1);stage?.pointer(target);}},{passive:true});
  dialog.addEventListener('close',cleanup);
  document.addEventListener('atelier:motion',syncMotion);

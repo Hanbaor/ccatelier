@@ -4,6 +4,8 @@
    const knownScene = ['cover','atelier','notes','studio','practice','guestbook','lounge','admin','projects','research','life','about','categories','tags'].includes(page.nijika);
    const knownReadingRoute = !page.nijika && (is_post() || is_home() || is_archive() || is_category() || is_tag());
    const preserveLegacyScenes = !knownScene && !knownReadingRoute;
+   // Fixed templates cannot host the Notes archive scene. Keep full CSS for all content/unknown routes.
+   const archiveGlobalOnly = !is_post() && (!is_page() || ['projects','research','life','about','categories','tags'].includes(page.nijika)) && ['cover','atelier','studio','practice','guestbook','lounge','admin','projects','research','life','about','categories','tags'].includes(page.nijika);
 %>
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -14,7 +16,9 @@
   <meta property="og:description" content="<%= metadata.description %>">
   <link rel="canonical" href="<%= metadata.url %>">
   <link rel="alternate" type="application/atom+xml" title="CC Atelier" href="<%= url_for('atom.xml') %>">
-  <%- open_graph({title:metadata.title, description:metadata.description, url:metadata.url, image:theme.nijika.cover, twitter_card:'summary_large_image'}).replace(/<meta (?:name="description"|property="og:description")[^>]*>\n?/g,'') %>
+  <%- open_graph({title:metadata.title, description:metadata.description, url:metadata.url, image:metadata.image?.url||theme.nijika.cover, twitter_card:'summary_large_image'}).replace(/<meta (?:name="description"|property="og:description")[^>]*>\n?/g,'') %>
+  <% if (metadata.image?.alt) { %><meta property="og:image:alt" content="<%= metadata.image.alt %>"><meta name="twitter:image:alt" content="<%= metadata.image.alt %>"><% } %>
+  <% if (metadata.image?.width && metadata.image?.height) { %><meta property="og:image:width" content="<%= metadata.image.width %>"><meta property="og:image:height" content="<%= metadata.image.height %>"><% } %>
   <link rel="icon" type="image/svg+xml" href="<%= url_for('atelier/images/favicon.svg') %>">
   <% if (page.nijika === 'cover') { %><link rel="preload" as="image" media="(min-width:601px)" href="<%= url_for('atelier/images/v3/hero.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px"><link rel="preload" as="image" media="(max-width:600px)" href="<%= url_for('atelier/images/v3/hero-960.webp') %>" imagesrcset="<%= nijika_art_srcset('/atelier/images/v3/hero.webp') %>" imagesizes="(max-width:500px) calc(130vw - 52px), (max-width:760px) 119.6vw, 1916px"><% } %>
   <link rel="preload" as="font" href="<%= url_for('atelier/fonts/barlow-condensed-600.woff2') %>" type="font/woff2" crossorigin>
@@ -30,8 +34,8 @@
   <link rel="stylesheet" href="<%= url_for('atelier/css/stage.css') %>">
   <% if (preserveLegacyScenes || page.nijika === 'atelier') { %><link rel="stylesheet" href="<%= url_for('atelier/css/backstage.css') %>"><% } %>
   <link rel="stylesheet" href="<%= url_for('atelier/css/after-hours.css') %>">
-  <% /* archive.css also owns global queue/live-dialog styles. Keep it on every route. */ %>
-  <link rel="stylesheet" href="<%= url_for('atelier/css/archive.css') %>">
+  <% /* The generated archive-global variant retains every global queue/live-dialog rule. */ %>
+  <link rel="stylesheet" href="<%= url_for('atelier/css/'+(archiveGlobalOnly ? 'archive-global.css' : 'archive.css')) %>">
   <% /* Match page.ejs's reading fallback; series introductions also enable notebook/code tools. */
      const readerStyles = is_post() || (is_page() && !['projects','research','life','about','categories','tags'].includes(page.nijika)) || Boolean(page.introHtml);
      if (readerStyles) { %><link rel="stylesheet" href="<%= url_for('atelier/css/reader.css') %>"><% } %>

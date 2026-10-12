@@ -26,15 +26,16 @@ test('about is a personal introduction, with real directions and no statistics o
     assert.match(doc.querySelector('img').alt,/主题.*插画/);
   } finally {dom.window.close();}
 });
-test('research separates interests from the teaching example and preserves static SQL cases',()=>{
+test('research separates interests from the teaching example and preserves static SQL cases',async()=>{
+  const {SQL_CASES}=await import('../source/atelier/js/research-sql-core.mjs');
   const dom=render('research','/lab/');
   try {
     const doc=dom.window.document;
     assert.match(doc.querySelector('.personal-research-opening').textContent,/研究[\s\S]*Database.*Text-to-SQL/);
     assert.match(doc.querySelector('.personal-research-caption').textContent,/SQL 教学示例/);
-    assert.equal(doc.querySelectorAll('[data-sql-case]').length,3);
-    assert.equal(doc.querySelectorAll('[data-sql-editor][readonly]').length,3);
-    assert.equal(doc.querySelectorAll('[data-sql-expected] table').length,3);
+    assert.deepEqual([...doc.querySelectorAll('[data-sql-case]')].map(node=>node.dataset.sqlCase),SQL_CASES.map(item=>item.id));
+    assert.equal(doc.querySelectorAll('[data-sql-editor][readonly]').length,SQL_CASES.length);
+    assert.equal(doc.querySelectorAll('[data-sql-expected] table').length,SQL_CASES.length);
     assert.equal(doc.querySelectorAll('.personal-research-opening [data-reveal]').length,0);
     for(const item of doc.querySelectorAll('img[src],a[href^="/"],link[href],script[src]')) {
       assert.ok((item.getAttribute('src')||item.getAttribute('href')).startsWith('/lab/'));

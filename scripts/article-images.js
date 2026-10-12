@@ -19,6 +19,8 @@ hexo.extend.filter.register('before_generate',async()=>{
       // Warehouse queries return document copies. Persist before native rendering
       // queries again; undefined removes the optional String (null is invalid).
       entry.content=undefined;
+      // A fresh render must rebuild Redefine's derived code wrappers too.
+      if(entry._processedHighlight)entry._processedHighlight=false;
       await entry.save();
     }
   }

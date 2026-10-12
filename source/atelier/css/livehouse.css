@@ -225,4 +225,4 @@ body.livehouse-opened .stage-field {visibility:hidden}
  #livehouse-dialog:has(.live-director[open]) .livehouse-deck {margin-top:520px}
  #livehouse-dialog:has(.live-director[open]) .livehouse-kit {top:265px;bottom:auto}
 }
-.live-director p.director-project-title {color:#e8d3aa;font:500 13px var(--chinese);margin:0 0 14px;letter-spacing:.03em}
+.live-director p.director-project-title {color:#e8d3aa;font:500 13px var(--chinese);margin:0 0 14px;letter-spacing:.03em;overflow-wrap:anywhere}

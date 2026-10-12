@@ -6,7 +6,7 @@ const posts=[{path:'/a/',title:'Article A',tags:['set'],group:'writing'},{path:'
 test('settled constellation repaints theme colors once without simulation or RAF and skips inactive/hidden states',async()=>{
  const dom=new JSDOM('<body class="light" data-root="/">'+markup+'</body>',{url:'https://example.test/notes/',pretendToBeVisual:true});
  let hidden=false,requests=0,frameId=0,draws=0,labels=[];const pending=new Map();
- const ctx={fillStyle:'',clearRect(){draws++;labels=[];},fillText(text,x,y){labels.push({text,x,y,color:this.fillStyle});},setTransform(){},beginPath(){},arc(){},fill(){},moveTo(){},lineTo(){},stroke(){}};
+ const ctx={fillStyle:'',measureText(text){return {width:Array.from(text).length*parseFloat(this.font.match(/[0-9]+px/)[0])*.6};},clearRect(){draws++;labels=[];},fillText(text,x,y){labels.push({text,x,y,color:this.fillStyle});},setTransform(){},beginPath(){},arc(){},fill(){},moveTo(){},lineTo(){},stroke(){}};
  Object.defineProperty(dom.window.document,'hidden',{configurable:true,get:()=>hidden});
  dom.window.HTMLCanvasElement.prototype.getContext=()=>ctx;
  dom.window.HTMLCanvasElement.prototype.getBoundingClientRect=()=>({width:800,height:470,left:0,top:0});

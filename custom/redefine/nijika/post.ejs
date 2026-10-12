@@ -11,7 +11,7 @@
      const articleToc=toc(readerContent,{class:'nav',list_number:false,max_depth:3}); %>
   <div class="reading-layout reader-columns<%= articleToc.trim() ? '' : ' reader-no-toc' %>">
   <div class="reader-frontmatter">
-    <nav class="reading-nav" aria-label="文章导航"><a href="<%= url_for(page.series === 'hot100' ? 'series/hot100/' : 'notes/') %>">← 返回笔记</a></nav>
+    <nav class="reading-nav" aria-label="文章导航"><a data-notes-back href="<%= url_for(page.series === 'hot100' ? 'series/hot100/' : 'notes/') %>">← 返回笔记</a><button type="button" class="reading-resume" data-reading-resume hidden>继续上次阅读</button></nav>
     <header class="reading-opener"><h1 id="article-title" tabindex="-1"><%= page.title %></h1><div class="reading-meta"><span><%= page.author || config.author %></span><% if (page.date) { %><time datetime="<%= date_xml(page.date) %>"><%= date(page.date,'YYYY.MM.DD') %></time><% } %><% if(readiness && (readiness.codePlaceholder || readiness.analysisPlaceholder)){ %><span class="exercise-readiness" aria-label="本题内容状态"><%= readiness.hasCode?'代码未校验':'代码待补' %><% if(!readiness.hasAnalysis){ %> · 解析待补<% } %></span><% } %></div></header>
   </div>
   <% if(articleToc.trim()){ %>

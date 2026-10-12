@@ -15,7 +15,7 @@ async function setup(){
 async function completed(s){s.controller.run();s.requests.at(-1).resolve({columns:['x'],rows:[[42]],truncated:false});await flush()}
 const plan={columns:['id','parent','detail'],rows:[[2,0,'SCAN artists']],version:'3.49.1',truncated:false};
 
-test('all nine datasets yield genuine EQP identical to the actual wrapped SELECT on the shipped WASM',async()=>{
+test('all thirteen datasets yield genuine EQP identical to the actual wrapped SELECT on the shipped WASM',async()=>{
  const {SQL_CASES,listSqlDatasets,getSqlDataset,explainFixtureQuery,SQL_LIMITS}=await core,SQL=await engine;let count=0;
  for(const item of SQL_CASES)for(const dataset of listSqlDatasets(item.id)){
   const fixture=getSqlDataset(item.id,dataset.id);
@@ -29,7 +29,7 @@ test('all nine datasets yield genuine EQP identical to the actual wrapped SELECT
     assert.deepEqual(actual.rows,direct);assert.equal(actual.truncated,false);assert.equal(actual.version,'3.49.1');
    }finally{db.close()}
   }count++;
- }assert.equal(count,9);
+ }assert.equal(count,13);
  const scan=explainFixtureQuery(SQL,'empty-count','SELECT id,name FROM artists');
  const search=explainFixtureQuery(SQL,'empty-count','SELECT id,name FROM artists WHERE id=1');
  assert.ok(scan.rows.some(row=>row[2]==='SCAN artists'));

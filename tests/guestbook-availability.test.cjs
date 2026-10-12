@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom'),ejs=require('ejs'),{parse}=require('rrweb-cssom');
+const {expandStylesheetURLs}=require('../tools/build-shared-stylesheets.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const template=read('custom/redefine/nijika/comments.ejs');
 const markup=page=>ejs.render(template,{page:{nijika:page}});
@@ -77,7 +78,7 @@ function screenRules(rules,width){return [...rules].flatMap(rule=>{
 }).join('\n');}
 for(const route of ['guestbook/index.html','2026/09/22/Hello-CC-Atelier/index.html'])for(const width of [393,1280])for(const theme of ['light','dark'])test(`${route} important controls remain readable at ${width}px ${theme} in the real stylesheet cascade`,()=>{
  const links=[...read('public/'+route).matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(match=>match[1].replace(/^\//,''));
- const styles=links.filter(file=>file.startsWith('atelier/css/')).map(file=>{const source='source/'+file;const css=read(fs.existsSync(path.join(__dirname,'..',source))?source:'public/'+file);return '<style>'+screenRules(parse(css).cssRules,width)+'</style>';}).join('');
+ const styles=links.filter(file=>file.startsWith('atelier/css/')).map(file=>{const css=read('public/'+file);return '<style>'+screenRules(parse(css).cssRules,width)+'</style>';}).join('');
  const dom=new JSDOM(`${styles}<body class="nijika ${theme}"><section class="atelier-room ${route.startsWith('guestbook')?'room-guestbook':'reading-studio'}">${markup('guestbook')}</section></body>`);
  try{
   const doc=dom.window.document;doc.querySelector('[data-comment-status]').innerHTML='留言暂未开放。<button class="community-retry">重新检查</button>';
@@ -92,7 +93,9 @@ for(const route of ['guestbook/index.html','2026/09/22/Hello-CC-Atelier/index.ht
   assert.notEqual(dom.window.getComputedStyle(status).whiteSpace,'nowrap','long status can wrap before its inline retry');
   const listRetry=doc.createElement('button');listRetry.className='community-retry';listRetry.textContent='再试一次';doc.querySelector('[data-comment-list] .community-empty').append(listRetry);
   const listStyle=dom.window.getComputedStyle(listRetry);assert.equal(listStyle.display,'block');assert.equal(listStyle.marginTop,'12px');assert.equal(listStyle.marginLeft,'auto');assert.equal(listStyle.marginRight,'auto');
-  assert.ok(links.includes('atelier/css/refinement.css'));
+  const expanded=expandStylesheetURLs(links);
+  assert.ok(expanded.includes('atelier/css/refinement.css'));
+  assert.ok(expanded.indexOf('atelier/css/refinement.css')<expanded.indexOf('atelier/css/editorial.css'),'refinement rules retain their cascade position');
   assert.equal(links.includes('atelier/css/rooms-v2.css'),route.startsWith('guestbook'));
  }finally{dom.window.close();}
 });

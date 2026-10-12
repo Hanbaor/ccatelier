@@ -29,11 +29,29 @@ test('the retained PNG and lossless WebP decode to byte-identical full-size RGBA
  assert.deepEqual(result.info,original.info);assert.ok(result.data.equals(original.data),'all RGBA bytes match, with no resizing or crop');
  const metadata=await sharp(encoded).metadata();assert.equal(metadata.format,'webp');assert.equal(metadata.pages||1,1);
 });
-test('only the large article illustration URL changes; its existing alt remains untouched',()=>{
+test('lossless illustration URL keeps source Markdown and meaningful alts; only the exact reviewed WebP gains decorative alt',async()=>{
  const markdown=read('source/_posts/csdn/131792879.md');
  assert.equal(markdown.split('\n')[12],`![](${webp})`);
  assert.equal(markdown.split(webp).length-1,1);assert.ok(!markdown.includes(stem+'.png'));
- assert.ok(!allowlist.some(entry=>entry.filename.startsWith('9f96d32fa0ab600a4aea')),'no existing human-written description is bypassed');
+ const entries=allowlist.filter(entry=>entry.filename.startsWith('9f96d32fa0ab600a4aea'));
+ assert.deepEqual(entries,[{sourceId:'131792879',source:'_posts/csdn/131792879.md',filename:path.basename(webp),
+  sha256:'4ebbce79dbf6ce594ac9100ba6301820e889077a0643c10de9c07a6fed2aa124',oldAlt:null,alt:'',caption:undefined}]);
+ assert.equal(sha(fs.readFileSync(path.join(sourceDir,webp))),entries[0].sha256);
+ const post={source_id:'131792879',source:'_posts/csdn/131792879.md'};
+ for(const root of ['/','/lab/']) {
+  const describe=createArticleImageAltEnhancer({sourceDir,root});
+  for(const filename of [webp,stem+'.png']) {
+   const url=root+filename.slice(1);
+   for(const alt of ['作者手写的插画说明',' ','&quot;作者 &amp; 原图&quot;']) {
+    const input=`<img src="${url}" alt="${alt}">`;
+    assert.equal(await describe(input,post),input,'meaningful existing alt is byte-preserved for both encodings');
+   }
+   const missing=`<img src="${url}">`;
+   const expected=filename===webp?`<img src="${url}" alt="">`:missing;
+   assert.equal(await describe(missing,post),expected,'the unreviewed PNG receives no inferred empty alt');
+  }
+ }
+ assert.equal(read('source/_posts/csdn/131792879.md'),markdown);
 });
 for(const root of ['/','/lab/']) {
  test(`WebP URL, exact metadata, original alt and offline collection remain compatible (${root})`,async()=>{
@@ -127,17 +145,27 @@ test('actual Markdown rendering preserves all article content, image metadata an
   const geometry=createArticleImageEnhancer({sourceDir,root}),describe=createArticleImageAltEnhancer({sourceDir,root});
   const renderArticle=async text=>describe(await geometry(hexo.render.renderSync({text,engine:'md'})),{source_id:'131792879',source:'_posts/csdn/131792879.md'});
   const current=await renderArticle(data._content),previous=await renderArticle(data._content.replace(webp,stem+'.png'));
-  assert.equal(current.replace(webp,stem+'.png'),previous,'the complete rendered article differs only by this image URL');
+  // Exactly one reviewed leading image changes URL and gains explicit decorative
+  // alt. Keep the entire remaining rendered article byte-for-byte, including
+  // every other alt, all visible prose, links, code and image metadata.
+  const previousLead=`<p><img src="${root+stem.slice(1)}.png" width="3464" height="2380" decoding="async" loading="eager"></p>`;
+  const currentLead=`<p><img src="${root+webp.slice(1)}" width="3464" height="2380" decoding="async" loading="eager" alt=""></p>`;
+  assert.ok(previous.startsWith(previousLead+'\n'));
+  assert.equal(previous.split(previousLead).length-1,1);
+  assert.ok(current.startsWith(currentLead+'\n'));
+  assert.equal(current.split(currentLead).length-1,1);
+  assert.equal(current,previous.replace(previousLead,currentLead),'only the exact reviewed leading image URL and absent-to-empty alt differ; complete article body remains byte-identical');
   const dom=new JSDOM(current);
   try {
    const images=[...dom.window.document.images],first=images[0];
    assert.equal(first.getAttribute('src'),root+webp.slice(1));assert.equal(first.width,3464);assert.equal(first.height,2380);
-   assert.ok(!first.hasAttribute('alt')||first.alt==='','original missing description stays unchanged');
+   assert.ok(first.hasAttribute('alt'),'reviewed decorative image has an explicit alt attribute');assert.equal(first.getAttribute('alt'),'');
    for(const entry of allowlist.filter(entry=>entry.sourceId==='131792879')) {
     const image=images.find(image=>image.getAttribute('src').endsWith('/'+entry.filename));assert.equal(image.alt,entry.alt);
    }
   }finally{dom.window.close();}
  }
+ assert.equal(read('source/_posts/csdn/131792879.md'),raw,'original Markdown remains byte-identical');
 });
 test('tablet-only stage crop retains the drumming gesture without moving phone or wide artwork',async()=>{
  const css=read('source/atelier/css/personal-home.css');

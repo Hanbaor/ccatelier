@@ -99,7 +99,7 @@
 .series-page .series-topics>a:hover,.series-page .series-mobile-topics>a:hover {color:var(--yellow)}
 .series-page .series-topics small,.series-page .series-mobile-topics small {font-family:var(--sans);font-size:13px;color:var(--muted)}
 .series-page .series-topic-disclosure {display:none}
-.series-page .series-group {scroll-margin-top:90px;margin-bottom:36px}
+.series-page .series-group {scroll-margin-top:0px;margin-bottom:36px}
 .series-page .series-group h2 {font:500 23px/1.4 var(--chinese);margin:0 0 12px;display:flex;gap:14px;align-items:center}
 .series-page .series-group h2>span {font-family:var(--sans);font-size:13px;color:var(--yellow)}
 .series-page .series-track {display:grid;grid-template-columns:35px minmax(0,1fr) 32px 18px;gap:17px;padding:16px 0;border-bottom:1px solid var(--line);align-items:center;min-height:72px}

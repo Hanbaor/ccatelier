@@ -1,6 +1,18 @@
 <section class="practice-room content-view" data-practice aria-labelledby="practice-title">
  <header class="practice-heading"><div><a href="<%= url_for('studio/') %>"><%- partial('nijika/editorial-arrow') %> 节奏实验室</a><h1 id="practice-title" tabindex="-1">鼓谱排练室</h1><p>原创练习 · 按自己的速度来</p></div><img src="<%= url_for('atelier/images/v5/practice-room.webp') %>" srcset="<%= url_for('atelier/images/v5/practice-room-960.webp') %> 960w, <%= url_for('atelier/images/v5/practice-room.webp') %> 1536w" sizes="(max-width:600px) 90px, (max-width:850px) 190px, 240px" width="1536" height="1024" alt="虹夏在暖金日光的排练室里练习深蓝鼓组的主题同人插画" decoding="async"></header>
- <noscript><p>互动鼓谱需要 JavaScript。你仍可浏览<a href="<%= url_for('notes/') %>">笔记</a>。</p></noscript>
+ <noscript><p>互动跟练需要 JavaScript；下方原创谱面仍可查看与下载。</p></noscript>
+ <details class="practice-static-scores">
+  <summary>原创练习 · 查看与下载谱面</summary>
+  <p id="practice-static-hint">原速完整谱面，无需 JavaScript。小屏可左右滑动；键盘聚焦谱面后用方向键浏览。</p>
+  <% page.practiceScores.forEach(function(score) { %>
+  <section class="practice-static-score" aria-labelledby="static-<%= score.id %>-title">
+   <header><h2 id="static-<%= score.id %>-title"><%= score.title %></h2><p><%= score.bpm %> BPM · 4/4 · <%= score.bars %> 小节</p></header>
+   <p><%= score.description %></p>
+   <div class="practice-static-actions"><a href="<%= url_for(score.path) %>" target="_blank" rel="noopener noreferrer">查看完整 SVG<span class="sr-only">：<%= score.title %>（新标签页）</span></a><a href="<%= url_for(score.path) %>" download="<%= score.id %>.svg">下载 SVG<span class="sr-only">：<%= score.title %></span></a></div>
+   <div class="practice-static-scroll" tabindex="0" role="region" aria-label="<%= score.title %>完整谱面" aria-describedby="practice-static-hint"><img src="<%= url_for(score.path) %>" width="<%= score.width %>" height="<%= score.height %>" loading="lazy" decoding="async" alt="<%= score.title %>，<%= score.bars %> 小节，<%= score.bpm %> BPM；每小节四拍、16 格的原创鼓练习谱"></div>
+  </section>
+  <% }); %>
+ </details>
  <div class="practice-app" hidden>
   <div class="practice-selection"><label>练习曲<select data-practice-demo aria-label="选择原创练习"></select></label><details class="practice-selection-details"><summary>练习说明与文件</summary><p data-practice-description></p><div><button type="button" data-practice-export>导出 JSON</button><button type="button" data-practice-export-svg>导出 SVG</button><label class="practice-import">导入鼓谱<input type="file" data-practice-import accept=".json,application/json"></label><button type="button" data-practice-remove-recording hidden>移除本机录音</button></div></details></div>
   <div class="practice-transport">

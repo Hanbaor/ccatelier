@@ -1,15 +1,19 @@
+import {shelves} from './reading-shelves.js';
 import {$,$$,storage,toast,openDialog,motion} from './ui.js';
-import {createShelfStore,remember,safePath,readTimer,remainingTime,pauseTimer} from './reading-state.mjs';
+import {remember,safePath,readTimer,remainingTime,pauseTimer} from './reading-state.mjs';
 
 const root=document.body.dataset.root || '/', path=location.pathname;
-const shelves=createShelfStore(storage),loadList=key=>shelves.read(key).items;
+
+const loadList=key=>shelves.read(key).items;
 const shelfFailure=result=>toast(result.status==='unavailable'?'暂时无法读取收藏，未作更改，请稍后重试。':'收藏数据损坏或版本不支持，原文已保留，未作更改。');
 async function copy(text) {try {await navigator.clipboard.writeText(text);toast('已经复制，带走吧。');}catch{toast('复制未成功，请手动复制浏览器地址或文字。');}}
 
 function readingTools() {
   const tools=$('[data-article-tools]');if(!tools)return;
-  const item={path,title:tools.dataset.title},body=$('.article-body');
-  const old=loadList('recent').find(p=>p.path===path);
+  if(tools.dataset.actionsReady)return;tools.dataset.actionsReady='true';
+  const path=location.pathname,item={path,title:tools.dataset.title};
+  window.addEventListener('pagehide',()=>{tools.dataset.readingPaused='true';});
+  window.addEventListener('pageshow',event=>{if(event.persisted){delete tools.dataset.readingPaused;showBookmark();}});
   shelves.update('recent',list=>remember(list,{...item,progress:list.find(p=>p.path===path)?.progress||0}));
   const bookmark=$('[data-bookmark]');
   function showBookmark(){const saved=loadList('saved').some(p=>p.path===path);bookmark.setAttribute('aria-pressed',String(saved));bookmark.textContent=saved?'已收藏':'收藏';}
@@ -26,11 +30,7 @@ function readingTools() {
     if(e.key!=='Escape'||e.defaultPrevented||e.isComposing||e.keyCode===229||$('dialog[open]'))return;
     setFocus(false);
   });
-  const resume=$('[data-reading-resume]');
-  if(old?.progress>.05 && old.progress<.97){resume.hidden=false;resume.textContent=`继续阅读 · ${Math.round(old.progress*100)}% ↓`;resume.addEventListener('click',()=>{window.scrollTo({top:window.scrollY+body.getBoundingClientRect().top+old.progress*Math.max(0,body.scrollHeight-innerHeight*.6),behavior:motion.enabled?'smooth':'instant'});resume.hidden=true;});}
-  let dirty=false;
-  const persist=()=>{if(!dirty)return;dirty=false;const progress=Math.max(0,Math.min(1,-body.getBoundingClientRect().top/Math.max(1,body.scrollHeight-innerHeight*.6)));shelves.update('recent',list=>remember(list,{...item,progress}));};
-  window.addEventListener('scroll',()=>{dirty=true;},{passive:true});let interval=setInterval(persist,2000);window.addEventListener('pagehide',()=>{persist();clearInterval(interval);});window.addEventListener('pageshow',event=>{if(event.persisted){showBookmark();interval=setInterval(persist,2000);}});
+
 }
 
 function discovery() {
@@ -40,7 +40,17 @@ function discovery() {
   const list=$('[data-reading-list]');if(!list)return;
   function render(key){const entries=loadList(key);list.replaceChildren();$('[data-saved-count]').textContent=String(loadList('saved').length).padStart(2,'0');
     if(!entries.length){const p=document.createElement('p');p.className='community-empty';p.textContent=key==='saved'?'在文章末尾展开「阅读工具」并收藏，留待下次。':'读过的文章，会在这里留下足迹。';list.append(p);}
-    entries.forEach((entry,i)=>{const row=document.createElement('div');row.className='reading-shelf-row';const number=document.createElement('span');number.textContent=String(i+1).padStart(2,'0');const link=document.createElement('a');link.href=entry.path;link.textContent=entry.title;row.append(number,link);if(key==='saved'){const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label','移除收藏：'+entry.title);remove.addEventListener('click',()=>{const result=shelves.update('saved',items=>items.filter(p=>p.path!==entry.path));if(!result.ok){shelfFailure(result);return;}render(key);if(!result.persisted)toast('存储不可用，本次移除仅在当前页面有效');});row.append(remove);}list.append(row);});
+    entries.forEach((entry,i)=>{const row=document.createElement('div');row.className='reading-shelf-row';const number=document.createElement('span');number.textContent=String(i+1).padStart(2,'0');const link=document.createElement('a');link.href=entry.path;link.textContent=entry.title;row.append(number,link);if(key==='saved'){const remove=document.createElement('button');remove.textContent='×';remove.setAttribute('aria-label','移除收藏：'+entry.title);remove.addEventListener('click',()=>{
+      const restoreFocus=document.activeElement===remove;
+      const result=shelves.update('saved',items=>items.filter(p=>p.path!==entry.path));
+      if(!result.ok){shelfFailure(result);return;}
+      render(key);
+      if(restoreFocus){
+        const controls=$$('.reading-shelf-row button',list);
+        (controls[Math.min(i,controls.length-1)]||$('[data-reading-list-tab="saved"]'))?.focus();
+      }
+      if(!result.persisted)toast('存储不可用，本次移除仅在当前页面有效');
+    });row.append(remove);}list.append(row);});
     $$('[data-reading-list-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.readingListTab===key)));
   }render('saved');$$('[data-reading-list-tab]').forEach(button=>button.addEventListener('click',()=>render(button.dataset.readingListTab)));
 }
@@ -57,22 +67,38 @@ function passport() {
   $$('[data-pass-stamp]').forEach(stamp=>{const stamped=pass.stamps.includes(stamp.dataset.passStamp);stamp.classList.toggle('stamped',stamped);stamp.setAttribute('aria-label',stamp.textContent.trim()+(stamped?'：已到访':'：尚未到访'));});
   $('[data-download-ticket]').addEventListener('click',()=>{
     const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480"><rect width="1000" height="480" rx="18" fill="#e7bf4f"/><rect x="20" y="20" width="960" height="440" rx="8" fill="none" stroke="#292621"/><path d="M780 20v440" stroke="#292621" stroke-dasharray="6 6"/><g fill="#292621" font-family="Arial,sans-serif"><text x="65" y="75" font-size="18" letter-spacing="4">CC ATELIER / BACKSTAGE PASS</text><text x="58" y="230" font-size="138" font-weight="900">ADMIT ONE</text><text x="65" y="290" font-size="24">A LITTLE LIGHT. A LITTLE LOUDER.</text><text x="65" y="398" font-size="21">${pass.date} / ${pass.stamps.length} OF 5 STAMPS</text><text transform="translate(855 85) rotate(90)" font-size="32" letter-spacing="5">NO. ${pass.id}</text><text x="660" y="412" font-size="55">✦</text></g></svg>`;
-    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));const a=document.createElement('a');a.href=url;a.download='CC-Atelier-Ticket-'+pass.id+'.svg';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('这张纪念票，送给今天的你。');
+    let url,a,requested=false;
+    try {
+      url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));a=document.createElement('a');a.href=url;a.download='CC-Atelier-Ticket-'+pass.id+'.svg';document.body.append(a);a.click();requested=true;
+      toast('已请求下载纪念票，请查看浏览器下载列表。');
+    } catch {
+      toast('未能开始下载纪念票，请重试。');
+    } finally {
+      a?.remove();
+      if(url){if(requested)setTimeout(()=>URL.revokeObjectURL(url),30000);else URL.revokeObjectURL(url);}
+    }
   });
 }
 
 function focusTimer() {
   if(!$('[data-focus-time]'))return;
-  let timer=readTimer(storage.get('cc-focus-timer'));
+  let timer=readTimer(storage.get('cc-focus-timer')), interval=null, pageActive=true;
+  const stop=()=>{if(interval!==null)clearInterval(interval);interval=null;};
   const save=()=>storage.set('cc-focus-timer',JSON.stringify(timer));
   function render(){const remaining=remainingTime(timer);if(timer.endsAt&&remaining===0){timer={...timer,endsAt:0,remaining:0};save();$('[data-focus-status]').textContent='这一段完成了。伸个懒腰，再继续吧。';}
     const seconds=Math.ceil(remaining/1000);$('[data-focus-time]').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');$('[data-focus-start]').textContent=timer.endsAt?'暂停':remaining===0?'再来一段':'开始';$('.focus-amp').classList.toggle('timer-running',!!timer.endsAt);$$('[data-focus-minutes]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.focusMinutes)*60000===timer.duration)));
+    // The deadline keeps time; only a visible, running display needs updates.
+    if(!timer.endsAt||document.hidden||!pageActive)stop();
+    else if(interval===null)interval=setInterval(render,500);
   }
   $('[data-focus-start]').addEventListener('click',()=>{if(timer.endsAt){timer=pauseTimer(timer);$('[data-focus-status]').textContent='暂停一下，也没关系。';}else{timer={...timer,remaining:timer.remaining||timer.duration,endsAt:Date.now()+(timer.remaining||timer.duration)};$('[data-focus-status]').textContent='计时中。把注意力留给眼前这一件事。';}save();render();});
   const reset=duration=>{timer={duration,remaining:duration,endsAt:0};save();$('[data-focus-status]').textContent='给一件小事，一段完整的时间。';render();};
   $('[data-focus-reset]').addEventListener('click',()=>reset(timer.duration));$$('[data-focus-minutes]').forEach(b=>b.addEventListener('click',()=>reset(Number(b.dataset.focusMinutes)*60000)));
   if(timer.endsAt)$('[data-focus-status]').textContent='计时中。把注意力留给眼前这一件事。';
-  render();let interval=setInterval(render,500);document.addEventListener('visibilitychange',render);window.addEventListener('pagehide',()=>clearInterval(interval));window.addEventListener('pageshow',event=>{if(event.persisted){timer=readTimer(storage.get('cc-focus-timer'));render();interval=setInterval(render,500);}});
+  render();
+  document.addEventListener('visibilitychange',()=>{if(document.hidden||!pageActive)stop();else render();});
+  window.addEventListener('pagehide',()=>{pageActive=false;stop();});
+  window.addEventListener('pageshow',event=>{if(event.persisted){pageActive=true;timer=readTimer(storage.get('cc-focus-timer'));if(!document.hidden)render();}});
 }
 
 function atmosphere() {
@@ -88,5 +114,5 @@ export function initAfterHours() {
   readingTools();discovery();passport();focusTimer();atmosphere();
   if(!storage.persistent){$$('.lounge-fine-print').forEach(node=>{if(/本机|浏览器/.test(node.textContent))node.textContent='浏览器禁止本地存储，本次操作无法跨页面保留。';});}
   $$('[data-help-open]').forEach(button=>button.addEventListener('click',()=>openDialog('help-dialog')));
-  document.addEventListener('keydown',event=>{if(event.key!=='?'||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('input,textarea,select,[contenteditable="true"]')||$('dialog[open]'))return;event.preventDefault();openDialog('help-dialog');});
+  document.addEventListener('keydown',event=>{if(event.defaultPrevented||event.repeat||event.isComposing||event.keyCode===229||event.getModifierState?.('AltGraph')||event.key!=='?'||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('input,textarea,select,[contenteditable]')||$('dialog[open]'))return;event.preventDefault();openDialog('help-dialog');});
 }

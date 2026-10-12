@@ -9,8 +9,8 @@ const identity=entry=>({source_id:entry.sourceId,source:entry.source});
 const image=entry=>'/atelier/images/posts/'+entry.filename;
 const input=entry=>`<img src="${image(entry)}"${entry.oldAlt===null?'':` alt="${entry.oldAlt}"`}>`;
 const imageAttrs=html=>parseDocument(html).children.find(node=>node.name==='img').attribs;
-test('forty-six visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
- assert.equal(allowlist.length,46);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,46);
+test('fifty-three visually reviewed entries bind exact article, image and full original SHA-256',async()=>{
+ assert.equal(allowlist.length,53);assert.equal(new Set(allowlist.map(entry=>entry.filename)).size,53);
  for(const entry of allowlist) {
   assert.match(entry.sha256,/^[a-f0-9]{64}$/);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(sourceDir,image(entry)))).digest('hex'),entry.sha256);
@@ -185,7 +185,7 @@ test('only exact Redefine machine captions reuse the hash-verified description',
   assert.equal(await createArticleImageAltEnhancer({sourceDir:'/nonexistent'})(raw,identity(entry)),raw);
  }
 });
-test('real Hexo loader, Warehouse posts and native cache rendering apply all forty-six descriptions from actual Markdown',async()=>{
+test('real Hexo loader, Warehouse posts and native cache rendering apply all fifty-three descriptions from actual Markdown',async()=>{
  const Hexo=require('hexo'),frontMatter=require('hexo-front-matter');
  for(const root of ['/','/lab/']) {
   // No init/load/generate or database save: only real in-memory Hexo APIs.
@@ -257,5 +257,42 @@ test('real Hexo loader, Warehouse posts and native cache rendering apply all for
   await post.save();
   await hexo.execFilter('before_generate',null,{context:hexo});
   assert.equal(findImage(hexo.model('Post').findOne({source_id:entry.sourceId}).content,entry).alt,'作者的新说明');
+ }
+});
+
+test('seven remaining images use exact reviewed assets, with five explicit decorative empty alts and two informative descriptions',async()=>{
+ const expected=[
+  ["124387071", "a7c0112c9b3151f0797f.jpg", "55f7279eb66cfdf55ed50068419d7c887817125d883c5f092c4e41a91104f86a", null, ""],
+  ["124460411", "3e8a5e7f22be7183ac37.jpg", "5fe827e041d331a778129decb62c5f84d1d56f9ef17c35243af839fbb8ee7b61", null, ""],
+  ["131792879", "9f96d32fa0ab600a4aea.webp", "4ebbce79dbf6ce594ac9100ba6301820e889077a0643c10de9c07a6fed2aa124", null, ""],
+  ["149880710", "d661ab640710883493ee.jpg", "71714457d2200d3aebb4c4838750f76083e747b286f018bce3d87a923b1e7a9e", null, ""],
+  ["154834561", "377f3fef18100b8ec408.png", "d2bf79fbb032083bcf74328c764ac795bf3182b8feb9466160429db06a6e329a", null, ""],
+  ["124514677", "c258be7019daa40bd9d5.jpg", "7fda21d5906deccc017428199546fa1045ea2c94159fe11bb7d28791fdfb4a46", null, "列车调度示意：入口列车从左到右标为 7、6、1、9、3、5、2、4、8，经四条平行轨道汇入出口；出口车号从左到右为 1 至 9，行驶箭头均向右。"],
+  ["124514677", "bfc851459c9be2302592.png", "e14355bcbd55e9a67f1753550d8f4adb8bdd617304cf267a6664aacdc69abe12", null, "PTA 判题结果：测试点 0 至 4 全部答案正确，合计 25 分。"]
+ ];
+ assert.equal(expected.filter(row=>row[4]==='').length,5);
+ for(const [sourceId,filename,sha256,oldAlt,alt] of expected) {
+  const entry=allowlist.find(entry=>entry.filename===filename);
+  assert.deepEqual(entry,{sourceId,source:`_posts/csdn/${sourceId}.md`,filename,sha256,oldAlt,alt,caption:undefined});
+  for(const root of ['/','/lab/']) {
+   const enhance=createArticleImageAltEnhancer({sourceDir,root});
+   const src=(root==='/'?'':'/lab')+image(entry);
+   for(const existing of ['', ' alt=""']) {
+    const target=`<img src="${src}"${existing} width="600">`;
+    const raw=`<p>原有正文</p><figure class="image-caption">${target}<figcaption>作者说明</figcaption></figure><pre><code>原有代码</code></pre>`;
+    const output=await enhance(raw,identity(entry));
+    const replacement=existing?target.replace('alt=""',`alt="${escapeAttribute(alt)}"`):target.replace('>',` alt="${escapeAttribute(alt)}">`);
+    assert.equal(output,raw.replace(target,replacement));
+    assert.equal(await enhance(output,identity(entry)),output);
+    const img=parseDocument(output).children[1].children[0];
+    assert.ok(Object.hasOwn(img.attribs,'alt'),'decorative images need explicit alt, not an omitted attribute');
+    assert.equal(img.attribs.alt,alt);
+    for(const post of [{...identity(entry),source_id:'other'},{...identity(entry),source:'_posts/other.md'}])assert.equal(await enhance(raw,post),raw);
+   }
+   const meaningful=`<img src="${src}" alt="作者保留的说明">`;
+   assert.equal(await enhance(meaningful,identity(entry)),meaningful);
+   const wrongRoot=`<img src="/wrong${image(entry)}">`;
+   assert.equal(await enhance(wrongRoot,identity(entry)),wrongRoot);
+  }
  }
 });

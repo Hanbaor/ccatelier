@@ -15,7 +15,7 @@ function screenRules(rules,width){
   return screenRules(rule.cssRules,width);
  }).join('\n');
 }
-const sheets=paths.map(file=>parse(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules);
+const sheets=paths.map(file=>parse(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules);
 const collection=read('custom/redefine/nijika/lounge.ejs').match(/<section class="lounge-card collection-card">[\s\S]*?<\/section>/)[0];
 const privacy=read('custom/redefine/nijika/guestbook.ejs').match(/<p class="guestbook-rules">[\s\S]*?<\/p>/)[0];
 const emptySelector='.room-lounge [data-reading-list]:has(>.community-empty:only-child)';

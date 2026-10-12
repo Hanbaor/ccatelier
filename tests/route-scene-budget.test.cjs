@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
+const {groups,expandStylesheetURLs}=require('../tools/build-shared-stylesheets.cjs');
 const scenes=['backstage','live-art','rooms-v2'];
 const bytes=file=>fs.statSync(path.join(root,'source/atelier/css',file+'.css')).size;
 const cases=[
@@ -10,7 +11,7 @@ const cases=[
   ['atelier/index.html',['backstage'],31806,17],
   ['notes/index.html',[],63440,16],
   ['projects/index.html',['rooms-v2'],41463,16],
-  ['research/index.html',['rooms-v2'],41463,17],
+  ['research/index.html',['rooms-v2'],41463,18],
   ['about/index.html',['rooms-v2'],41463,16]
 ];
 function styles(route){
@@ -21,20 +22,24 @@ function styles(route){
 }
 test('generated personal routes select fewer stylesheet source bytes without a client-side loader',()=>{
   for(const [route,keep,saved,count] of cases){
-    const links=styles(route);
+    const delivered=styles(route),links=expandStylesheetURLs(delivered);
     const selected=scenes.filter(file=>links.some(link=>link.endsWith('/atelier/css/'+file+'.css')));
     assert.deepEqual(selected,keep,route+' scenes');
-    assert.equal(links.length,count,route+' stylesheet count');
+    assert.equal(links.length,count,route+' expanded stylesheet count');
+    assert.equal(delivered.length,count-7,route+' seven fewer delivered stylesheet links');
+    assert.equal(new Set(delivered).size,delivered.length,route+' no duplicate delivery URLs');
     assert.equal(new Set(links).size,count,route+' no duplicates');
+    assert.equal(delivered.filter(url=>url.endsWith('/atelier/css/research-local-table.css')).length,
+      route==='research/index.html'?1:0,route+' optional local-table styling stays on Research');
     const removed=scenes.filter(file=>!keep.includes(file));
     assert.equal(removed.reduce((sum,file)=>sum+bytes(file),0),saved,route+' omitted uncompressed source bytes');
     // Read the actual emitted assets. This is a reference-byte budget, not transfer size or load-time measurement.
-    const emittedBytes=links.reduce((sum,url)=>{
+    const emittedBytes=delivered.reduce((sum,url)=>{
       assert.ok(url.startsWith('/')&&!url.startsWith('//'),route+' local stylesheet');
       return sum+fs.statSync(path.join(root,'public',url.slice(1))).size;
     },0);
     assert.ok(emittedBytes>0);
-    for(const file of ['archive','after-hours','stage-engine'])assert.ok(links.some(link=>link.endsWith('/atelier/css/'+file+'.css')),route+' global dialog dependencies');
+    for(const file of ['archive','after-hours','stage-engine'])assert.ok(links.some(link=>link.endsWith('/atelier/css/'+file+'.css') || (file==='archive' && link.endsWith('/atelier/css/archive-global.css'))),route+' global dialog dependencies');
   }
 });
 test('generated secondary rooms retain their scene stylesheet while music and articles omit it',()=>{
@@ -42,9 +47,9 @@ test('generated secondary rooms retain their scene stylesheet while music and ar
     assert.deepEqual(scenes.filter(file=>styles(route).some(link=>link.endsWith('/atelier/css/'+file+'.css'))),['rooms-v2'],route);
   }
   for(const route of ['studio/index.html','studio/practice/index.html','2026/09/22/Hello-CC-Atelier/index.html']){
-    const links=styles(route);
+    const delivered=styles(route),links=expandStylesheetURLs(delivered);
     assert.deepEqual(scenes.filter(file=>links.some(link=>link.endsWith('/atelier/css/'+file+'.css'))),[],route);
-    assert.ok(links.some(link=>link.endsWith('/atelier/css/archive.css')),route+' global live dialogs');
+    assert.ok(links.some(link=>(link.endsWith('/atelier/css/archive.css')||link.endsWith('/atelier/css/archive-global.css'))),route+' global live dialogs');
   }
 });
 test('offline shell still includes all legacy CSS assets for saved and fallback documents',()=>{
@@ -65,4 +70,13 @@ test('editorial index adds exactly one offline-ready stylesheet only to notes an
   const shell=JSON.parse(fs.readFileSync(path.join(root,'public/atelier/data/offline-shell.json'),'utf8'));
   assert.ok(shell.includes('/atelier/css/editorial-index.css'));
   assert.ok(fs.statSync(path.join(root,'public/atelier/css/editorial-index.css')).size>0);
+});
+
+
+test('every delivered group equals its original stylesheets in exact cascade order',()=>{
+  for(const group of groups){
+    const expected=Buffer.concat(group.members.flatMap((file,index)=>{const bytes=fs.readFileSync(path.join(root,'public/atelier/css',file));return index?[Buffer.from('\n'),bytes]:[bytes];}));
+    assert.deepEqual(fs.readFileSync(path.join(root,'public/atelier/css',group.file)),expected,group.file);
+    for(const file of group.members)assert.deepEqual(fs.readFileSync(path.join(root,'public/atelier/css',file)),fs.readFileSync(path.join(root,'source/atelier/css',file)),file+' original URL remains unchanged');
+  }
 });

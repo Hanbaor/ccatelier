@@ -36,8 +36,8 @@ for(const root of ['/','/lab/']) {
   }
  });
  for(const [template,selector,sizes] of [
-  ['cover','.home-afterhours-art img','(max-width:760px) 92vw, 60vw'],
-  ['stage','.creation-scene img','(max-width:700px) 92vw, 60vw']
+  ['cover','.home-afterhours-art img','(max-width:760px) min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))), calc((min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))) - 48px) * 20 / 33)'],
+  ['stage','.creation-scene img','(max-width:700px) min(1200px, calc(100vw - 2 * clamp(20px, 4vw, 56px))), 1536px']
  ])test(`real ${template} render offers both practice candidates (${root})`,()=>{
   const ctx=context(root,template==='cover'?'cover':'atelier');
   const dom=new JSDOM(ejs.render(read(`custom/redefine/nijika/${template}.ejs`),ctx));

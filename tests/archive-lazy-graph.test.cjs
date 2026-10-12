@@ -17,10 +17,11 @@ test('graph loading is opt-in, deduplicated, and uses latest filter after enter/
  try{
   await initArchive({loadConstellation:()=>{loads++;return pending.promise;}});assert.equal(loads,0);assert.match($('[data-archive-count]').textContent,/9 \/ 9/);
   $('[data-view=graph]').click();await flush();assert.equal(loads,1);assert.equal($('.constellation').getAttribute('aria-busy'),'true');assert.equal($('[data-graph-select]').disabled,true);
-  $('[data-view=list]').click();$('[data-group=hot100]').click();$('[data-view=graph]').click();await flush();assert.equal(loads,1,'an in-flight graph import is shared');
+  $('[data-view=graph]').click();await flush();assert.equal(loads,1,'the current graph attempt is shared');
+  $('[data-view=list]').click();$('[data-group=hot100]').click();$('[data-view=graph]').click();await flush();assert.equal(loads,2,'reentering graph retires the abandoned UI wait, even if native import returns the same promise');
   pending.resolve(module);await flush();assert.equal(created,1);assert.equal(shown.at(-1).length,100);assert.equal($('.constellation').getAttribute('aria-busy'),'false');assert.equal($('[data-graph-select]').disabled,false);
   $('[data-view=list]').click();assert.ok(paused>0);
-  history.replaceState({},'','?group=writing&view=graph');window.dispatchEvent(new window.PopStateEvent('popstate'));assert.equal(shown.at(-1).length,9);assert.equal(created,1);assert.equal(loads,1);
+  history.replaceState({},'','?group=writing&view=graph');window.dispatchEvent(new window.PopStateEvent('popstate'));assert.equal(shown.at(-1).length,9);assert.equal(created,1);assert.equal(loads,2);
  }finally{window.dispatchEvent(new window.Event('pagehide'));dom.window.close();}
 });
 

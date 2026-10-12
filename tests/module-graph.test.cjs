@@ -6,12 +6,13 @@ test('module audit distinguishes static edges from dynamic imports',()=>{
 });
 test('built global graph excludes route/audio/graph modules and retains essential UI',()=>{
  const result=graph(publicDir,['atelier/js/main.js']),names=result.files.map(file=>path.basename(file.path));
- for(const file of ['main.js','ui.js','theme.js','archive-store.js','community.js','live-dialog.js','notebook-core.mjs','reading-state.mjs','search-core.mjs'])assert.ok(names.includes(file),file);
+ for(const file of ['main.js','ui.js','theme.js','archive-store.js','community-shared.js','live-dialog.js','notebook-core.mjs','reading-state.mjs','search-core.mjs'])assert.ok(names.includes(file),file);
  const sourceGraph=graph(path.resolve(__dirname,'../source'),['atelier/js/main.js']);
  assert.ok(sourceGraph.modules<25);assert.ok(sourceGraph.bytes<100000);
  const sourceNames=sourceGraph.files.map(file=>path.basename(file.path));
- for(const file of ['navigation-scenes.js','search.js','queue.js','offline.js','route-features.js','rhythm.js','stage-engine.js'])assert.ok(sourceNames.includes(file),file+' source feature retained');
- for(const file of ['archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js','search-context.mjs','community-moderation.js'])assert.ok(!names.includes(file),file);
+ assert.ok(!sourceNames.includes('stage-engine.js'));
+ for(const file of ['navigation-scenes.js','search.js','queue.js','offline.js','route-features.js','rhythm.js'])assert.ok(sourceNames.includes(file),file+' source feature retained');
+ for(const file of ['stage-engine.js','archive.js','constellation.js','reader.js','notebook.js','code-studio.js','studio.js','audio-engine.js','studio-core.mjs','practice.js','livehouse.js','search-context.mjs','community-moderation.js'])assert.ok(!names.includes(file),file);
  assert.ok(result.modules<=10);assert.ok(result.bytes<83000);
  const routes=report(publicDir).routes,base=routes.find(row=>row.route==='/');assert.equal(base.bytes,result.bytes);
  const notes=routes.find(row=>row.route==='/notes/');assert.ok(notes.files.some(file=>file.path.endsWith('archive-worker.js')));assert.ok(!notes.files.some(file=>file.path.endsWith('constellation.js')));
@@ -26,9 +27,11 @@ test('offline snapshot manifest retains every dynamic module and their dependenc
 
 test('global dialog and rhythm arbitration boots before asynchronous route features',()=>{
  const main=fs.readFileSync(path.join(__dirname,'../source/atelier/js/main.js'),'utf8'),route=main.indexOf('initRouteFeatures();');
- for(const fn of ['initSettings','initDialogs','initSearch','initRhythm','initQueue','initOffline','initStageEngine','initNavigationScenes'])assert.ok(main.indexOf(fn+'();')<route,fn);
+ for(const fn of ['initSettings','initDialogs','initSearch','initRhythm','initQueue','initOffline','initNavigationScenes'])assert.ok(main.indexOf(fn+'();')<route,fn);
  assert.match(main,/if \(document\.querySelector\('\[data-live-open\]'\)\)/);
- assert.match(main,/if \(document\.querySelector\('\[data-practice\]'\)\)/);
+ const routes=fs.readFileSync(path.join(__dirname,'../source/atelier/js/route-features.js'),'utf8');
+ assert.match(routes,/id:'practice',selector:'\[data-practice\]'.*load:\(\)=>import\('\.\/practice\.js'\).*init:'initPractice'/);
+ assert.doesNotMatch(main,/import\(['"]\.\/practice\.js['"]\)|initPractice/,'practice uses only the bounded route loader');
 });
 
 
@@ -54,6 +57,7 @@ test('source admin interface is lazy while its route report includes shared depe
  assert.ok(!result.initial.files.some(file=>file.path.endsWith('/community-moderation.js')));
  assert.ok(admin.files.some(file=>file.path.endsWith('/community-moderation.js')));
  assert.equal(admin.files.filter(file=>file.path.endsWith('/community.js')).length,1);
+ assert.equal(admin.files.filter(file=>file.path.endsWith('/community-shared.js')).length,1);
  assert.equal(admin.bytes-result.initial.bytes,fs.statSync(path.join(source,'atelier/js/community-moderation.js')).size);
  assert.match(fs.readFileSync(path.join(source,'atelier/js/community.js'),'utf8'),/import\('\.\/community-moderation\.js'\)/);
 });
@@ -66,7 +70,7 @@ test('offline manifest generator automatically covers lazy comment and admin mod
   for(const root of ['/','/preview/']){
    const result=generators.get('live-archive').call({config:{root},base_dir:path.resolve(__dirname,'..')},{posts:{sort:()=>({toArray:()=>[]})},data:{}});
    const shell=JSON.parse(result.find(file=>file.path==='atelier/data/offline-shell.json').data);
-   for(const file of ['community.js','community-moderation.js','community-comments.js','ui.js','theme.js'])assert.ok(shell.includes(root+'atelier/js/'+file),file);
+   for(const file of ['community.js','community-shared.js','community-moderation.js','community-comments.js','ui.js','theme.js'])assert.ok(shell.includes(root+'atelier/js/'+file),file);
   }
  }finally{if(previous===undefined)delete globalThis.hexo;else globalThis.hexo=previous;}
 });
@@ -79,6 +83,7 @@ test('source comments stay lazy and appear in each actual comment route graph',(
   const row=result.routes.find(row=>row.route===route);
   assert.equal(row.files.filter(file=>file.path.endsWith('/community-comments.js')).length,1);
   assert.equal(row.files.filter(file=>file.path.endsWith('/community.js')).length,1);
+  assert.equal(row.files.filter(file=>file.path.endsWith('/community-shared.js')).length,1);
   const dom=new (require('jsdom').JSDOM)(fs.readFileSync(path.join(publicDir,route,'index.html'),'utf8'));
   try{assert.ok(dom.window.document.querySelector('[data-comments]'),route);}finally{dom.window.close();}
  }
@@ -98,4 +103,10 @@ test('Hot100 filter is counted once on its own route and never in the global ent
  const template=fs.readFileSync(path.join(__dirname,'../custom/redefine/nijika/series.ejs'),'utf8'),ejs=require('ejs');
  const html=ejs.render(template,{page:{seriesPosts:[],introHtml:''},live_catalog_counts:()=>({withCode:0,analysisPending:0}),url_for:v=>'/lab/'+v,nijika_count:v=>v});
  const dom=new (require('jsdom').JSDOM)(html);try{assert.ok(dom.window.document.querySelector('[data-hot100-filter]'));assert.equal(dom.window.document.querySelector('[data-series-controls]').hidden,true);}finally{dom.window.close();}
+});
+
+
+test('stage delivery appears once only on the studio source route',()=>{
+ const result=report(path.resolve(__dirname,'../source'));
+ for(const row of result.routes)assert.equal(row.files.filter(file=>file.path.endsWith('/stage-engine.js')).length,row.route==='/studio/'?1:0,row.route);
 });

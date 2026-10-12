@@ -1,0 +1,35 @@
+/* A quiet recovery page. Local selectors deliberately supersede the legacy 404. */
+.not-found.missing-beat {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,.85fr);
+  align-items:center;
+  gap:clamp(28px,6vw,84px);
+  width:min(960px,calc(100% - 2 * var(--page-gutter)));
+  max-width:none;
+  margin:0 auto;
+  padding:clamp(48px,8vw,104px) 0;
+  color:var(--ink);
+}
+.missing-beat .missing-beat-copy {min-width:0}
+.missing-beat .missing-beat-code {display:flex;align-items:flex-end;gap:18px;margin:0 0 28px}
+.missing-beat .lost-number {display:block;font:500 clamp(100px,13vw,160px)/.8 var(--condensed);letter-spacing:-.04em;color:var(--yellow)}
+.missing-beat .missing-beat-code>span:last-child {padding-bottom:3px;color:var(--text);font:12px/1.6 var(--chinese);letter-spacing:.08em}
+.not-found.missing-beat h1 {margin:0;font:400 clamp(23px,2.7vw,32px)/1.6 var(--chinese);letter-spacing:.025em;overflow-wrap:anywhere}
+.missing-beat .missing-beat-nav {display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-top:32px}
+.missing-beat .missing-beat-nav>a {display:flex;align-items:center;justify-content:space-between;gap:22px;min-height:46px;box-sizing:border-box;font:13px/1.6 var(--chinese);text-decoration:none;border-radius:2px}
+.missing-beat .missing-beat-home {padding:10px 16px;background:var(--ink);color:var(--bg);border:1px solid var(--ink)}
+.missing-beat .missing-beat-home:hover {background:var(--text);border-color:var(--text);color:var(--bg)}
+.missing-beat .missing-beat-notes {padding:10px 2px;color:var(--ink);border-bottom:1px solid var(--line)}
+.missing-beat .missing-beat-notes:hover {color:var(--ink);border-color:var(--ink)}
+.missing-beat .missing-beat-nav>a:focus-visible {outline:2px solid var(--yellow);outline-offset:5px}
+.missing-beat .missing-beat-nav>a>span {font:20px/1 var(--sans)}
+.missing-beat .missing-beat-scene {width:100%;max-width:360px;justify-self:end;pointer-events:none;color:var(--ink)}
+.missing-beat .missing-beat-art {display:block;width:100%;height:auto;overflow:visible}
+.missing-beat .missing-beat-pulses,.missing-beat .missing-beat-sticks {color:var(--yellow)}
+.missing-beat .missing-beat-wash {color:var(--sage)}
+@media(max-width:640px) {
+  .not-found.missing-beat {grid-template-columns:minmax(0,1fr);gap:24px;align-content:center;padding:40px 0 48px}
+  .missing-beat .missing-beat-scene {width:min(100%,260px);justify-self:center}
+  .missing-beat .missing-beat-code {margin-bottom:24px}
+  .missing-beat .missing-beat-nav {margin-top:24px}
+}

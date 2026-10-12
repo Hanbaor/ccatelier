@@ -41,7 +41,7 @@ const cases = [
 ];
 test('route stylesheet selection preserves reading and studio dependencies at root and /lab/', () => {
   for (const prefix of ['/','/lab/']) for (const [name,page,type,reader,studio] of cases) {
-    const links = styles(page,type,prefix), css = file => prefix+'atelier/css/'+file+'.css';
+    const links = styles(page,type,prefix).map(url=>url.replace('/archive-global.css','/archive.css')), css = file => prefix+'atelier/css/'+file+'.css';
     assert.equal(links.includes(css('reader')),reader,name+' reader');
     assert.equal(links.includes(css('studio')),studio,name+' studio');
     assert.equal(new Set(links).size,links.length,name+' duplicate stylesheet');
@@ -111,7 +111,7 @@ test('scene guards preserve globally generated dialogs, queue, offline rows and 
   for(const prefix of ['/','/lab/']) for(const [name,page,type] of sceneCases) {
     const links=styles(page,type,prefix);
     for(const file of ['atelier','content','after-hours','archive','stage-engine','refinement','editorial','immersive','navigation-scenes'])
-      assert.ok(links.includes(prefix+'atelier/css/'+file+'.css'),name+' shared dynamic styles '+file);
+      assert.ok(links.includes(prefix+'atelier/css/'+file+'.css') || (file==='archive' && links.includes(prefix+'atelier/css/archive-global.css')),name+' shared dynamic styles '+file);
   }
   const read=file=>fs.readFileSync(path.join(root,file),'utf8');
   const archive=read('source/atelier/css/archive.css');

@@ -10,7 +10,7 @@ import {encodeMidi} from './studio-midi.mjs';
 const formatBpm=bpm=>String(Number(bpm.toFixed(3)));
 export function initStudio(){
  const host=$('[data-studio]');if(!host||host.dataset.studioReady)return;host.dataset.studioReady='true';
- let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0};
+ let project=preset(),history=new History(project),active=-1,animation=0,auditionUntil=0,stepFocus={track:0,step:0},pageActive=true;
  let importGeneration=0,importActive=true,importGate=null,settleImport=null;
  const importInput=$('[data-project-import]'),exportLoops=$('[data-export-loops]'),historyLoops=new WeakMap();
  historyLoops.set(history.items[history.position],exportLoops.value);
@@ -24,12 +24,12 @@ export function initStudio(){
  function clearShareArrival(){if(arrival){arrival.hidden=true;arrivalMessage.textContent='';}}
  function showShareArrival(message){if(arrival){arrivalMessage.textContent=message;arrival.hidden=false;}}
  host.addEventListener('input',clearShareArrival,{capture:true});
- const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();});
+ const engine=new AudioEngine(step=>{active=step;$$('[data-studio-step]').forEach(b=>b.classList.toggle('playing',Number(b.dataset.studioStep)===step));paintPosition();paintPlaybackTime();});
  function saveHistory(forceLoops=false){invalidateImport();clearShareArrival();if(share.dialog.open){shareGeneration++;share.dialog.close();}updateOverview();const before=history.items[history.position];history.push(project);
   // A different recording length is still an undoable import when notes match.
   if(forceLoops===true&&history.items[history.position]===before){history.items=history.items.slice(0,history.position+1);history.items.push(structuredClone(project));if(history.items.length>80)history.items.shift();history.position=history.items.length-1;}
   historyLoops.set(history.items[history.position],exportLoops.value);engine.update(project);$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;}
- const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
+ const playback=new PlaybackController(engine,state=>{host.classList.toggle('is-playing',state==='playing');play.setAttribute('aria-pressed',String(state==='playing'));play.textContent=state==='starting'?'启动中…':state==='playing'?'Ⅱ 停止':'▶ 播放';$('[data-studio-mode]').textContent=state==='playing'?'ON AIR':'STANDBY';if(state==='playing'){status.textContent='正在演奏；编辑会作用于接下来的音符。';paintPlaybackTime();scopeLoop();}if(state==='stopped'){status.textContent='已停止；编排保留，随时可以继续。';$('[data-studio-time]').textContent='等待你的下一拍';cancelAnimationFrame(animation);animation=0;auditionUntil=0;drawScope();$('[data-master-level]').style.height='0%';}},error=>{status.textContent=error.message;});
  function stop(){playback.stop();}
  function toggle(){document.dispatchEvent(new CustomEvent('atelier:studio-start'));return playback.toggle(project);}
  function paintPosition(){const step=active>=0&&active<project.steps?active:-1;$('[data-step-display]').replaceChildren(document.createTextNode(step<0?'—':String(step+1).padStart(2,'0')),element('small','','/'+project.steps));}
@@ -43,7 +43,7 @@ export function initStudio(){
    for(const [key,label] of [['mute','M'],['solo','S']]){const b=action(label,()=>{track[key]=!track[key];b.setAttribute('aria-pressed',String(track[key]));saveHistory();});b.title=key==='mute'?'静音':'独奏';b.setAttribute('aria-label',(key==='mute'?'静音':'独奏')+trackNames[track.type]);b.setAttribute('aria-pressed',String(track[key]));switches.append(b);}
    name.append(pad,element('strong','',trackNames[track.type]),switches);
    const steps=element('div','track-steps');steps.setAttribute('role','group');steps.setAttribute('aria-label',trackNames[track.type]+'音符');
-   track.steps.forEach((v,s)=>{const b=action('',()=>{track.steps[s]=track.steps[s]===0?1:track.steps[s]===1?.5:0;paintStep(b,track,s);saveHistory();});b.dataset.studioStep=s;b.dataset.studioTrack=t;b.tabIndex=t===stepFocus.track&&s===stepFocus.step?0:-1;paintStep(b,track,s);b.addEventListener('keydown',e=>{if(!['ArrowRight','ArrowLeft','ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const nt=Math.max(0,Math.min(5,t+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0))),ns=e.key==='Home'?0:e.key==='End'?project.steps-1:(s+(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0)+project.steps)%project.steps;$('[data-studio-track="'+nt+'"][data-studio-step="'+ns+'"]').focus();});steps.append(b);});
+   track.steps.forEach((v,s)=>{const b=action('',()=>{track.steps[s]=track.steps[s]===0?1:track.steps[s]===1?.5:0;paintStep(b,track,s);saveHistory();});b.dataset.studioStep=s;b.dataset.studioTrack=t;b.tabIndex=t===stepFocus.track&&s===stepFocus.step?0:-1;paintStep(b,track,s);b.addEventListener('keydown',e=>{if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.ctrlKey||e.metaKey||e.altKey||e.getModifierState?.('AltGraph'))return;if(!['ArrowRight','ArrowLeft','ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const nt=Math.max(0,Math.min(5,t+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0))),ns=e.key==='Home'?0:e.key==='End'?project.steps-1:(s+(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0)+project.steps)%project.steps;$('[data-studio-track="'+nt+'"][data-studio-step="'+ns+'"]').focus();});steps.append(b);});
    const controls=element('div','track-controls');for(const [key,label,min,max,scale] of [['volume','音量',0,100,100],['pan','声像',-100,100,100],['tone','音色',0,100,100],['decay','尾音',5,120,100]]){
     const l=element('label','',label),input=element('input');input.type='range';input.min=min;input.max=max;input.value=Math.round(track[key]*scale);input.setAttribute('aria-label',trackNames[track.type]+' '+label);
     const describeValue=()=>{const value=Number(input.value),text=key==='pan'?(value===0?'居中':(value<0?'偏左 ':'偏右 ')+Math.abs(value)+'%'):key==='decay'?(value/100).toFixed(2):value+'%';input.setAttribute('aria-valuetext',text);input.title=label+'：'+text;};
@@ -53,7 +53,11 @@ export function initStudio(){
   });$('[data-studio-undo]').disabled=!history.canUndo;$('[data-studio-redo]').disabled=!history.canRedo;if(restoreStepFocus)$('[data-studio-track="'+stepFocus.track+'"][data-studio-step="'+stepFocus.step+'"]',grid)?.focus({preventScroll:true});
  }
  function paintStep(b,track,s){const v=track.steps[s];b.classList.toggle('on',v===1);b.classList.toggle('soft',v>0&&v<1);b.setAttribute('aria-pressed',String(v>0));b.setAttribute('aria-label',trackNames[track.type]+' 第'+(s+1)+'步：'+(v===1?'强拍':v?'轻拍':'空拍'));b.title=(s+1)+' / '+(v===1?'强拍':v?'轻拍':'空拍');}
- async function audition(index){document.dispatchEvent(new CustomEvent('atelier:studio-start'));try{await engine.audition(project.tracks[index]);auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}catch(error){status.textContent=error.message;}}
+ async function audition(index){
+  document.dispatchEvent(new CustomEvent('atelier:studio-start'));const token=playback.generation;
+  try{const sounded=await engine.audition(project.tracks[index]);if(!sounded||token!==playback.generation)return;auditionUntil=performance.now()+1400;if(!animation)scopeLoop();}
+  catch(error){if(token!==playback.generation)return;stop();status.textContent=error.message;}
+ }
  play.addEventListener('click',toggle);$('[data-studio-stop]').addEventListener('click',()=>{invalidateImport();stop();});
  $('[data-bpm]').addEventListener('change',e=>{const value=Number(e.target.value);project.bpm=Number.isFinite(value)?Math.max(60,Math.min(180,Math.round(value))):112;e.target.value=project.bpm;saveHistory();});
  $('[data-swing]').addEventListener('input',e=>{project.swing=Number(e.target.value)/100;$('[data-swing-output]').textContent=e.target.value+'%';engine.update(project);});$('[data-swing]').addEventListener('change',saveHistory);
@@ -75,7 +79,7 @@ export function initStudio(){
 
  $('[data-studio-undo]').addEventListener('click',()=>{stop();project=history.undo();restoreLoops();render();status.textContent='已撤销；当前编排：「'+project.name+'」。';setStarterStatus('已撤销。当前编排：「'+project.name+'」。按下播放试听。');});$('[data-studio-redo]').addEventListener('click',()=>{stop();project=history.redo();restoreLoops();render();status.textContent='已重做；当前编排：「'+project.name+'」。';setStarterStatus('已重做。当前编排：「'+project.name+'」。按下播放试听。');});
  let taps=[];$('[data-studio-tap]').addEventListener('click',()=>{const now=performance.now();if(now-(taps.at(-1)||0)>2000)taps=[];taps.push(now);taps=taps.slice(-7);if(taps.length>1){project.bpm=Math.max(60,Math.min(180,Math.round(60000*(taps.length-1)/(now-taps[0]))));saveHistory();$('[data-bpm]').value=project.bpm;}});
- document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
+ document.addEventListener('keydown',e=>{if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,textarea,select,button,[contenteditable]')||$('dialog[open]'))return;if(e.code==='Space'){if(e.shiftKey)return;e.preventDefault();toggle();}const n='asdfgh'.indexOf(e.key.toLowerCase());if(n>=0){e.preventDefault();audition(n);}});
  $('[data-project-export]').addEventListener('click',()=>download('cc-rhythm-project.json',JSON.stringify(validateProject(project),null,2)));
  function confirmMidiImport(){
   if(!importGate){
@@ -145,16 +149,54 @@ export function initStudio(){
  document.addEventListener('visibilitychange',()=>{if(document.hidden){shareGeneration++;copyShare.disabled=false;}});
  window.addEventListener('pagehide',()=>{shareActive=false;shareGeneration++;if(share.dialog.open)share.dialog.close();});
  window.addEventListener('pageshow',()=>{shareActive=true;});
- const saved=makeDialog('studio-projects','你的录音带'),savedList=element('div');saved.dialog.append(savedList);$('[data-studio-load]').addEventListener('click',async()=>{savedList.replaceChildren();saved.open();try{const projects=(await vault.all('projects')).sort((a,b)=>b.updated-a.updated);if(!projects.length)savedList.append(element('p','live-status','还没有保存的录音带。'));for(const p of projects){const row=element('div','queue-row');row.append(element('span','','▣'),element('span','',p.name));const buttons=element('div');buttons.append(action('载入',()=>{try{const value=validateProject(p.project);stop();project=value;saveHistory();render();saved.dialog.close();}catch(error){toast(error.message);}}),action('删除',async()=>{try{await vault.remove('projects',p.id);row.remove();}catch(error){toast(error.message);}}));row.append(buttons);savedList.append(row);}}catch(error){savedList.append(element('p','live-status',error.message));}});
+ const saved=makeDialog('studio-projects','你的录音带'),savedList=element('div'),deletionsDuringRead=new Set();let savedGeneration=0;
+ saved.dialog.append(savedList);
+ const savedCurrent=token=>token===savedGeneration&&saved.dialog.open&&saved.dialog.isConnected;
+ function savedEmpty(){
+  $('[data-saved-empty]',savedList)?.remove();
+  if(!$('.queue-row',savedList)){const empty=element('p','live-status','还没有保存的录音带。');empty.dataset.savedEmpty='';savedList.append(empty);}
+ }
+ saved.dialog.addEventListener('close',()=>{if(!saved.dialog.open)savedGeneration++;});
+ window.addEventListener('pagehide',()=>{savedGeneration++;});
+ $('[data-studio-load]').addEventListener('click',async()=>{
+  // Only distrust snapshots which started before a deletion committed. A new
+  // read is authoritative, including a record legitimately saved again by ID.
+  savedList.replaceChildren();saved.open();const token=++savedGeneration;deletionsDuringRead.clear();
+  try{
+   const projects=await vault.all('projects');if(!savedCurrent(token))return;
+   savedList.replaceChildren();
+   for(const p of projects.filter(p=>!deletionsDuringRead.has(p.id)).sort((a,b)=>b.updated-a.updated)){
+    const row=element('div','queue-row');row.dataset.savedProject=p.id;row.append(element('span','','▣'),element('span','',p.name));const buttons=element('div');
+    buttons.append(action('载入',()=>{try{const value=validateProject(p.project);stop();project=value;saveHistory();render();saved.dialog.close();}catch(error){toast(error.message);}}),action('删除',async()=>{
+     try{
+      await vault.remove('projects',p.id);deletionsDuringRead.add(p.id);
+      // A reopened list may contain the same record. Update that live row, not
+      // the detached row which originally started the asynchronous deletion.
+      const rows=$$('.queue-row',savedList),current=rows.find(item=>item.dataset.savedProject===p.id);
+      if(!current)return;
+      const focused=document.activeElement,restoreFocus=saved.dialog.open&&saved.dialog.isConnected&&current.isConnected&&!document.hidden&&current.contains(focused);
+      const index=rows.indexOf(current),neighbor=rows[index+1]||rows[index-1],operation=$$('button',current).indexOf(focused);
+      current.remove();savedEmpty();
+      if(restoreFocus)($$('button',neighbor||savedList)[operation]||$('.live-dialog-head button',saved.dialog))?.focus({preventScroll:true});
+     }catch(error){toast(error.message);}
+    }));row.append(buttons);savedList.append(row);
+   }
+   savedEmpty();
+  }catch(error){if(savedCurrent(token))savedList.append(element('p','live-status',error.message));}
+ });
  $('[data-midi-export]').addEventListener('click',()=>{try{const loops=Number($('[data-export-loops]').value);download('cc-rhythm.mid',encodeMidi(project,loops),'audio/midi');status.textContent='MIDI 已生成：'+loops+' 轮 · 通道 10 · 遵循当前静音 / 独奏。';}catch(error){status.textContent=error.message;}});
  $('[data-wav-export]').addEventListener('click',async e=>{const button=e.currentTarget;button.disabled=true;status.textContent='正在离线渲染音频…';try{const buffer=await renderWav(structuredClone(project),Number($('[data-export-loops]').value));download('cc-rhythm.wav',buffer,'audio/wav');status.textContent='WAV 已导出：44.1 kHz / 16 bit / 立体声。';}catch(error){status.textContent=error.message;}finally{button.disabled=false;}});
+ function paintPlaybackTime(){if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+formatBpm(project.bpm)+' BPM';}
  function resize(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx?.setTransform(d,0,0,d,0,0);drawScope();}
- function drawScope(){const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;if(!ctx)return;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#bbae7822';ctx.lineWidth=1;for(let x=0;x<w;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}for(let y=0;y<h;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
-  const analyser=engine.analyser;if(!analyser){ctx.strokeStyle='#8a7b5055';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();return;}
+ function drawScope(){const live=motion.enabled&&pageActive&&!document.hidden&&(engine.playing||performance.now()<auditionUntil);canvas.setAttribute('aria-label',live?'实时音频波形与频谱':'音频示波器（静态显示）');if(!live)$('[data-master-level]').style.height='0%';const r=canvas.getBoundingClientRect(),w=r.width,h=r.height;if(!ctx)return;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#bbae7822';ctx.lineWidth=1;for(let x=0;x<w;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}for(let y=0;y<h;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  const analyser=live?engine.analyser:null;if(!analyser){ctx.strokeStyle='#8a7b5055';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();return;}
   const wave=new Uint8Array(analyser.fftSize),freq=new Uint8Array(analyser.frequencyBinCount);analyser.getByteTimeDomainData(wave);analyser.getByteFrequencyData(freq);let rms=0;for(const x of wave)rms+=((x-128)/128)**2;rms=Math.sqrt(rms/wave.length);$('[data-master-level]').style.height=Math.min(100,rms*450)+'%';
   ctx.fillStyle='#aa905a30';for(let i=0;i<64;i++){const value=freq[Math.floor(i*freq.length/128)]/255;ctx.fillRect(i*w/64,h*(1-value*.65),Math.max(1,w/64-2),h*value*.65);}
   ctx.strokeStyle='#e5c279';ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<wave.length;i+=4){const x=i/wave.length*w,y=h*.45+(wave[i]-128)/128*h*.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();document.dispatchEvent(new CustomEvent('atelier:spectrum',{detail:{energy:Math.min(1,rms*5),bass:freq[3]/255}}));
  }
- let last=0;function scopeLoop(time=0){animation=0;if(document.hidden)return;if(time-last>33||!time){drawScope();last=time;if(engine.playing)$('[data-studio-time]').textContent='LOOP '+String(engine.cycle+1).padStart(2,'0')+' · '+formatBpm(project.bpm)+' BPM';}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
- $('.studio-console').hidden=false;render();readSharedProject();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);document.addEventListener('atelier:livehouse-open',stop);document.addEventListener('atelier:practice-start',stop);
+ // Audio transport and musical position remain live when decorative motion is off.
+ let last=0;function scopeLoop(time=0){cancelAnimationFrame(animation);animation=0;if(!pageActive||document.hidden||!motion.enabled)return;if(!engine.playing&&performance.now()>=auditionUntil){drawScope();return;}if(time-last>33||!time){drawScope();last=time;}if(engine.playing||performance.now()<auditionUntil)animation=requestAnimationFrame(scopeLoop);}
+ function syncScopeMotion(){cancelAnimationFrame(animation);animation=0;last=0;if(pageActive&&!document.hidden&&motion.enabled&&(engine.playing||performance.now()<auditionUntil))scopeLoop();else drawScope();}
+ document.addEventListener('atelier:motion',syncScopeMotion);
+ $('.studio-console').hidden=false;render();readSharedProject();new ResizeObserver(resize).observe(canvas);resize();document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',()=>{pageActive=false;stop();});window.addEventListener('pageshow',()=>{pageActive=true;});document.addEventListener('atelier:livehouse-open',stop);document.addEventListener('atelier:practice-start',stop);
 }

@@ -18,8 +18,10 @@ async function fixture(t,{search='',delayedData=false,worker=false}={}){
   reply(paths){this.onmessage({data:{id:this.requests.at(-1).id,paths}});}
  }
  const core=await import('../source/atelier/js/archive-core.mjs');
+ const readingContext=await import('../source/atelier/js/reading-context.mjs');
  const source=fs.readFileSync(path.join(root,'source/atelier/js/archive.js'),'utf8').replace(/^import .*;\n/gm,'').replace('export async function','async function').replaceAll('import.meta.url',JSON.stringify('https://atelier.test/atelier/js/archive.js'));
- const context={window,document,location:window.location,history:window.history,URL,Worker:worker?WorkerMock:undefined,setTimeout,clearTimeout,queueMicrotask,$,$$,element,action,toast(){},...core,loadArchive:()=>delayedData?data.promise:Promise.resolve(posts),getQueue:()=>queue,queueAction(change){if(change.type==='add')queue.push(change.item);else queue.splice(queue.findIndex(item=>item.path===change.path),1);document.dispatchEvent(new window.Event('atelier:queue'));return {ok:true,persisted:true};}};
+ const {withImportDeadline}=await import('../source/atelier/js/ui.js');
+ const context={withImportDeadline,window,document,location:window.location,history:window.history,URL,Worker:worker?WorkerMock:undefined,setTimeout,clearTimeout,queueMicrotask,$,$$,element,action,toast(){},...core,...readingContext,shelves:{read:()=>({items:[]})},loadArchive:()=>delayedData?data.promise:Promise.resolve(posts),getQueue:()=>queue,queueAction(change){if(change.type==='add')queue.push(change.item);else queue.splice(queue.findIndex(item=>item.path===change.path),1);document.dispatchEvent(new window.Event('atelier:queue'));return {ok:true,persisted:true};}};
  const init=vm.runInNewContext(source+'\ninitArchive;',context);
  t.after(()=>{window.dispatchEvent(new window.Event('pagehide'));window.close();});
  return {window,document,$,$$,posts,data,init,queue,get worker(){return workerInstance;},app:$('.archive-app'),fallback:$('.archive-fallback'),more:$('[data-archive-more]'),results:$('[data-archive-results]')};
@@ -89,4 +91,36 @@ test('pointer load-more never calls focus or scrolling, and ordinary filtering d
  for(let i=0;i<4;i++)f.more.dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,detail:1}));
  assert.equal(f.results.children.length,100);assert.equal(f.more.hidden,true);assert.equal(focusCalls,0);assert.equal(scrollCalls,0);
  const group=f.$('[data-group=writing]');focus.call(group);group.click();assert.equal(f.document.activeElement,group);assert.equal(focusCalls,0);
+});
+
+for(const view of ['list','grid','graph'])for(const control of ['toolbar','empty']){
+ if(view==='graph'&&control==='empty')continue;
+ test(view+' '+control+' reset transfers owned focus synchronously and restores every default',async t=>{
+  const f=await fixture(t,{search:'?group=all&q=nomatch&tag=missing&duration=long&sort=title&view='+view,worker:true});
+  await f.init({loadConstellation:async()=>({createConstellation:()=>({setPosts(){},pause(){}})})});
+  f.worker.reply([]);await settle();
+  const button=f.$(control==='toolbar'?'.archive-search [type=reset]':'.archive-empty button'),input=f.$('#archive-q');
+  button.focus();let focusCalls=0;
+  const focus=input.focus.bind(input);input.focus=options=>{focusCalls++;assert.equal(options.preventScroll,true);focus(options);};
+  button.click();
+  assert.equal(f.document.activeElement,input,'focus transfers before the worker replies');assert.equal(focusCalls,1);
+  assert.equal(input.value,'');assert.equal(f.window.location.search,'');
+  const {readQuery}=await import('../source/atelier/js/archive-core.mjs');
+  assert.deepEqual(JSON.parse(JSON.stringify(f.worker.requests.at(-1).query)),readQuery());
+  assert.equal(f.$('[data-tag]').value,'');assert.equal(f.$('[data-duration]').value,'all');assert.equal(f.$('#archive-sort').value,'newest');
+  assert.equal(f.$('[data-group=writing]').getAttribute('aria-pressed'),'true');assert.equal(f.$('[data-view=list]').getAttribute('aria-pressed'),'true');
+  const outside=f.$('.menu-open');outside.focus();
+  const paths=f.posts.filter(post=>post.group==='writing').map(post=>post.path);f.worker.reply(paths);
+  assert.equal(f.document.activeElement,outside,'late results respect a newer focus destination');assert.equal(focusCalls,1);
+  assert.equal(f.results.hidden,false);assert.equal(f.results.dataset.mode,'list');assert.equal(f.$('.constellation').hidden,true);assert.equal(f.results.children.length,paths.length);
+ });
+}
+
+for(const activation of ['toolbar','empty','programmatic'])test(activation+' reset leaves unrelated focus alone',async t=>{
+ const f=await fixture(t,{search:'?q=nomatch&tag=missing'});await f.init();
+ const outside=f.$('.menu-open');outside.focus();let focusCalls=0;
+ const focus=f.window.HTMLElement.prototype.focus;f.window.HTMLElement.prototype.focus=function(...args){focusCalls++;return focus.apply(this,args);};
+ if(activation==='programmatic')f.$('.archive-search').reset();
+ else f.$(activation==='toolbar'?'.archive-search [type=reset]':'.archive-empty button').dispatchEvent(new f.window.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+ assert.equal(f.window.location.search,'');assert.equal(f.document.activeElement,outside);assert.equal(focusCalls,0);assert.ok(f.results.children.length>0);
 });

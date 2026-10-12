@@ -34,7 +34,17 @@ test('projects presents an illustrated main work and coursework with technical e
     assert.doesNotMatch(room.textContent, /↗/);
     assert.ok(room.querySelector('img[src$="/atelier/images/v3/projects.webp"]'));
     assert.match(room.querySelector('img').alt, /主题插画/);
-    assert.equal(room.querySelectorAll('script, iframe, canvas, button, [hidden], [data-reveal]').length, 0);
+    assert.equal(room.querySelectorAll('script, iframe, canvas, [data-reveal]').length, 0);
+    assert.equal(room.querySelectorAll('[data-project-retrieval]').length, 1);
+    const retrieval = room.querySelector(':scope > details[data-project-retrieval]');
+    assert.ok(retrieval);
+    assert.equal(retrieval.parentElement.closest('details'), null);
+    assert.equal(retrieval.nextElementSibling, implementation);
+    assert.equal(retrieval.open, false);
+    const form = retrieval.querySelector('form[hidden]'), submit = form?.querySelector('button[type="submit"]');
+    assert.ok(form); assert.ok(submit);
+    assert.deepEqual([...room.querySelectorAll('button')], [submit]);
+    assert.deepEqual([...room.querySelectorAll('[hidden]')], [form]);
     assert.doesNotMatch(room.textContent, /建设中|整理中|安全可靠|高并发|零延迟/);
     for (const section of room.querySelectorAll('section')) assert.ok(doc.getElementById(section.getAttribute('aria-labelledby')));
     assert.match(room.querySelector('.project-boundary').textContent, /当前浏览器.*存储受限.*主动保存.*独立部署后端/);

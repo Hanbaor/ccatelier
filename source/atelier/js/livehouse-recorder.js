@@ -92,7 +92,11 @@ export function initLiveRecorder({dialog, audio, isSoundEnabled, beforeStart, si
   if(handled){const current=new URL(window.location.href);current.searchParams.set('recording',completed.id);window.history.replaceState(window.history.state,'',current.href);}
   dialog.close();if(!handled)window.location.assign(url.href);
  });
- exportButton.addEventListener('click',()=>{if(completed&&!busy())download('cc-live-rhythm.json',JSON.stringify(completed,null,2));});
+ exportButton.addEventListener('click',()=>{
+  if(!completed||busy())return;
+  try{download('cc-live-rhythm.json',JSON.stringify(completed,null,2));say('已请求下载 JSON；请确认浏览器中的下载结果。');}
+  catch{say('下载失败；这段节奏仍保留在当前页面。可以重试，或送去排练保存。');}
+ });
  panel.addEventListener('toggle',()=>{if(!panel.open&&busy())cancel('录制或回放已取消；已完成的节奏保留。');});
  sync();
  return {

@@ -9,9 +9,9 @@
   <main id="main-content" tabindex="-1"><%- body %></main>
   <%- partial('nijika/footer') %>
   <noscript>
-    <style>.header-controls,.utility-controls,.photo-index,.article-toolbox,.reader-options,.encore-form,.owner-login{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}.no-script-nav{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;padding:18px;font-size:12px}</style>
-    <nav class="no-script-nav" aria-label="主导航"><% for (const [route, label] of [['notes','笔记'],['projects','项目'],['research','研究'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route + '/') %>"><%= label %></a><% } %></nav>
+    <style>.header-controls>:not(.menu-fallback),.utility-controls,.photo-index,.article-toolbox,.reader-options,.encore-form,.owner-login{display:none}.tabs [role=tablist]{display:none}.tabs .tab-pane[hidden]{display:block!important}.tabs .tab-pane+.tab-pane{margin-top:24px}</style>
   </noscript>
+    <nav class="no-script-nav" id="site-navigation" tabindex="-1" aria-label="主导航"><% for (const [route, label] of [['','首页'],['atelier','创作室'],['notes','笔记'],['projects','项目'],['research','研究'],['studio','音乐'],['life','生活'],['about','关于']]) { %><a href="<%= url_for(route ? route + '/' : '') %>"><%= label %></a><% } %></nav>
   <%- partial('nijika/dialogs') %>
   <% if (['cover','studio'].includes(page.nijika)) { %><%- partial('nijika/livehouse') %><% } %>
   <div class="cursor-ring" aria-hidden="true"></div><div class="click-effects" aria-hidden="true"></div>

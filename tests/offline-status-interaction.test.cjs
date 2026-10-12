@@ -53,3 +53,18 @@ test('article status reads only metadata; opening the shelf requests complete st
  app.open();await tick();assert.equal(app.requests.at(-1).type,'list');assert.equal(app.requests.at(-1).metadataOnly,undefined);assert.match(app.document.querySelector('dialog').textContent,/1 篇 · 2.0 MB/);
  app.document.querySelector('dialog').open=false;app.window.dispatchEvent(new app.window.Event('focus'));await tick();assert.equal(app.requests.at(-1).metadataOnly,true);
 });
+
+test('shelf labels device connectivity independently of saved-copy state and date',async t=>{
+ const app=setup(t,{initialRows:[row('/lab/a/')]});let online=true;
+ Object.defineProperty(app.window.navigator,'onLine',{configurable:true,get:()=>online});
+ await tick();app.open();await tick();
+ const status=()=>app.document.querySelector('dialog .live-status').textContent;
+ const savedDate=()=>app.document.querySelector('.queue-row small').textContent;
+ const expectedDate='保存于 '+new Date(row('/lab/a/').updated).toLocaleString();
+ assert.equal(status(),'设备网络已连接 · 1 篇 · 2.0 MB');assert.equal(savedDate(),expectedDate);
+ online=false;app.window.dispatchEvent(new app.window.Event('offline'));await tick();
+ assert.equal(status(),'设备网络已断开 · 1 篇 · 2.0 MB');assert.equal(savedDate(),expectedDate);assert.equal(app.button.textContent,'✓ 已离线保存');
+ online=true;app.rows=[{...row('/lab/a/'),unavailable:true}];app.window.dispatchEvent(new app.window.Event('online'));await tick();
+ assert.equal(status(),'设备网络已连接 · 1 篇 · 2.0 MB');assert.equal(savedDate(),'副本不完整，可更新或移除');assert.doesNotMatch(app.button.textContent,/已离线保存/);
+ assert.ok(app.requests.every(request=>request.type==='list'),'status wording adds no update or reachability request');
+});

@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {pageMetadata}=require('../tools/site-metadata.cjs');
-const {plain}=require('../tools/content-catalog.cjs');
+const {plain,articleContent}=require('../tools/content-catalog.cjs');
 hexo.extend.helper.register('nijika_page_metadata',function(){return pageMetadata(this);});
 let searchPatched = false;
 let indexPatched = false;
@@ -38,7 +38,13 @@ hexo.extend.filter.register('before_generate', function () {
         const plainContent=this.config.search.format==='striptags';
         const context=Object.create(this);
         context.config={...this.config,search:{...this.config.search,...(plainContent?{format:'html'}:{})}};
-        const route = await generateSearch.call(context, locals);
+        // Index the same authored content as the archive/reader, excluding only
+        // its verified empty exercise scaffolding. Preserve model getters and
+        // let SearchDB remove code gutters; never mutate the original posts.
+        const searchLocals=plainContent&&this.config.search.content!==false&&['post','all'].includes(this.config.search.field)
+          ? {...locals,posts:locals.posts.map(post=>Object.create(post,{content:{value:articleContent(post)}}))}
+          : locals;
+        const route = await generateSearch.call(context, searchLocals);
         const entries = JSON.parse(route.data);
         for (const entry of entries) {
           if (entry.url?.startsWith('/')) entry.url = entry.url.replace(/\/{2,}/g, '/');
@@ -66,8 +72,13 @@ hexo.extend.generator.register('nijika-cover', function () {
   return {path:'index.html', layout:['nijika/cover'], data:{nijika:'cover', title:'CC Atelier'}};
 });
 
-hexo.extend.generator.register('nijika-practice', function () {
-  return {path:'studio/practice/index.html',layout:['nijika/practice'],data:{nijika:'practice',title:'鼓谱排练室'}};
+hexo.extend.generator.register('nijika-practice', async function () {
+  const {buildPracticeScores}=require('../tools/build-practice-scores.cjs');
+  const scores=await buildPracticeScores(path.join(this.source_dir,'atelier/js'));
+  return [
+    {path:'studio/practice/index.html',layout:['nijika/practice'],data:{nijika:'practice',title:'鼓谱排练室',practiceScores:scores.map(({path,score})=>({...score,path}))}},
+    ...scores.map(({path,data})=>({path,data})),
+  ];
 });
 
 hexo.extend.helper.register('nijika_count', count => String(count).padStart(2, '0'));

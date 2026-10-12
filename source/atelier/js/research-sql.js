@@ -1,3 +1,4 @@
+import {createSqlRunRecord, serializeSqlRunRecord} from './research-sql-report.mjs';
 import {SQL_CASES, getSqlCase, getSqlDataset, listSqlDatasets, validateQuery, compareResults} from './research-sql-core.mjs';
 import {SQL_SNAPSHOT_LIMIT, createSqlSnapshot, serializeSqlSnapshot, parseSqlSnapshot, validateSqlSnapshot} from './research-sql-snapshot.mjs';
 
@@ -18,7 +19,10 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
     clearTimer(pending.timer);
     onState(pending.operation === 'explain' ? 'planning' : 'running');
     pending.timer = setTimer(() => finish(new Error('查询超过 1.5 秒，已停止。可修改后再运行。'), null, true), queryMs);
-    worker.postMessage({type:pending.operation, id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1, ...(pending.subsetMask === undefined ? {} : {subsetMask:pending.subsetMask})});
+    // A cold worker submits from its ready event, outside run()'s try/catch.
+    try {
+      worker.postMessage({type:pending.operation, id:pending.id, caseId:pending.caseId, sql:pending.sql, datasetId:pending.datasetId, caseRevision:1, datasetRevision:1, ...(pending.subsetMask === undefined ? {} : {subsetMask:pending.subsetMask})});
+    } catch (error) { finish(error, null, true); }
   }
   function startWorker() {
     if (typeof WorkerClass !== 'function') throw new Error('当前浏览器不支持 Worker；示例数据与参考结果仍可阅读。');
@@ -30,6 +34,9 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
       if (data.type === 'ready') { ready = true; submit(); }
       else if (data.type === 'load-error') finish(new Error('SQLite 未能载入，请检查网络后重试。'), null, true);
       else if (data.type === 'result' && pending && data.id === pending.id) {
+        if (!data.error && pending.operation === 'run' && data.result?.runEvidence) {
+          data.result.runEvidence.queryMs=queryMs; data.result.runEvidence.loadMs=loadMs;
+        }
         finish(data.error ? new Error(data.error) : null, data.result);
       }
     };
@@ -56,6 +63,53 @@ export function createSqlRunner({WorkerClass=globalThis.Worker, setTimer=setTime
 const controllers = new WeakMap();
 const marks = {extra:['+','多出的行'], missing:['−','缺少的行'], order:['↕','顺序不同'], same:['','']};
 
+// Native fallback markup provides scroll entry before enhancement. After layout,
+// only genuinely overflowing tables need a Tab stop. Never evict current focus.
+export function initSqlScrollRegions(host) {
+  const doc=host.ownerDocument, win=doc.defaultView;
+  const selector='.sql-table-wrap,.sql-result,.sql-plan-table';
+  const observed=new Set(), generatedLabels=new WeakSet(); let connected=false;
+  const resize=typeof win.ResizeObserver==='function' ? new win.ResizeObserver(refresh) : null;
+  function refresh() {
+    if (!connected) return;
+    const regions=[...host.querySelectorAll(selector)], wanted=new Set();
+    for (const region of regions) {
+      const table=region.querySelector('table');
+      wanted.add(region); if (table) wanted.add(table);
+      const caseNode=region.closest('[data-sql-case]');
+      const prefix=caseNode ? getSqlCase(caseNode.dataset.sqlCase).label+'：' : '';
+      if (!region.hasAttribute('aria-label') || generatedLabels.has(region)) {
+        generatedLabels.add(region);
+        const caption=table?.caption?.textContent.trim();
+        region.setAttribute('aria-label',prefix+(caption || '查询结果')+'，可滚动');
+      }
+      region.setAttribute('role','region');
+      const overflowing=!!table && (region.scrollWidth>region.clientWidth+1 || region.scrollHeight>region.clientHeight+1);
+      if (overflowing) region.tabIndex=0;
+      else if (doc.activeElement!==region) region.removeAttribute('tabindex');
+    }
+    if (resize) {
+      for (const node of observed) if (!wanted.has(node)) { resize.unobserve(node); observed.delete(node); }
+      for (const node of wanted) if (!observed.has(node)) { resize.observe(node); observed.add(node); }
+    }
+  }
+  const mutation=typeof win.MutationObserver==='function' ? new win.MutationObserver(refresh) : null;
+  function afterFocus() { win.queueMicrotask(refresh); }
+  function start() {
+    if (connected) return; connected=true;
+    mutation?.observe(host,{childList:true,subtree:true});
+    win.addEventListener('resize',refresh); host.addEventListener('toggle',refresh,true);
+    host.addEventListener('focusout',afterFocus); refresh();
+  }
+  function stop() {
+    connected=false; mutation?.disconnect(); resize?.disconnect(); observed.clear();
+    win.removeEventListener('resize',refresh); host.removeEventListener('toggle',refresh,true);
+    host.removeEventListener('focusout',afterFocus);
+  }
+  win.addEventListener('pagehide',stop); win.addEventListener('pageshow',start); start();
+  return {refresh,stop};
+}
+
 export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={}) {
   const host = root.querySelector('[data-sql-lab]');
   if (!host) return null;
@@ -76,6 +130,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   const suiteStatus=host.querySelector('[data-sql-suite-status]'), suiteOutput=host.querySelector('[data-sql-suite-output]');
   const plans = new WeakMap();
   const witnesses = new WeakMap();
+  const runRecords = new WeakMap();
   const datasets = new Map(SQL_CASES.map(item => [item.id,'default']));
   const datasetSelect = host.querySelector('[data-sql-dataset]');
   const fileInput = host.querySelector('[data-sql-file]');
@@ -158,6 +213,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     if (details) { details.open=false; details.hidden=true; details.querySelector('[data-sql-plan-output]').replaceChildren(); const planStatus=details.querySelector('[data-sql-plan-status]'); if (planStatus) planStatus.textContent=''; }
   }
   function clearResult(node=panel()) {
+    clearRunRecord(node);
     clearPlan(node);
     const empty = doc.createElement('p'); empty.className = 'sql-result-empty'; empty.textContent = '运行查询，看看哪些行不同。';
     node.querySelector('[data-sql-actual]').replaceChildren(empty);
@@ -165,6 +221,40 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     node.querySelectorAll('[data-sql-expected] tbody tr').forEach(row => {
       delete row.dataset.diff; const mark = row.querySelector('[data-sql-row-mark]'); mark.textContent = ''; mark.removeAttribute('aria-label');
     });
+  }
+  function clearRunRecord(node=panel()) {
+    runRecords.delete(node);
+    const button=node.querySelector('[data-sql-export-record]');
+    if (button) button.hidden=true;
+  }
+  function captureRunRecord(node,caseId,datasetId,sql,result) {
+    // A missing evidence payload (e.g. an older cached worker) cannot be upgraded
+    // into an observed reference. Existing results remain usable without export.
+    if (result.truncated || !result.runEvidence) return;
+    try {
+      const record=createSqlRunRecord({caseId,datasetId,sql,result});
+      runRecords.set(node,record); node.querySelector('[data-sql-export-record]').hidden=false;
+    } catch { /* Keep ordinary results usable when record metadata is unsupported. */ }
+  }
+  function exportRunRecord(node=panel()) {
+    const record=runRecords.get(node);
+    if (!record || node !== panel() || doc.hidden) return;
+    if (record.fixture.caseId !== active || record.fixture.datasetId !== datasets.get(active) || record.execution.submittedSql !== editor().value) { clearRunRecord(node); return; }
+    let url,link,initiated=false;
+    try {
+      const text=serializeSqlRunRecord(record);
+      url=win.URL.createObjectURL(new win.Blob([text],{type:'application/json;charset=utf-8'}));
+      link=doc.createElement('a'); link.href=url; link.download=`cc-atelier-run-${record.fixture.caseId}-${record.fixture.datasetId}-v1.json`;
+      doc.body.append(link); link.click(); initiated=true;
+      message('已发起运行记录下载。');
+    } catch (error) { message((error?.message || '无法导出运行记录。')+' 运行结果保留，可重试。','error'); }
+    finally {
+      link?.remove();
+      if (url) {
+        const release=()=>{ try { win.URL.revokeObjectURL(url); } catch {} };
+        if (initiated) win.setTimeout(release,30000); else release();
+      }
+    }
   }
   function cancel(release=false, preserveSuite=false) {
     closeShare();
@@ -344,9 +434,10 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     setBusy(true); message('正在载入或运行 SQLite…');
     try {
       const result = await runner.run(caseId, sql, datasetId);
-      if (current !== ticket || caseId !== active || datasetId !== datasets.get(active)) return;
+      if (current !== ticket || caseId !== active || datasetId !== datasets.get(active) || sql !== editor().value) return;
       const comparison = compareResults(result, getSqlDataset(caseId,datasetId).expected);
       renderResult(result, comparison);
+      captureRunRecord(panel(),caseId,datasetId,sql,result);
       recordExperiment(caseId,datasetId,sql,comparison);
       const node=panel(), details=node.querySelector('[data-sql-plan]');
       plans.set(node,{caseId,datasetId,sql,caseRevision:1,datasetRevision:1,result:null,loading:false});
@@ -443,6 +534,11 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
     } finally { if(current===ticket) { minimizeBusy=null; setBusy(false); } }
   }
   panels.forEach(node=>{
+    const button=doc.createElement('button'); button.type='button'; button.className='sql-text-button'; button.dataset.sqlExportRecord=''; button.textContent='导出运行记录'; button.hidden=true;
+    button.addEventListener('click',()=>exportRunRecord(node));
+    node.querySelector('.sql-query-panel:not(.sql-reference-panel) > .sql-result-heading').append(button);
+  });
+  panels.forEach(node=>{
     const details=doc.createElement('details'); details.className='sql-insight'; details.dataset.sqlMinimize=''; details.hidden=true;
     const title=doc.createElement('summary'); title.textContent='缩小反例';
     const note=doc.createElement('p'); note.textContent='仅删当前数据中的行；最多 64 个子集，整体限时 1.5 秒。';
@@ -465,7 +561,7 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   host.querySelectorAll('[data-sql-editor]').forEach(field => {
     field.readOnly = false;
     field.addEventListener('input', modified);
-    field.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); run(); } });
+    field.addEventListener('keydown', event => { if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229 && (event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); run(); } });
   });
   host.querySelectorAll('[data-sql-select]').forEach(button => button.addEventListener('click', () => select(button.dataset.sqlSelect)));
   host.querySelectorAll('[data-sql-reset],[data-sql-use-reference]').forEach(button => {
@@ -508,8 +604,8 @@ export function initResearchSql(root=document, {runnerFactory=createSqlRunner}={
   win.addEventListener('pagehide', leave);
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) leave(); else stageIncoming(); });
   doc.addEventListener('atelier:dialog-open', leave);
-  host.classList.add('is-enhanced'); select(active); stageIncoming();
-  const controller = {run, validateDatasets, select, stop:leave, importFile, exportDraft, shareDraft}; controllers.set(host,controller); return controller;
+  host.classList.add('is-enhanced'); select(active); initSqlScrollRegions(host); stageIncoming();
+  const controller = {run, validateDatasets, select, stop:leave, importFile, exportDraft, shareDraft, exportRunRecord}; controllers.set(host,controller); return controller;
 }
 
 if (typeof document !== 'undefined') initResearchSql();

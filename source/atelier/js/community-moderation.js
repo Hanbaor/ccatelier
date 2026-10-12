@@ -1,5 +1,5 @@
 import { $ as query, $$ } from './ui.js';
-import { communityAPI, element, messageCard } from './community.js';
+import { communityAPI, element, messageCard } from './community-shared.js';
 
 // Loaded only after community.js has evaluated; imported helpers are used at init.
 export function initModerationPanel(login) {

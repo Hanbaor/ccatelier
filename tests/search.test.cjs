@@ -76,3 +76,10 @@ test('normalized search paths cannot become external authorities when assigned t
     assert.equal(path,expected,input);
   }
 });
+
+test('search ownership guard preserves Enter variants and does not consume handled input',async()=>{
+ const {searchInputAction}=await import('../source/atelier/js/search-core.mjs');
+ for(const flag of ['shiftKey','ctrlKey','metaKey','altKey','repeat'])assert.equal(searchInputAction({key:'Enter',[flag]:true},true),'open',flag);
+ for(const key of ['Enter','ArrowDown'])assert.equal(searchInputAction({key,defaultPrevented:true},true),null,key);
+ assert.equal(searchInputAction({key:'ArrowDown',repeat:true},true),'focus');
+});

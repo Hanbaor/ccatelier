@@ -7,6 +7,8 @@ hexo.extend.filter.register('before_generate',async()=>{
   if(entriesForPost(post).length&&typeof post._content==='string'&&typeof post.content==='string'&&/<img\b/i.test(post.content)) {
    // Optional string fields accept undefined, not null, when Warehouse saves.
    post.content=undefined;
+   // A fresh render must rebuild Redefine's derived code wrappers too.
+   if(post._processedHighlight)post._processedHighlight=false;
    // Warehouse queries return separate documents. Persist to its in-memory
    // model before Hexo's native render_post filter queries that model again.
    await post.save();

@@ -84,7 +84,8 @@ test('real template keeps coursework external while internal links and assets re
     for (const el of doc.querySelectorAll('a[href^="/"],img[src]')) {
       assert.ok((el.getAttribute('href') || el.getAttribute('src')).startsWith('/lab/'));
     }
-    assert.equal(doc.querySelectorAll('a[href="/lab/notes/"]').length, 1);
+    assert.equal(doc.querySelectorAll('.project-actions a[href="/lab/notes/"]').length, 1);
+    assert.equal(doc.querySelectorAll('[data-project-retrieval] a[href="/lab/notes/"]').length, 1);
     assert.equal(doc.querySelectorAll('details[open]').length, 0);
   } finally { dom.window.close(); }
 });

@@ -2,13 +2,14 @@ import {$, $$, openDialog} from './ui.js';
 import {offlineMessage} from './offline-client.js';
 import {findEntries, safeResultURL, searchInputAction} from './search-core.mjs';
 
-export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}),loadContext=()=>import('./search-context.mjs')}={}) {
+export function initSearch({loadSite,resultBase,loadOffline=()=>offlineMessage({type:'search-index'}),loadContext=()=>import('./search-context.mjs')}={}) {
   const input = $('#search-input'), box = $('#search-results');
   const dialog=$('#search-dialog'),scope=$('#search-scope'),status=$('#search-status');
   const states={site:{entries:null,pending:false,error:'',id:0},offline:{entries:null,pending:false,error:'',id:0,unavailable:0}};
   const current=()=>scope?.value==='offline'?'offline':'site';
   const root = document.body.dataset.root;
-  const sections = [['笔记','notes/'],['项目','projects/'],['研究','research/'],['生活','life/'],['关于 CC','about/'],['节奏实验室','studio/'],['原创鼓谱排练室','studio/practice/']].map(([title,url]) => ({title,content:'',url:root+url,section:true}));
+  // Visible section phrases; verified against destination copy.
+  const sections = [['笔记','notes/'],['项目','projects/','SQLite 查询实验；EduRAG；Transformer 练习德英翻译'],['研究','research/','Database · Text-to-SQL；SQL 教学示例'],['生活','life/'],['关于 CC','about/'],['节奏实验室','studio/'],['原创鼓谱排练室','studio/practice/']].map(([title,url,content='']) => ({title,content,url:root+url,section:true}));
   function appendParts(element, parts) {
     for (const part of parts) {
       if (!part.match) { element.append(document.createTextNode(part.text)); continue; }
@@ -31,14 +32,14 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
       if(dialog.open)for(const copy of copies)enhance(...copy);
     }).catch(()=>{}).finally(()=>{contextPending=null;});
   }
-  let pendingFocus=null;
+  let pendingFocus=null,pageActive=true;
   function render() {
     const active=document.activeElement;
     const href=box.contains(active)&&active.matches('.search-result')?active.getAttribute('href'):
       pendingFocus&&active===pendingFocus.placeholder?pendingFocus.href:null;
     pendingFocus=null;
     renderResults();
-    if(!href||!dialog.open)return;
+    if(!href||!dialog.open||!pageActive)return;
     // Keep keyboard ownership through refreshes without reclaiming focus after
     // the visitor moves to another control while the index is loading.
     if(states[current()].pending){
@@ -56,12 +57,17 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
     if (pending) { const p=document.createElement('p');p.className='search-empty';p.textContent='正在载入文章…';box.append(p);return; }
     if (error) {
       const p=document.createElement('p');p.className='search-empty';p.textContent=error;
-      const retry=document.createElement('button');retry.type='button';retry.textContent='重试';retry.addEventListener('click',()=>load(current(),true));p.append(retry);box.append(p);return;
+      const retry=document.createElement('button');retry.type='button';retry.textContent='重试';retry.addEventListener('click',()=>{
+        // The retry disappears while loading. Keep its keyboard owner on a
+        // persistent control without moving someone already using another one.
+        if(dialog.open&&document.activeElement===retry)input.focus({preventScroll:true});
+        load(current(),true);
+      });p.append(retry);box.append(p);return;
     }
     const results = findEntries(input.value, [...(entries || []), ...(mode==='site'?sections:[])]);
     if (!results.length) { const p=document.createElement('p');p.className='search-empty';p.textContent=mode==='offline'&&!entries?.length?(state.unavailable?'保存的副本暂时无法检索，请联网更新后重试。':'还没有可检索的离线文章。请在文章阅读工具中主动保存。'):'暂无匹配内容。';box.append(p);return; }
     for (const item of results) {
-      const url = safeResultURL(item.url,location.origin+root); if (!url) continue;
+      const url = safeResultURL(item.url,resultBase??location.origin+root); if (!url) continue;
       const link=document.createElement('a');link.className='search-result';link.href=url;
       const text=document.createElement('span');text.className='result-copy';
       copies.push([text,item,input.value]);enhance(text,item,input.value);
@@ -71,38 +77,51 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
   async function load(mode=current(),refresh=false) {
     const state=states[mode];
     if(!refresh&&(state.entries||state.pending))return;
-    const id=++state.id;state.pending=true;state.error='';
+    const id=++state.id;state.cancel?.();state.pending=true;state.error='';
     if(mode==='offline'){state.entries=null;state.unavailable=0;}
     render();
     const controller=new AbortController();let timeout;
     try {
+      // Abort alone cannot settle a stalled fetch/body reader. Bound the whole
+      // read and commit only the race winner, including custom offline readers.
+      const deadline=new Promise((_,reject)=>{
+        state.cancel=()=>{clearTimeout(timeout);reject(Error('Search superseded'));controller.abort();};
+        timeout=setTimeout(()=>{
+          reject(Error(mode==='offline'?'读取离线副本超时；如有保存正在进行，请稍后重试。':'文章索引暂时无法载入。'));
+          controller.abort();
+        },8000);
+      });
+      const result=await Promise.race([deadline,(async()=>{
+        if(mode==='offline')return loadOffline();
+        if(loadSite!==undefined)return loadSite({signal:controller.signal});
+        const response=await fetch(document.body.dataset.search,{signal:controller.signal});
+        if(controller.signal.aborted||!response.ok)throw Error();
+        return response.json();
+      })()]);
+      if(id!==state.id)return;
       if(mode==='offline'){
-        const result=await loadOffline();
-        if(id!==state.id)return;
         if(!result||result.version!==1||!Array.isArray(result.entries))throw Error('当前离线服务暂不支持搜索，请联网刷新后重试。');
         state.entries=result.entries.filter(item=>item&&typeof item.title==='string'&&typeof item.content==='string'&&typeof item.url==='string');
         state.unavailable=Number.isSafeInteger(result.unavailable)&&result.unavailable>0?result.unavailable:0;
       }else{
-        timeout=setTimeout(()=>controller.abort(),8000);
-        const response=await fetch(document.body.dataset.search,{signal:controller.signal});
-        if(!response.ok)throw Error();const result=await response.json();
-        if(id!==state.id)return;
         if(!Array.isArray(result))throw Error();
         state.entries=result.filter(item=>item&&typeof item.title==='string'&&typeof item.url==='string');
       }
-    }catch(error){if(id===state.id)state.error=mode==='offline'?(error.message||'离线副本暂时无法读取。'):'文章索引暂时无法载入。';}
-    finally{clearTimeout(timeout);if(id===state.id){state.pending=false;if(mode===current())render();}}
+    }catch(error){if(id===state.id)state.error=mode==='offline'?(typeof error?.message==='string'&&error.message||'离线副本暂时无法读取。'):'文章索引暂时无法载入。';}
+    finally{clearTimeout(timeout);if(id===state.id){state.cancel=null;state.pending=false;if(mode===current())render();}}
   }
   function openSearch() {openDialog('search-dialog');input.focus();render();load(current(),current()==='offline');loadPresentation();}
   scope?.addEventListener('change',()=>{render();load(current(),current()==='offline');});
-  function refreshOffline(){const state=states.offline;state.id++;state.entries=null;state.pending=false;state.error='';state.unavailable=0;if(dialog.open&&current()==='offline')load('offline',true);}
+  function refreshOffline(){const state=states.offline;state.id++;state.cancel?.();state.cancel=null;state.entries=null;state.pending=false;state.error='';state.unavailable=0;if(dialog.open&&current()==='offline')load('offline',true);}
   document.addEventListener('atelier:offline',refreshOffline);
   window.addEventListener('focus',refreshOffline);
-  window.addEventListener('pageshow',refreshOffline);
+  // Retire keyboard ownership, not the permitted data read, when leaving.
+  window.addEventListener('pagehide',()=>{pageActive=false;pendingFocus=null;});
+  window.addEventListener('pageshow',()=>{refreshOffline();pageActive=true;});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshOffline();});
   $$('.search-open').forEach(button=>button.addEventListener('click',openSearch));
   document.addEventListener('keydown',event=>{
-    if(event.isComposing || event.keyCode===229)return;
+    if(event.defaultPrevented || event.repeat || event.shiftKey || event.altKey || event.isComposing || event.keyCode===229)return;
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openSearch();}
   });
   input.addEventListener('input',render);
@@ -113,7 +132,7 @@ export function initSearch({loadOffline=()=>offlineMessage({type:'search-index'}
     if(action==='focus'){event.preventDefault();first.focus();}
   });
   box.addEventListener('keydown',event=>{
-    if(!['ArrowDown','ArrowUp'].includes(event.key))return;
+    if(event.defaultPrevented||event.isComposing||event.keyCode===229||!['ArrowDown','ArrowUp'].includes(event.key))return;
     const links=$$('.search-result',box),index=links.indexOf(document.activeElement);if(index<0)return;
     event.preventDefault();const next=index+(event.key==='ArrowDown'?1:-1);
     if(next<0)input.focus();else links[Math.min(next,links.length-1)]?.focus();

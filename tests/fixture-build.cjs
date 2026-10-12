@@ -14,7 +14,7 @@ for(let i=0;i<8;i++) fs.writeFileSync(path.join(sandbox,`source/_posts/fixture-$
 // The real template's url_for helpers must respect installations below a prefix.
 const config=path.join(sandbox,'config.yml');
 fs.writeFileSync(config,'source_dir: .nijika-qa/source\npublic_dir: .nijika-qa/public\nurl: https://ccatelier.top/lab\nroot: /lab/\nindex_generator:\n  path: notes\n  per_page: 3\n');
-const log=execFileSync(process.execPath,[path.join(root,'node_modules/hexo/bin/hexo'),'generate','--config',`_config.yml,${config}`,'--output',sandbox],{cwd:root,encoding:'utf8',timeout:120000});
+const log=execFileSync(process.execPath,['--require',path.join(root,'tools/offline-build.cjs'),path.join(root,'node_modules/hexo/bin/hexo'),'generate','--config',`_config.yml,${config}`,'--output',sandbox],{cwd:root,encoding:'utf8',timeout:120000});
 fs.writeFileSync(path.join(sandbox,'build.log'),log);
 const read=file=>fs.readFileSync(path.join(sandbox,'public',file),'utf8');
 assert.match(read('notes/page/2/index.html'),/href="\/lab\//);

@@ -48,13 +48,29 @@ test('a newer list read wins when dialog opens overlap',async t=>{
  const s=await setup(t),snapshot=await s.vault.all('notes'),reads=[deferred(),deferred()];let call=0;s.vault.all=()=>reads[call++].promise;
  await s.open();await s.open();reads[1].resolve(snapshot.slice(1));await flush();reads[0].resolve(snapshot);await flush();assert.equal(s.row(1),undefined);assert.equal(s.dialog.querySelectorAll('.notebook-note').length,2);
 });
+async function captureSelection(s){
+ const capture=s.document.querySelector('.selection-note');
+ // jsdom also queues selectionchange, which can restart the production debounce
+ // after our explicit event. Wait for its result, not a guessed timer duration.
+ const ready=new Promise((resolve,reject)=>{
+  const observer=new s.window.MutationObserver(()=>{if(!capture.hidden){cleanup();resolve();}});
+  const timeout=setTimeout(()=>{cleanup();reject(new Error('Notebook capture did not become visible after selectionchange'));},5000);
+  function cleanup(){clearTimeout(timeout);observer.disconnect();}
+  observer.observe(capture,{attributes:true,attributeFilter:['hidden']});
+ });
+ s.document.dispatchEvent(new s.window.Event('selectionchange'));
+ await ready;
+ assert.equal(capture.hidden,false,'capture must be ready before activation');
+ capture.click();await flush();
+ assert.equal(s.dialog.open,true,'capture opens the notebook');
+ assert.equal(s.dialog.querySelector('.note-editor').hidden,false,'capture creates an editable draft');
+}
 async function addNote(s,kind){
  if(kind==='import'){
   const file=s.dialog.querySelector('input[type=file]'),record={id:'new-note',path:location.pathname,title:'文章',quote:'原文',prefix:'',suffix:'',start:0,note:'新增札记',updated:100};
   Object.defineProperty(file,'files',{configurable:true,value:[{size:100,text:async()=>JSON.stringify({version:1,notes:[record]})}]});file.dispatchEvent(new s.window.Event('change'));await flush();
  }else{
-  s.dialog.close();const range=s.document.createRange();range.setStart(s.document.querySelector('.article-body').firstChild,0);range.setEnd(s.document.querySelector('.article-body').firstChild,2);range.getBoundingClientRect=()=>({left:20,bottom:40});const selection=s.window.getSelection();selection.removeAllRanges();selection.addRange(range);s.document.dispatchEvent(new s.window.Event('selectionchange'));await new Promise(r=>setTimeout(r,110));
-  s.document.querySelector('.selection-note').click();await flush();s.dialog.querySelector('textarea').value='新增札记';s.dialog.querySelector('.note-editor button').click();await flush();
+  s.dialog.close();const range=s.document.createRange();range.setStart(s.document.querySelector('.article-body').firstChild,0);range.setEnd(s.document.querySelector('.article-body').firstChild,2);range.getBoundingClientRect=()=>({left:20,bottom:40});const selection=s.window.getSelection();selection.removeAllRanges();selection.addRange(range);await captureSelection(s);s.dialog.querySelector('textarea').value='新增札记';s.dialog.querySelector('.note-editor button').click();await flush();
  }
 }
 for(const kind of ['save','import'])for(const readFirst of [false,true])test(`${kind} additions survive when their list read ${readFirst?'finishes before':'waits across'} a delete commit`,async t=>{
@@ -65,7 +81,7 @@ for(const kind of ['save','import'])for(const readFirst of [false,true])test(`${
   // Opening the capture renders once, then the save renders again.
   let calls=0;s.vault.all=async store=>{const value=await originalAll(store);if(++calls===1)return value;snapshot=value;return read.promise;};
  }else s.vault.all=async store=>{snapshot=await originalAll(store);return read.promise;};
- await addNote(s,kind);assert.ok(snapshot.some(n=>n.note==='新增札记'));
+ await addNote(s,kind);assert.ok(Array.isArray(snapshot),'save/import must start its list refresh before deletion commits');assert.ok(snapshot.some(n=>n.note==='新增札记'));
  const chosen=s.remove(3);chosen.focus();
  if(readFirst){read.resolve(snapshot);await flush();await s.commit(0);}else{await s.commit(0);read.resolve(snapshot);await flush();}
  assert.equal(s.row(1),undefined);assert.ok([...s.document.querySelectorAll('.notebook-note p')].some(n=>n.textContent==='新增札记'));assert.equal(s.document.activeElement,chosen,'the independently focused row survives both completions');
@@ -135,8 +151,7 @@ test('new notebook capture saves clean code context and relocates real numerical
  const start=s.clean.text.indexOf('输入：12'),range=s.textRange(s.clean,start,start+5);
  range.getBoundingClientRect=()=>({left:20,bottom:40});
  const selection=s.window.getSelection();selection.removeAllRanges();selection.addRange(range);
- s.document.dispatchEvent(new s.window.Event('selectionchange'));await new Promise(r=>setTimeout(r,110));
- s.document.querySelector('.selection-note').click();await flush();
+ await captureSelection(s);
  s.dialog.querySelector('textarea').value='新批注';s.dialog.querySelector('.note-editor button').click();await flush();
  const records=await s.vault.all('notes');assert.equal(records.length,1);
  const record=records[0];assert.equal(record.quote,'输入：12');assert.equal(record.prefix,'正文数字12');assert.equal(record.suffix,'输出：34尾声34');

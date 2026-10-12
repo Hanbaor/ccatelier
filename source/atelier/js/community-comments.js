@@ -1,8 +1,11 @@
 import {$} from './ui.js';
-import {communityAPI, element, messageCard} from './community.js';
+import {communityAPI, element, messageCard} from './community-shared.js';
 
 function friendlyFailure(container,message,retry) {
-  container.replaceChildren();const box=element('div','community-empty');box.append(element('p','',message));const button=element('button','community-retry','再试一次 ↻');button.addEventListener('click',retry);box.append(button);container.append(box);
+  const focused=container.ownerDocument.activeElement;
+  const ownedFocus=container.contains(focused)&&focused.matches('button.community-retry');
+  container.replaceChildren();const box=element('div','community-empty');box.append(element('p','',message));const button=element('button','community-retry','再试一次 ↻');button.type='button';button.addEventListener('click',retry);box.append(button);container.append(box);
+  if(ownedFocus)button.focus({preventScroll:true});
 }
 export function initComments(root) {
   const form=$('form',root),list=$('[data-comment-list]',root),more=$('[data-comment-more]',root),status=$('[data-comment-status],.comment-status:not([data-comment-connection])',root),submit=$('button[type=submit]',form);
@@ -61,11 +64,15 @@ export function initComments(root) {
     try {
       const data=await communityAPI('comments?page='+encodeURIComponent(page)+'&offset='+(append?next||0:0));
       if(!currentView())return;
+      const focused=doc.activeElement,recoveringList=list.contains(focused)&&focused.matches('button.community-retry');
       initialPlaceholder?.remove();
       recordAvailability(sequence,false);listFailure.remove();
       if(!append)list.replaceChildren();for(const item of data.items)list.append(messageCard(item));
       if(!data.total)list.append(element('p','community-empty','还没有公开的留言。第一道回声，留给你。'));
       $('[data-comment-total]',root).textContent=String(data.total).padStart(2,'0');next=data.next;more.hidden=next===null;
+      // Only replace focus owned by a disappearing recovery control. A reader
+      // who resumed typing or navigated elsewhere keeps their current focus.
+      if(recoveringList){list.tabIndex=-1;list.setAttribute('role','region');list.setAttribute('aria-label','公开留言');list.focus({preventScroll:true});}
     }catch(error){
       if(!currentView())return;
       initialPlaceholder?.remove();

@@ -59,7 +59,12 @@ export class AudioEngine{
    this.advance(p);
   }
  }
- async audition(track){const token=this.generation;await this.ready();if(token!==this.generation||document.hidden)return;synth(this.context,this.master.gain,track,this.context.currentTime+.005,1);document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:track.volume,track:track.type}}));}
+ async audition(track){
+  const token=this.generation;
+  try{await this.ready();}catch(error){if(token!==this.generation)return false;this.stop();throw error;}
+  if(token!==this.generation)return false;if(document.hidden){this.stop();return false;}
+  synth(this.context,this.master.gain,track,this.context.currentTime+.005,1);document.dispatchEvent(new CustomEvent('atelier:beat',{detail:{energy:track.volume,track:track.type}}));return true;
+ }
  stop(){this.generation++;this.playing=false;clearInterval(this.timer);this.events.forEach(clearTimeout);this.events.clear();const ctx=this.context;this.context=null;this.master=null;if(ctx&&ctx.state!=='closed')ctx.close().catch(()=>{});this.onStep(-1);document.dispatchEvent(new CustomEvent('atelier:audio-stop'));}
  get analyser(){return this.master?.analyser;}
 }

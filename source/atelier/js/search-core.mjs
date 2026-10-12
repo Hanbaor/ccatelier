@@ -1,19 +1,31 @@
 const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase();
-export function searchInputAction(event, hasResult) {
-  // Enter/arrow keys belong to the IME while choosing a Chinese candidate.
-  if (event.isComposing || event.keyCode === 229 || !hasResult) return null;
-  if (event.key === 'Enter') return 'open';
-  if (event.key === 'ArrowDown') return 'focus';
+export function searchInputAction(e, hasResult) {
+  // Respect handled input, IME and text selection.
+  if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || !hasResult) return null;
+  if (e.key === 'Enter') return 'open';
+  if (e.key === 'ArrowDown' && !(e.shiftKey||e.ctrlKey||e.metaKey||e.altKey||e.getModifierState?.('AltGraph'))) return 'focus';
   return null;
 }
+const termsFor = query => normalize(query).trim().split(/\s+/).filter(Boolean);
+const termScore = (term,title,content) => title.includes(term) ? 5 : content.includes(term) ? 1 : 0;
+function evaluateEntry(entry,terms,trace=false) {
+  const title=normalize(entry.title),content=normalize(entry.content);
+  const evidence=trace ? [] : null;let score=0,matches=true;
+  for(const term of terms){
+    const points=termScore(term,title,content);
+    if(!points){matches=false;if(!trace)return null;}
+    score+=points;
+    if(trace)evidence.push({term,where:points===5?'title':points===1?'body':'missing'});
+  }
+  return trace ? {evidence,score,matches} : score;
+}
+export function explainEntry(query,entry) {
+  return evaluateEntry(entry,termsFor(query),true);
+}
 export function findEntries(query, entries) {
-  const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
-  return entries.map(entry => {
-    const title = normalize(entry.title), content = normalize(entry.content);
-    if (!terms.every(term => title.includes(term) || content.includes(term))) return null;
-    const score = terms.reduce((sum,term) => sum + (title.includes(term) ? 5 : 1),0);
-    return {entry,score};
-  }).filter(Boolean).sort((a,b) => b.score-a.score).slice(0,20).map(result => result.entry);
+  const terms=termsFor(query);
+  return entries.map(entry=>({entry,score:evaluateEntry(entry,terms)}))
+    .filter(result=>result.score!==null).sort((a,b)=>b.score-a.score).slice(0,20).map(result=>result.entry);
 }
 export function safeResultURL(value, base) {
   try {

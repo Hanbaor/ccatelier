@@ -9,7 +9,7 @@ test('real SQLite finds cardinality minima; every smaller subset is independentl
  const c=await core,SQL=await engine;
  for(const [index,fixture] of c.SQL_CASES.entries()){
   const result=c.minimizeCounterexample(SQL,fixture.id,fixture.candidate);
-  assert.equal(result.state,'witness');assert.equal(result.remainingRows,[1,2,2][index]);assert.equal(result.mask,[1,3,17][index]);
+  assert.equal(result.state,'witness');assert.equal(result.remainingRows,[1,2,2,4][index]);assert.equal(result.mask,[1,3,17,29][index]);
   assert.deepEqual(c.minimizeCounterexample(SQL,fixture.id,fixture.candidate),result,'deterministic traversal/tie break');
   for(let mask=0;mask<result.totalSubsets;mask++)if(popcount(mask)<result.remainingRows){
    const a=c.runFixtureQuery(SQL,fixture.id,fixture.candidate,'default',mask),b=c.runFixtureQuery(SQL,fixture.id,fixture.reference,'default',mask);
@@ -26,13 +26,13 @@ test('real SQLite finds cardinality minima; every smaller subset is independentl
  }
 });
 
-test('all nine published datasets exhaustively verify their reference without claiming general equivalence',async()=>{
+test('all thirteen published datasets exhaustively verify their reference without claiming general equivalence',async()=>{
  const c=await core,SQL=await engine;let count=0;
  for(const f of c.SQL_CASES)for(const d of c.listSqlDatasets(f.id)){
   const result=c.minimizeCounterexample(SQL,f.id,f.reference,d.id);
   assert.equal(result.state,'no-witness');assert.equal(result.tested,result.totalSubsets);assert.ok(result.tested<=64);count++;
  }
- assert.equal(count,9);
+ assert.equal(count,13);
 });
 
 test('search preserves duplicate counts, NULL values, and order differences',async()=>{

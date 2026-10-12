@@ -4,7 +4,7 @@
 const functions=new Set(['count','min','max','sum','avg','total','coalesce','ifnull','nullif','abs','round','length','lower','upper','substr','substring','trim','ltrim','rtrim','replace','instr','typeof','cast']);
 const syntaxBeforeParen=new Set(['in','exists','as','over','filter','values']);
 const fail=reason=>{throw new Error(`此查询不支持最小化：${reason} 普通运行仍可使用。`)};
-export function validateMinimizerSql(sql) {
+export function validateMinimizerSql(sql, {rejectLimitOffset = false} = {}) {
   const tokens=[];let index=0,depth=0;
   while(index<sql.length){
     const start=index,c=sql[index];
@@ -36,6 +36,7 @@ export function validateMinimizerSql(sql) {
   for(let i=0;i<tokens.length;i++){
     const token=tokens[i],next=tokens[i+1];
     if(token.kind==='identifier'){
+      if(rejectLimitOffset&&!token.quoted&&['limit','offset'].includes(token.value))fail('缩小本地表不支持任何层的 LIMIT 或 OFFSET。');
       if(/^(pragma_|sqlite_)/.test(token.value)||['current_time','current_date','current_timestamp'].includes(token.value))fail('不支持时间、连接状态或数据库元数据。');
       if(next?.value==='('&&!functions.has(token.value)&&!(syntaxBeforeParen.has(token.value)&&!token.quoted))fail(`函数或语法 ${token.value.slice(0,48)} 不在支持列表中。`);
       if(!token.quoted&&token.value==='order'&&token.depth===0&&next?.value==='by'&&!next.quoted&&next.depth===0)ordered=true;

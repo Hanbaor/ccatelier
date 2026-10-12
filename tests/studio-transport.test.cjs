@@ -143,3 +143,30 @@ test('long-running fractional tempo boundaries are calculated from an anchor wit
  for(let i=0;i<100000;i++){h.engine.step%=16;h.engine.advance(h.engine.project);}
  const count=100001;near(h.engine.nextTime,.06+(count+(count%2?.37:0))*15/137);
 });
+
+test('failed pad resume releases its context so the next audition can retry cleanly',async t=>{
+ const h=await harness(t),resume=h.Context.prototype.resume;
+ h.Context.prototype.resume=()=>Promise.reject(Error('pad resume blocked'));
+ await assert.rejects(h.engine.audition(h.project.tracks[0]),/pad resume blocked/);
+ assert.equal(h.contexts[0].state,'closed');assert.equal(h.engine.context,null);
+ h.Context.prototype.resume=resume;
+ assert.equal(await h.engine.audition(h.project.tracks[0]),true);
+ assert.equal(h.contexts.length,2);assert.equal(h.starts.length,1);
+});
+
+test('cancelled pad resume returns false and cannot touch a replacement playback',async t=>{
+ const h=await harness(t),resume=h.Context.prototype.resume;let rejectFirst;
+ h.Context.prototype.resume=function(){if(h.contexts.length===1)return new Promise((resolve,reject)=>{rejectFirst=reject;});return resume.call(this);};
+ const pad=h.engine.audition(h.project.tracks[0]);h.engine.stop();await h.engine.start(h.project);const replacement=h.engine.context;
+ rejectFirst(Error('closed while resuming'));assert.equal(await pad,false);
+ assert.equal(h.engine.context,replacement);assert.equal(h.engine.playing,true);assert.equal(h.starts.length,1);assert.equal(h.intervals.size,1);
+});
+
+test('late pad resume after stop or hiding reports cancellation without a beat',async t=>{
+ const h=await harness(t);let resume;
+ h.Context.prototype.resume=function(){return new Promise(resolve=>{resume=()=>{if(this.state!=='closed')this.state='running';resolve();};});};
+ const pad=h.engine.audition(h.project.tracks[0]);h.engine.stop();resume();assert.equal(await pad,false);
+ assert.equal(h.starts.length,0);assert.equal(h.beats.filter(e=>e.type==='atelier:beat').length,0);
+ const hidden=h.engine.audition(h.project.tracks[0]);document.hidden=true;resume();assert.equal(await hidden,false);
+ assert.equal(h.starts.length,0);assert.equal(h.contexts[1].state,'closed');assert.equal(h.engine.context,null);
+});

@@ -43,6 +43,13 @@ test('home composition parses and keeps focus and reduced-motion styles',()=>{
 });
 test('final homepage cascade keeps information and links readable at narrow and wide widths',()=>{
  const css=read('source/atelier/css/personal-home.css');
+ // This isolated fixture omits the inherited immersive layer, and jsdom does
+ // not resolve var() in font-size. Read its actual token, then substitute only
+ // that token in the flattened fixture CSS; production CSS stays untouched.
+ const tokenRules=require('rrweb-cssom').parse(read('source/atelier/css/immersive.css')).cssRules;
+ const summarySize=[...tokenRules].filter(rule=>rule.selectorText==='body.nijika')
+  .map(rule=>rule.style.getPropertyValue('--summary-size').trim()).filter(Boolean).at(-1);
+ assert.equal(summarySize,'16px','the inherited summary token remains 16px');
  // jsdom does not evaluate viewport media queries. Flatten active width rules in
  // original order, then inspect the final cascade rather than stale declarations.
  const sheetDOM=new JSDOM(`<style>${css}</style>`),rules=sheetDOM.window.document.styleSheets[0].cssRules;
@@ -56,8 +63,9 @@ test('final homepage cascade keeps information and links readable at narrow and 
  const required=['.personal-intro .personal-kicker','.personal-actions>a','.home-understage','.home-understage p>span','.home-understage>a','.personal-section-head>a','.personal-note time','.personal-note p','.home-note-topics','.home-series-link small','.home-series-link p','.home-project-description .personal-kicker','.home-project-description>p','.home-project-stack','.home-project-stack>a','.home-research-feature .personal-kicker','.home-research-summary','.home-query-example code','.home-query-preview summary','.home-query-preview>p','.home-research-foot','.home-reading-topics>a','.home-afterhours-copy nav>a','.home-afterhours-copy>p:not(.personal-kicker)','.home-colophon','.home-colophon a'];
  try{for(const width of [320,390,760,1170]){
   const dom=render(posts),d=dom.window.document;try{
-   const style=d.createElement('style');style.textContent=activeCSS(width);d.head.append(style);
+   const style=d.createElement('style');style.textContent=activeCSS(width).replace(/var\(\s*--summary-size\s*\)/g,summarySize);d.head.append(style);
    for(const selector of required){const nodes=d.querySelectorAll(selector);assert.ok(nodes.length,selector+' exists');for(const node of nodes){const size=parseFloat(dom.window.getComputedStyle(node).fontSize);assert.ok(size>=13,`${width}px ${selector}: ${size}px`);}}
+   for(const excerpt of d.querySelectorAll('.personal-note p'))assert.equal(dom.window.getComputedStyle(excerpt).fontSize,summarySize,`${width}px article excerpts retain the 16px summary token`);
   }finally{dom.window.close();}
  }}finally{sheetDOM.window.close();}
 });

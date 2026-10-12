@@ -22,7 +22,8 @@ test('working experiments are native direct links after the hero, outside implem
       const doc = dom.window.document;
       const section = doc.querySelector('.project-experiments');
       assert.ok(section.previousElementSibling.classList.contains('project-intro'));
-      assert.ok(section.nextElementSibling.classList.contains('project-implementation'));
+      assert.ok(section.nextElementSibling.matches('details[data-project-retrieval]'));
+      assert.ok(section.nextElementSibling.nextElementSibling.classList.contains('project-implementation'));
       assert.equal(section.querySelector('h2').id, section.getAttribute('aria-labelledby'));
       assert.equal(section.querySelector('h2').textContent, '在本站试试');
       const links = [...section.querySelectorAll('a')];
@@ -71,8 +72,8 @@ test('experiment index is theme-token based, borderless, touch sized and rearran
     const links = rules.find(rule => rule.selectorText === '.project-experiment-list a');
     assert.equal(links.style.getPropertyValue('min-height'), '44px');
     const description = rules.find(rule => rule.selectorText === '.project-experiment-list p');
-    assert.match(description.style.getPropertyValue('font'), /13px/);
-    assert.equal(description.style.getPropertyValue('color'), 'var(--muted)');
+    assert.match(description.style.getPropertyValue('font'), /15px/);
+    assert.equal(description.style.getPropertyValue('color'), 'var(--text)');
     const grid = rules.find(rule => rule.selectorText === '.project-experiment-list');
     assert.equal(grid.style.getPropertyValue('grid-template-columns'), 'repeat(3,minmax(0,1fr))');
     const mobile = rules.filter(rule => rule.conditionText === '(max-width:760px)').flatMap(rule => [...rule.cssRules]);
@@ -83,5 +84,17 @@ test('experiment index is theme-token based, borderless, touch sized and rearran
       assert.equal(rule.style.getPropertyValue('white-space'), '', 'do not truncate narrow-screen descriptions');
     }
     assert.match(css, /\.project-case a:focus-visible/);
+  } finally { dom.window.close(); }
+});
+
+
+test('independent retrieval and implementation retain quiet adjacent spacing', () => {
+  const dom = new JSDOM(`<style>${read('source/atelier/css/projects.css')}</style>`);
+  try {
+    const rules = [...dom.window.document.styleSheets[0].cssRules];
+    const selector = '.project-experiments+.project-retrieval,.project-retrieval+.project-implementation';
+    assert.equal(rules.find(rule => rule.selectorText === selector).style.getPropertyValue('margin-top'), '18px');
+    const mobile = rules.filter(rule => rule.conditionText === '(max-width:760px)').flatMap(rule => [...rule.cssRules]);
+    assert.equal(mobile.find(rule => rule.selectorText === selector).style.getPropertyValue('margin-top'), '16px');
   } finally { dom.window.close(); }
 });

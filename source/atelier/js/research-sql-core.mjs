@@ -43,6 +43,21 @@ export const SQL_CASES = deepFreeze([
     expected:{columns:['id','title'], rows:[[101,'Blue'],[103,'Echo']]},
     insight:'本例曲目 id 非空。子查询含 NULL，未命中的 NOT IN 得到未知值，WHERE 不保留；已命中的也被排除。NOT EXISTS 只检查匹配行，本例保留 Blue 和 Echo。',
     source:'https://sqlite.org/lang_expr.html#the_in_and_not_in_operators'
+  },
+  {
+    id:'join-fanout', label:'关联倍增',
+    question:'列出每位创作者的曲目数与排练次数，包含 0，按创作者 id 排序；排练按创作者记录，不关联具体曲目。',
+    tables:[
+      {name:'artists', columns:['id','name'], rows:[[1,'Aster'],[2,'Moss']]},
+      {name:'tracks', columns:['id','artist_id','title'], rows:[[101,1,'Blue'],[102,1,'Gold']]},
+      {name:'rehearsals', columns:['id','artist_id'], rows:[[1,1],[2,1]]}
+    ],
+    schema:'CREATE TABLE artists(id INTEGER PRIMARY KEY, name TEXT NOT NULL); CREATE TABLE tracks(id INTEGER PRIMARY KEY, artist_id INTEGER NOT NULL, title TEXT NOT NULL); CREATE TABLE rehearsals(id INTEGER PRIMARY KEY, artist_id INTEGER NOT NULL);',
+    candidate:'SELECT a.name, COUNT(t.id) AS tracks, COUNT(r.id) AS rehearsals\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nLEFT JOIN rehearsals AS r ON r.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+    reference:'SELECT a.name, COUNT(DISTINCT t.id) AS tracks, COUNT(DISTINCT r.id) AS rehearsals\nFROM artists AS a\nLEFT JOIN tracks AS t ON t.artist_id = a.id\nLEFT JOIN rehearsals AS r ON r.artist_id = a.id\nGROUP BY a.id, a.name\nORDER BY a.id',
+    expected:{columns:['name','tracks','rehearsals'], rows:[['Aster',2,2],['Moss',0,0]]},
+    insight:'Aster 的 2 首曲目与 2 次排练组合成 4 行，直接 COUNT 会重复计数。本例按各表主键 DISTINCT，分别数曲目与排练；同名曲目仍是不同实体。这只修复本例的实体计数，不能推广为 SUM 的通用修复。',
+    source:'https://sqlite.org/lang_aggfunc.html'
   }
 ]);
 
@@ -64,6 +79,11 @@ const variants = deepFreeze({
   'top-ties':[
     {id:'unique', label:'唯一最高分', rows:[[['Blue',95],['Gold',94],['Echo',88]]], expected:[['Blue',95]]},
     {id:'empty', label:'没有评分', rows:[[]], expected:[]}
+  ],
+  'join-fanout':[
+    {id:'one-each', label:'各一条记录', rows:[null,[[101,1,'Blue']],[[1,1]]], expected:[['Aster',1,1],['Moss',0,0]]},
+    {id:'same-title', label:'同名不同曲目', rows:[null,[[101,1,'Blue'],[102,1,'Blue']],null], expected:[['Aster',2,2],['Moss',0,0]]},
+    {id:'no-rehearsals', label:'没有排练', rows:[null,null,[]], expected:[['Aster',2,0],['Moss',0,0]]}
   ],
   'null-exclusion':[
     {id:'no-null', label:'没有空值', rows:[null,[[1,102]]], expected:[[101,'Blue'],[103,'Echo']]},

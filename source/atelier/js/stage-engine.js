@@ -2,6 +2,8 @@ import {$,$$,motion,storage} from './ui.js';
 import {makeDialog} from './live-dialog.js';
 import {element,action,root} from './archive-store.js';
 
+const initializedDocuments=new WeakSet();
+
 // A single low-resolution GPU pass draws light, dust and the latest pressure wave.
 // Audio uniforms come only from actual Web Audio playback; ambient motion is separate.
 export function initStageEngine(){
@@ -9,6 +11,9 @@ export function initStageEngine(){
   // The personal homepage stays idle; only the music room has an ambient stage.
   // Entering the separate livehouse remains an explicit, independently loaded action.
   if(!document.body.matches('[data-section="studio"]')) return;
+ if(initializedDocuments.has(document))return;
+ initializedDocuments.add(document);
+ let pageActive=true;
  const lightButton=action('◒',()=>{},'icon-button lighting-open');lightButton.setAttribute('aria-label','打开舞台调光台');$('.utility-controls')?.prepend(lightButton);
  const canvas=element('canvas','stage-field');canvas.setAttribute('aria-hidden','true');document.body.prepend(canvas);
  const fallback=element('div','stage-field-fallback');fallback.setAttribute('aria-hidden','true');document.body.prepend(fallback);
@@ -37,14 +42,14 @@ export function initStageEngine(){
   }
   let magnetsMoving=false;
   if(motion.enabled)for(const m of magnets){m.x+=(m.tx-m.x)*.14;m.y+=(m.ty-m.y)*.14;if(Math.abs(m.tx-m.x)<.01&&Math.abs(m.ty-m.y)<.01){m.x=m.tx;m.y=m.ty;}else magnetsMoving=true;m.el.style.translate=m.x.toFixed(2)+'px '+m.y.toFixed(2)+'px';}
-  if(motion.enabled&&!document.hidden&&((gl&&settings.intensity>0)||magnetsMoving))frame=requestAnimationFrame(draw);
+  if(motion.enabled&&pageActive&&!document.hidden&&((gl&&settings.intensity>0)||magnetsMoving))frame=requestAnimationFrame(draw);
  }
  function resize(){if(gl){const scale=Math.min(1,960/innerWidth);canvas.width=Math.round(innerWidth*scale);canvas.height=Math.round(innerHeight*scale);gl.viewport(0,0,canvas.width,canvas.height);}wake();}
- function wake(){cancelAnimationFrame(frame);frame=0;last=0;if(!document.hidden)frame=requestAnimationFrame(draw);}
+ function wake(){cancelAnimationFrame(frame);frame=0;last=0;if(pageActive&&!document.hidden)frame=requestAnimationFrame(draw);}
  window.addEventListener('pointermove',e=>{tx=e.clientX/innerWidth;ty=e.clientY/innerHeight;},{passive:true});
  window.addEventListener('pointerdown',e=>{if(!motion.enabled||e.target.closest('.article-body,input,textarea'))return;ripple={x:e.clientX/innerWidth,y:e.clientY/innerHeight,at:performance.now()};},{passive:true});
  document.addEventListener('atelier:beat',e=>{beat=Math.max(beat,Number(e.detail?.energy)||0);});document.addEventListener('atelier:spectrum',e=>{spectrum=Math.max(0,Math.min(1,Number(e.detail?.energy)||0));});document.addEventListener('atelier:audio-stop',()=>{spectrum=0;beat=0;});
- document.addEventListener('visibilitychange',wake);document.addEventListener('atelier:motion',()=>{for(const m of magnets){m.x=m.y=m.tx=m.ty=0;m.el.style.translate='';}wake();});window.addEventListener('resize',resize,{passive:true});window.addEventListener('pagehide',()=>{cancelAnimationFrame(frame);frame=0;});window.addEventListener('pageshow',wake);
+ document.addEventListener('visibilitychange',wake);document.addEventListener('atelier:motion',()=>{for(const m of magnets){m.x=m.y=m.tx=m.ty=0;m.el.style.translate='';}wake();});window.addEventListener('resize',resize,{passive:true});window.addEventListener('pagehide',()=>{pageActive=false;cancelAnimationFrame(frame);frame=0;});window.addEventListener('pageshow',()=>{pageActive=true;wake();});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;gl=null;canvas.hidden=true;syncFallback();fallback.hidden=false;stageStatus.textContent='当前设备使用柔光背景';document.body.classList.remove('has-stage-engine');wake();});
  const desk=makeDialog('lighting-dialog','舞台调光台'),intro=element('p','live-status','把灯光调到舒服的位置。鼓点和音频会带动光场，阅读时灯光自动收敛。'),presets=element('div','light-presets');
  for(const [key,label] of [['amber','暖金 / NIJIKA'],['rose','朱红 / ENCORE'],['moon','月蓝 / AFTER HOURS']]){const b=action(label,()=>{document.body.dataset.stageLight=key;storage.set('cc-light',key);sync();wake();});b.dataset.lightPreset=key;presets.append(b);}
@@ -54,4 +59,7 @@ export function initStageEngine(){
  function sync(){$$('[data-light-preset]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lightPreset===(document.body.dataset.stageLight||'amber'))));}
  document.addEventListener('click',e=>{if(e.target.closest('.lighting-open')){sync();desk.open();}});
  new MutationObserver(()=>{if(!motion.enabled)wake();}).observe(document.body,{attributes:true,attributeFilter:['class','data-stage-light']});resize();
+ // Help cannot expose route-loading feedback outside its modal. Offer this
+ // shortcut only after the complete stage setup succeeds, including fallback.
+ $$('#help-dialog [data-stage-help-action]').forEach(button=>{button.hidden=false;});
 }

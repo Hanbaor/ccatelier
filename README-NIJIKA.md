@@ -15,6 +15,10 @@ npm test
 npm run test:fixtures
 ```
 
+在已安装依赖、无需联网的验证环境中，可用 `npm run build:offline` 或 `npm run test:offline`。这两个入口仅在 Hexo 子进程内禁用网络：固定主题的可选版本查询会得到明确的本地离线错误并沿用上游降级逻辑，其他常见 Node 网络请求会让构建失败。`test:fixtures` 同样使用这个离线入口；不会修改系统网络设置、上游主题或默认生产构建。
+
+离线预加载是构建诊断工具，不是安全沙箱，也不约束原生插件或独立子进程。其行为由 `tests/offline-build.test.cjs` 验证；它不替代依赖安装、浏览器或共享服务的验证。
+
 `npm test` 包含从原文原样提取 C++ 代码、以 C++11 和 UBSan 编译运行的验证，需要命令行可用的 `g++`，且支持 `-fsanitize=undefined` 和 `-fno-sanitize-recover=all`。Windows 开发建议在已有且满足这些条件的 WSL 环境中运行。缺少编译器时 Hot100 验证会明确失败，不会跳过或自动安装；网站构建和访客访问本身不需要 C++ 编译器。
 
 访问 `http://localhost:4318/` 可预览静态页面。`npm run build` 生成 `public/`；昵称留言、掌声和访问统计由同域 Cloudflare Worker + D1 提供，完整本地预览使用下方 4319 配置。静态预览会明确提示共享服务未连接。
@@ -50,6 +54,7 @@ node tests/fixture-build.cjs
 | 音乐工作室 / 分享 / MIDI | `source/atelier/js/studio.js`、`studio-core.mjs`、`studio-share.mjs`、`studio-midi.mjs`、`studio-midi-import.mjs`；声音渲染在 `audio-engine.js` |
 | Hot100 筛选与状态 | `custom/redefine/nijika/series.ejs`、`source/atelier/js/series-filter.js`、`tools/content-catalog.cjs` |
 | SQL 教学实验 | `custom/redefine/nijika/research.ejs`、`source/atelier/js/research-sql.js` 及同目录 `research-sql-*` 模块 |
+| 首页 SVG 动效 | `custom/redefine/nijika/stage-light.ejs`、`rhythm-signature.ejs`、`source/atelier/css/personal-home.css` |
 | 本地字体交付 | `source/atelier/css/fonts.css`、`source/atelier/fonts/`、`tools/local-font-woff2.py` |
 | 现场演出工程 | `source/atelier/js/livehouse-director.js`、`performance-core.mjs`、`performance-transport.mjs`、`performance-store.mjs` |
 | 正式文章与内容索引 | `source/_posts/`、`source/_data/hot100.json`、`tools/content-catalog.cjs` |
@@ -59,6 +64,8 @@ node tests/fixture-build.cjs
 首页与创作室的近期文章直接取正式文章数据，不要在模板中另写一份列表。项目页源码包含 CC Atelier、EduRAG 与 Transformer 课程实践；更新介绍时核对真实仓库与实现，源码变化不等同于已发布。研究、生活与关于页也只维护有依据的内容。
 
 样式是分层加载的；修改前先检查 `head.ejs` 的顺序与路由条件。`backstage.css`、`live-art.css`、`rooms-v2.css` 保留给适用页面及未知模板回退，不应重新无条件加载。相关回归见 `tests/route-styles.test.cjs`、`tests/home-navigation.test.cjs`、`tests/personal-pages.test.cjs` 和 `tests/projects-coursework.test.cjs`。
+
+首页追光与鼓点印记只在悬停或键盘聚焦时播放有限一段，使用内联 SVG / CSS，不引入额外脚本。两侧追光遮罩只做边缘羽化；保留人物、文字遮罩与按钮层级，遵守系统减少动态和站内关闭动效设置。构图与边界见 `docs/rhythm-signature-design.md`。首页笔记与排练插图的取景同时覆盖静止和悬停放大；替换原图时复核 `tests/home-art-crop.test.cjs` 的实际尺寸与主体范围，不只调整文件名。
 
 现场导演把鼓点、灯光与 2.5D 景别放在同一工程中；定位播放、暂停续播和本机保存由 `performance-*` 模块配合现场模块实现。维护时同时检查 `tests/performance-core.test.cjs` 与 `tests/livehouse-interaction.test.cjs`，并手动验证播放、拖动定位、暂停和恢复。工程仅保存在当前浏览器，可导出 JSON 备份；录音与排练数据独立保留。
 
@@ -73,6 +80,14 @@ node tests/fixture-build.cjs
 `tools/build-main-entry.cjs` 自动分析全部模块、动态消费者及 `source/` / `custom/` 内独立模板入口，只合并入口独占的静态依赖。共享状态、`import.meta` 所属模块和嵌套目录模块保留原路径，所有 lazy import 与 Worker URL 不变。无法安全界定的新依赖会明确报错，需要先补分析和回归，不能通过忽略警告继续交付。现有主题 tabs 的根前缀表达式仅在分析阶段识别，输出仍使用原表达式。
 
 `tools/module-graph.cjs` 用编译器解析静态依赖，既能检查源码也能检查压缩产物；源码功能预算继续独立测试（少于 25 个模块、100000 B），生成后初始图另设至多 10 个模块、83000 B 的交付预算。离线清单仍保留原模块 URL，保存时缓存生成后的 main，因此不能把初始请求图缩小当作离线文件数减少。字节统计只表示构建体积，不是实测网络流量、LCP 或运行速度。针对性回归：`node --test tests/main-entry-build.test.cjs`。
+
+### 固定主页面的样式交付
+
+首页、项目、研究等固定模板使用生成的 `archive-global.css`，保留原有公共弹窗、阅读队列与状态样式；笔记、正文和未知模板继续使用完整 `archive.css`。原文件仍是唯一维护来源，不要手改生成文件。`tools/archive-scene-selectors.json` 明确列出可移除的笔记场景规则；新增未审查规则默认保留，已审查选择器变更时须重新核对路由归属。
+
+原有四个合并样式 URL 与成员顺序保持不变，较小的变体使用新 URL `delivery-dialogs-global.css`，位于同一层叠位置。当前每个适用页面减少 11426 个未压缩 CSS 字节，不新增样式请求；这是构建体积差异，不是实测加载速度。回归见 `tests/archive-global-delivery.test.cjs`，同时运行全量排版、缓存与离线快照测试；真实浏览器视觉验证仍需单独进行。
+
+模块分析明确拒绝编译器产生的通配依赖路径，避免依赖工作目录里的碰巧匹配或警告来判断动态导入是否安全。`tests/browser-module-analysis.test.cjs` 在有、无匹配文件的独立目录中检查同一约束；文件名含星号的字面量导入也不受支持。
 
 ## 当前功能的维护边界
 
@@ -101,9 +116,19 @@ node tests/fixture-build.cjs
 
 维护时检查 `tests/series-filter.test.cjs`、`tests/content-catalog-source.test.cjs` 与 `tests/content-catalog.test.cjs`；不要为改变统计而补写原作者未完成的解答或改动迁移来源。
 
+### 项目页：本地关键词检索观察
+
+在 `/projects/` 的“实现细节”内展开“试一次检索”。面板使用本站正式文章索引中 `group=writing`、非空正文且未显式标记为草稿的记录；不纳入 Hot100 目录。默认查询“STL 递归”可比较“全部命中”与“至少一个”的结果范围。每个关键词在标题命中计 5 分，否则在正文命中计 1 分；缺失计 0 分，同词同时出现在标题和正文时只计标题分。面板去重查询词，展示前三条来源、原文摘录及逐词依据；这是词法排序分数，不是模型置信度。
+
+项目页仅加载小型引导模块，展开面板后才载入交互实现，明确提交后才读取同源文章索引。查询不进入请求 URL、存储或遥测。收起面板或外层“实现细节”、修改输入、重复提交和离开页面会取消旧任务；超时后允许重试。恢复页面不自动查询，也不抢夺焦点。JavaScript 不可用时仍保留笔记目录链接。
+
+维护入口为 `project-retrieval-loader.mjs`、`project-retrieval-panel.mjs`、`project-retrieval-core.mjs`。评分解释与全站搜索共用 `search-core.mjs`，摘录复用 `search-context.mjs`；不要另写一套看似相同的排序规则。输入限制为 200 个 UTF-16 单元、8 个去重关键词，语料上限为 2000 条及 200 万正文字符。回归：`node --test tests/project-retrieval.test.cjs tests/search*.test.cjs`。这些自动检查不替代真实浏览器的键盘、触控、窄屏与字体渲染检查。
+
 ### SQL：教学比较与有限反例
 
 `/research/` 使用浏览器内 SQLite（sql.js + Worker）运行内置小数据上的候选 / 参考查询。只读 SELECT / WITH，列按位置比较，值类型、重复次数与行顺序均参与判断；一次结果一致只对当前数据成立。支持草稿 JSON 导入 / 导出，导入不自动执行；查询不自动保存或上传。首次执行按需加载本地 SQLite 资源，需 WebAssembly / Worker，离线可用性不保证。
+
+数据表、查询结果与执行计划在确实溢出时可通过 Tab 聚焦，再用浏览器原生方向键滚动；已有焦点不会因结果缩短而被突然移走。无脚本时，静态数据表和参考结果保留键盘入口。切换案例、替换结果及恢复页面后会更新入口与区域名称。Worker 在载入后发送查询失败时立即清理并允许重试，不伪装成查询超时。
 
 “最近实验”仅在当前页面内存中保留每个案例最近 12 个查询 / 数据集记录。恢复会保留被替换的草稿并清除旧结果，不自动执行；记录中的结论仅属于当时的运行，刷新后历史清空。
 
@@ -114,6 +139,10 @@ node tests/fixture-build.cjs
 “缩小反例”只删除当前数据集中的行，按保留行数从少到多搜索，最多 64 个子集，整体限时 1.5 秒。接受的确定性查询子集要求顶层 ORDER BY 和白名单函数，拒绝随机数、时间、连接状态及数据库元数据。只有更少行的全部子集均已比较，才能对这些行的子集给出最小性结论；错误、截断、超时或重复执行不一致时不作此结论。未找到反例不代表对其他数据成立，也不是普适 SQL 等价性证明。只保留声明的 schema 约束，不补充业务外键；排序键并列时不保证跨环境顺序，两次输出一致也不能证明确定性。
 
 查询还受字符数、行列数、单元格长度与内存上限约束，具体值以 `research-sql-core.mjs` 和页面说明为准。执行计划仅展示实际 SELECT 包装的 SQLite 访问路径，不证明正确或更快。反例重放 SQL 应在新的临时 SQLite 数据库中执行。维护入口与边界见 `research-sql-core.mjs`、`research-sql-worker.js`、`research-sql-deterministic.mjs`、`research-sql-minimize.mjs`、`research-sql-snapshot.mjs`；回归见 `tests/research-sql*.test.cjs`。
+
+### 阅读连续性
+
+文章顶部导航只在存在可继续的本机进度时显示“继续阅读”。打开页面不自动跳转；轻微滚动、深链接或存储暂时不可读后的恢复不应覆盖上次位置。阅读到旧位置、明确继续或在页尾工具中选择重新开始后，恢复正常进度记录。笔记目录可回到最近未读完的文章；从筛选结果进入文章时携带经过严格限制的本站目录上下文，返回保留筛选，不改变浏览器原生新标签和前进 / 后退行为。数据与边界见 `docs/engineering/reading-continuity.md`，仍使用已有受保护的本机书架存储。
 
 ## 与 Redefine 的关系
 
@@ -237,6 +266,7 @@ node node_modules/wrangler/bin/wrangler.js deploy --dry-run --outdir .nijika-qa/
 - `/notes/`：109 篇全文检索，组合筛选和可分享查询，唱片架/曲目表/真实文章主题星图，阅读队列与完成轨迹。
 - 文章：三栏阅读排版、文内查找、章节深链、排版偏好、可定位的选区札记、代码工作台、朗读和主动离线保存。
 - `/studio/practice/`：原创鼓谱排练室。“练习说明与文件”默认收起，可导出当前整份练习的 JSON 或独立 SVG，均使用当前 BPM，不裁剪播放选区。SVG 是本站 16 格练习谱，非官方乐谱或标准专业打谱；导入与导出仅在本机处理，不上传，仅使用原创或已获授权的谱面。
+  当前另有默认收起的“原创练习 · 查看与下载谱面”：即使 JavaScript 不可用，也可查看或下载三份原速完整 SVG。谱面保留 800px 宽度，小屏在可键盘聚焦的容器内横向浏览，避免缩小拍位文字；每次构建直接使用互动练习相同的 `PRACTICE_DEMOS` 与 `renderPracticeScoreSvg` 生成，不增加浏览器 JavaScript。
 - `/studio/`：六轨 16/32 步音序器、力度与混音、BPM/TAP/swing、预设/撤销、波形/频谱、项目本机保存与 JSON 备份、44.1kHz 立体声 WAV 导出。
 
 完整入口、存储边界和维护说明见 [Live Archive 使用说明](docs/design/live-archive-guide.md)。本轮验证：37 项自动测试、含 `/lab/` 的 fixture 构建、1440/820/390 视口、真实停服离线阅读、音序演奏和 WAV 导出、批注及队列持久化。独立审查发现的六项问题已修复并增加回归测试。完整记录见 [验收台账](docs/design/live-archive-ledger.md)。

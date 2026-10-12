@@ -55,7 +55,16 @@ const allowlist=Object.freeze([
  ['124338541','be60532e3a158247397d.png','ee6459596e748b0b92c1737c590e64644a651e2fefb6eaefb045529de90418b1',null,'全排列题面：输入自然数N（1≤N≤9），从小到大输出1到N的所有排列，每行一个。输入2时依次输出12、21；输入3时依次输出123、132、213、231、312、321。'],
  ['131792879','e1df2de5eca5ecc16f09.png','521f410a75d93198309c56ece387f24eaef9dda863251cee30fcc89d76368a77',null,'熵公式：H(S)＝−∑（i从1到n）p(xᵢ)log₂(p(xᵢ))。'],
  ['124460411','ba63f2a7c086e0536048.png','e9d9ea9a86ddc032142565d559c816034f34b1ced65aa81343b812fd51aeed3c',null,'集合{1,2,3,4}与{2,3,4,5}的运算结果：并集{1,2,3,4,5}，交集{2,3,4}，差集{1}，对称差集{1,5}。'],
- ['149880710','8ee68f08799aa1321e8a.png','844892b6f2de91f6655aff546ebb5519140eb3850a185c92deecc82c6569e717',null,'10张服饰灰度样例，从左到右标注为：包、凉鞋、套头衫、凉鞋、凉鞋、连衣裙、衬衫、连衣裙、衬衫、套头衫。']
+ ['149880710','8ee68f08799aa1321e8a.png','844892b6f2de91f6655aff546ebb5519140eb3850a185c92deecc82c6569e717',null,'10张服饰灰度样例，从左到右标注为：包、凉鞋、套头衫、凉鞋、凉鞋、连衣裙、衬衫、连衣裙、衬衫、套头衫。'],
+ // Original pixels reviewed: five decorative lead illustrations and two informative images.
+ // Explicit empty alt suppresses decorative artwork without creating visible captions.
+ ["124387071", "a7c0112c9b3151f0797f.jpg", "55f7279eb66cfdf55ed50068419d7c887817125d883c5f092c4e41a91104f86a", null, ""],
+ ["124460411", "3e8a5e7f22be7183ac37.jpg", "5fe827e041d331a778129decb62c5f84d1d56f9ef17c35243af839fbb8ee7b61", null, ""],
+ ["131792879", "9f96d32fa0ab600a4aea.webp", "4ebbce79dbf6ce594ac9100ba6301820e889077a0643c10de9c07a6fed2aa124", null, ""],
+ ["149880710", "d661ab640710883493ee.jpg", "71714457d2200d3aebb4c4838750f76083e747b286f018bce3d87a923b1e7a9e", null, ""],
+ ["154834561", "377f3fef18100b8ec408.png", "d2bf79fbb032083bcf74328c764ac795bf3182b8feb9466160429db06a6e329a", null, ""],
+ ["124514677", "c258be7019daa40bd9d5.jpg", "7fda21d5906deccc017428199546fa1045ea2c94159fe11bb7d28791fdfb4a46", null, "列车调度示意：入口列车从左到右标为 7、6、1、9、3、5、2、4、8，经四条平行轨道汇入出口；出口车号从左到右为 1 至 9，行驶箭头均向右。"],
+ ["124514677", "bfc851459c9be2302592.png", "e14355bcbd55e9a67f1753550d8f4adb8bdd617304cf267a6664aacdc69abe12", null, "PTA 判题结果：测试点 0 至 4 全部答案正确，合计 25 分。"]
 ].map(([sourceId,filename,sha256,oldAlt,alt,caption])=>Object.freeze({sourceId,source:`_posts/csdn/${sourceId}.md`,filename,sha256,oldAlt,alt,caption})));
 
 function entriesForPost(post) {

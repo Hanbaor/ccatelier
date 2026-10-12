@@ -20,6 +20,7 @@ async function practice(t, {deferredAudio = false, audioAvailable = true, record
   const {window} = dom, {document} = window;
   // Render the current source template without requiring a generated-site rebuild.
   document.querySelector('[data-practice]').outerHTML = require('ejs').render(fs.readFileSync(path.join(__dirname, '../custom/redefine/nijika/practice.ejs'), 'utf8'), {
+    page: {practiceScores: (await require('../tools/build-practice-scores.cjs').buildPracticeScores()).map(({path,score}) => ({...score,path}))},
     url_for: value => '/' + value, partial: () => '<svg aria-hidden="true"></svg>',
   });
   for (const value of recordings) window.localStorage.setItem('cc-live-take-v1:' + value.id, JSON.stringify(value));
@@ -788,6 +789,23 @@ test('keyboard shortcuts ignore repeats, held duplicate keys, modifiers, editabl
  assert.equal(feedback.textContent,initial);f.bpm.focus();key(f,'a');assert.equal(feedback.textContent,initial);f.find('[data-challenge-start]').focus();
  key(f,'a');key(f,'a');key(f,'a',{repeat:true});release(f,'a');f.advance(500);
  f.find('[data-challenge-pad="snare"]').click();assert.match(feedback.textContent,/军鼓 · 合拍/);f.advance(3625);assert.match(f.find('[data-challenge-result]').textContent,/100%.*额外敲击 0/);
+});
+
+test('challenge scoring leaves handled and legacy IME keys alone without breaking normal or held-key input',async t=>{
+ const f=await practice(t);await startChallenge(f,{score:originalScore({bars:[{hits:[0,4].map(step=>({step,type:'kick',velocity:1}))}]})});f.advance(2100);
+ const owner=f.find('[data-challenge-start]');owner.focus();assert.equal(f.find('[data-challenge-pad="kick"]').disabled,false);assert.match(f.position.textContent,/1 \/ 1/);
+ const sounds=()=>f.contexts.flatMap(context=>context.started).filter(event=>!isClick(event)).length;
+ const caught=()=>f.find('[data-challenge-grid]').querySelectorAll('.is-caught').length;
+ function press(options={},handled=false){const event=new f.window.KeyboardEvent('keydown',{key:'a',bubbles:true,cancelable:true,...options});Object.defineProperty(event,'timeStamp',{value:performance.now()});if(handled)event.preventDefault();owner.dispatchEvent(event);return event;}
+ const initial=f.find('[data-challenge-feedback]').textContent;
+ assert.equal(press({},true).defaultPrevented,true);assert.equal(sounds(),0);assert.equal(caught(),0);assert.equal(f.find('[data-challenge-feedback]').textContent,initial);
+ assert.equal(press().defaultPrevented,true);assert.equal(sounds(),1);assert.equal(caught(),1);
+ // Advance beyond the scoring model's 25 ms duplicate window: holding A must
+ // still be suppressed by the keyboard's pressed-key set, not timing alone.
+ f.advance(50);press();assert.equal(sounds(),1);assert.equal(caught(),1);release(f,'a');f.advance(450);
+ for(const options of [{keyCode:229},{shiftKey:true},{repeat:true}]){assert.equal(press(options).defaultPrevented,false);assert.equal(sounds(),1);assert.equal(caught(),1);}
+ assert.equal(press().defaultPrevented,true);assert.equal(sounds(),2);assert.equal(caught(),2);release(f,'a');f.advance(1625);
+ assert.equal(f.find('[data-challenge-result]').hidden,false);assert.match(f.find('[data-challenge-result]').textContent,/100%.*接住 2 \/ 2.*合拍 2.*额外敲击 0/);
 });
 
 for(const [label,cancel] of [

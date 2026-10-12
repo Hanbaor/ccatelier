@@ -14,7 +14,7 @@ async function setup(hash=''){
 }
 async function sample(sql='SELECT draft',caseId='top-ties',datasetId='unique'){return(await snapshot).createSqlSnapshot(caseId,datasetId,sql)}
 
-test('nine fixture snapshots round trip exact Unicode, whitespace, empty and incomplete SQL without runnable validation',async()=>{
+test('thirteen fixture snapshots round trip exact Unicode, whitespace, empty and incomplete SQL without runnable validation',async()=>{
  const {SQL_CASES,listSqlDatasets}=await core,{encodeSqlShare,decodeSqlShare}=await share;
  let count=0;
  for(const item of SQL_CASES)for(const data of listSqlDatasets(item.id)){
@@ -24,7 +24,7 @@ test('nine fixture snapshots round trip exact Unicode, whitespace, empty and inc
    assert.deepEqual(decodeSqlShare(hash),value);assert.equal(encodeSqlShare(decodeSqlShare(hash)),hash);
   }
  }
- assert.equal(count,9);
+ assert.equal(count,13);
 });
 
 test('codec rejects malformed base64, invalid UTF8, unknown schema, fixture and revision, oversized input and prototype keys',async()=>{
@@ -59,7 +59,7 @@ test('incoming input stays staged without focus, mutation or execution; explicit
   assert.equal(s.$('[data-sql-incoming-sql]').textContent,value.sql);assert.equal(s.$('[data-sql-incoming-sql] script'),null);
   const drafts=Array.from(s.doc.querySelectorAll('[data-sql-editor]'));drafts.forEach((field,i)=>field.value='local '+i);
   s.$('[data-sql-incoming-load]').click();assert.equal(s.editor().value,value.sql);assert.equal(s.calls.length,0);assert.equal(s.$('[data-sql-dataset]').value,'unique');
-  s.$('[data-sql-restore-draft]').click();assert.deepEqual(drafts.map(field=>field.value),['local 0','local 1','local 2']);assert.equal(s.calls.length,0);
+  s.$('[data-sql-restore-draft]').click();assert.deepEqual(drafts.map(field=>field.value),drafts.map((_,i)=>'local '+i));assert.equal(s.calls.length,0);
   s.$('[data-sql-restore-draft]').click();assert.equal(s.editor().value,value.sql);assert.equal(s.calls.length,0);
  }finally{s.close()}
 });
@@ -104,7 +104,7 @@ test('link apply cancels pending run and file read; hidden, pagehide and hash ch
  }finally{s.close()}
 });
 
-test('all nine arrival previews name the exact dataset and preserve current experiments',async()=>{
+test('all thirteen arrival previews name the exact dataset and preserve current experiments',async()=>{
  const {SQL_CASES,listSqlDatasets}=await core,{encodeSqlShare}=await share,s=await setup();
  try{
   const sql=s.editor().value;let count=0;
@@ -113,7 +113,7 @@ test('all nine arrival previews name the exact dataset and preserve current expe
    assert.ok(s.$('[data-sql-incoming-info]').textContent.includes(`${item.label} · ${dataset.label}`));
    assert.equal(s.editor().value,sql);assert.equal(s.calls.length,0);
   }
-  assert.equal(count,9);
+  assert.equal(count,13);
  }finally{s.close()}
 });
 
@@ -322,4 +322,14 @@ test('SQL action fonts and URL stay readable on desktop and mobile, with mobile 
    assert.equal(parseFloat(s.dom.window.getComputedStyle(s.editor()).fontSize),width<=650?16:13);
   }finally{s.close()}
  }
+});
+
+test('fanout shared input loads its third-table dataset only on request and restores all old drafts',async()=>{
+ const f=(await core).getSqlCase('join-fanout'),value=await sample(f.reference,f.id,'no-rehearsals');
+ const s=await setup((await share).encodeSqlShare(value));try{
+  const prior=s.editor().value;await flush();assert.equal(s.calls.length,0);assert.equal(s.$('[data-sql-case]:not([hidden])').dataset.sqlCase,'empty-count');
+  s.$('[data-sql-incoming-load]').click();assert.equal(s.$('[data-sql-case]:not([hidden])').dataset.sqlCase,f.id);assert.equal(s.editor().value,f.reference);assert.equal(s.$('[data-sql-dataset]').value,'no-rehearsals');assert.equal(s.calls.length,0);
+  assert.equal(s.$('[data-sql-case="join-fanout"] [data-sql-fixture="rehearsals"] tbody').rows.length,0);
+  s.$('[data-sql-restore-draft]').click();assert.equal(s.$('[data-sql-case]:not([hidden])').dataset.sqlCase,'empty-count');assert.equal(s.editor().value,prior);assert.equal(s.calls.length,0);
+ }finally{s.close()}
 });

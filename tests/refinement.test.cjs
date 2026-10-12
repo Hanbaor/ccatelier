@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {JSDOM} = require('jsdom');
+const {expandStylesheetURLs}=require('../tools/build-shared-stylesheets.cjs');
 const root = path.resolve(__dirname, '..');
 const read = route => fs.readFileSync(path.join(root, 'public', route), 'utf8');
 
@@ -10,9 +11,9 @@ test('editorial styles load after refinements and quick navigation identifies th
   for (const route of ['index.html', 'atelier/index.html', 'notes/index.html', 'lounge/index.html', 'studio/index.html', 'about/index.html', 'research/index.html']) {
     const dom = new JSDOM(read(route));
     try {
-      const styles = [...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].filter(style => !['/livehouse.css','/navigation-scenes.css','/practice.css','/content-catalog.css','/research-sql.css'].some(name => style.href.endsWith(name)));
+      const styles = expandStylesheetURLs([...dom.window.document.querySelectorAll('link[rel="stylesheet"]')].map(style=>style.getAttribute('href'))).filter(style => !['/livehouse.css','/navigation-scenes.css','/practice.css','/content-catalog.css','/research-sql.css','/research-local-table.css'].some(name => style.endsWith(name)));
       const needsIndex=['atelier/index.html','notes/index.html'].includes(route);
-      const indexStyles=styles.filter(style=>style.href.endsWith('/editorial-index.css'));
+      const indexStyles=styles.filter(style=>style.endsWith('/editorial-index.css'));
       assert.equal(indexStyles.length,needsIndex?1:0,'editorial index styling stays on the two index routes');
       if(needsIndex){
         assert.equal(styles.at(-1),indexStyles[0],'route index rules load after all shared and personal composition rules');
@@ -20,18 +21,18 @@ test('editorial styles load after refinements and quick navigation identifies th
         styles.pop();
       }
       const expectedPersonal = ['index.html','atelier/index.html'].includes(route) ? 'personal-home.css' : ['about/index.html','research/index.html'].includes(route) ? 'personal-pages.css' : null;
-      const personalStyles = styles.filter(style => /\/personal-(home|pages)\.css$/.test(style.href));
+      const personalStyles = styles.filter(style => /\/personal-(home|pages)\.css$/.test(style));
       assert.equal(personalStyles.length, expectedPersonal ? 1 : 0, 'only the matching personal composition is loaded');
       if (expectedPersonal) {
-        assert.ok(styles.at(-1).href.endsWith('/'+expectedPersonal));
+        assert.ok(styles.at(-1).endsWith('/'+expectedPersonal));
         assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/'+expectedPersonal));
         styles.pop();
       }
-      assert.match(styles.at(-1).getAttribute('href'), /atelier\/css\/immersive\.css$/);
+      assert.match(styles.at(-1), /atelier\/css\/immersive\.css$/);
       const needsRooms = ['lounge/index.html','about/index.html','research/index.html'].includes(route);
-      assert.equal(styles.some(style=>style.href.endsWith('/rooms-v2.css')), needsRooms);
-      assert.ok(styles.at(-2).href.endsWith(needsRooms ? '/rooms-v2.css' : '/editorial.css'));
-      assert.ok(styles.some(style=>style.href.endsWith('/refinement.css')));
+      assert.equal(styles.some(style=>style.endsWith('/rooms-v2.css')), needsRooms);
+      assert.ok(styles.at(-2).endsWith(needsRooms ? '/rooms-v2.css' : '/editorial.css'));
+      assert.ok(styles.some(style=>style.endsWith('/refinement.css')));
       assert.ok(JSON.parse(read('atelier/data/offline-shell.json')).includes('/atelier/css/refinement.css'));
       const nav = dom.window.document.querySelector('nav.header-navigation');
       assert.equal(nav.getAttribute('aria-label'), '快捷导航');

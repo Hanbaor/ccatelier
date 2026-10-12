@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "hexo generate",
+    "build:offline": "node --require ./tools/offline-build.cjs node_modules/hexo/bin/hexo generate",
+    "test:offline": "npm run build:offline && node --test tests/*.test.cjs",
     "clean": "hexo clean",
     "deploy": "hexo deploy",
     "server": "hexo server",
@@ -36,6 +38,7 @@
     "jsdom": "^25.0.1",
     "sharp": "0.35.4",
     "three": "0.186.0",
-    "wrangler": "4.137.0"
+    "wrangler": "4.137.0",
+    "rrweb-cssom": "0.7.1"
   }
 }

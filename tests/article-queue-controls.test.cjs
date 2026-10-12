@@ -33,7 +33,7 @@ for(const root of ['/','/lab/']){
  test(`${root} removal, undo, import and cross-tab replacement restore controls`,async t=>{
   const s=await setup(t,root,[{}]);check(s,true,false);s.add.focus();
   s.queueAction({type:'done',path:s.article,at:1000});check(s,true,true);s.queueAction({type:'undone',path:s.article});check(s,true,false);s.queueAction({type:'remove',path:s.article});check(s,false,false);assert.equal(document.activeElement,s.add);
-  const file=document.querySelector('#queue-dialog input');Object.defineProperty(file,'files',{value:[{size:100,text:async()=>JSON.stringify({version:1,queue:[{path:s.article,title:'导入文章',completed:2000}]})}]});file.dispatchEvent(new s.window.Event('change'));await flush();check(s,true,true);assert.equal(document.activeElement,s.add);
+  const opener=document.createElement('button');opener.className='queue-open';document.body.append(opener);opener.click();await flush();const file=document.querySelector('#queue-dialog input');Object.defineProperty(file,'files',{value:[{size:100,text:async()=>JSON.stringify({version:1,queue:[{path:s.article,title:'导入文章',completed:2000}]})}]});file.dispatchEvent(new s.window.Event('change'));await flush();check(s,true,true);assert.equal(document.activeElement,s.add);
   localStorage.setItem('cc-queue',JSON.stringify({version:1,queue:[{path:s.article,title:'文章'}]}));s.window.dispatchEvent(new s.window.StorageEvent('storage',{key:'cc-queue'}));check(s,true,false);
   localStorage.clear();s.window.dispatchEvent(new s.window.StorageEvent('storage',{key:null}));check(s,false,false);assert.equal(document.activeElement,s.add);
  });

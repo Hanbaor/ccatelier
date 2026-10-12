@@ -60,7 +60,7 @@ function specificity(selector){let score=0;selector=selector.replace(/:(is|not|h
 function notesSheets(doc,route='notes'){
  const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:route},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>false,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
  const head=new JSDOM(html),files=[...head.window.document.querySelectorAll('link[rel="stylesheet"]'),...doc.querySelectorAll('link[rel="stylesheet"]')].map(n=>n.getAttribute('href').slice(1));head.window.close();
- return files.map(file=>({file,rules:parseCSS(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules}));
+ return files.map(file=>({file,rules:parseCSS(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules}));
 }
 function cascade(sheets,node,property,width,withoutAuto=false){
  let answer={value:'',priority:-1,weight:-1};
@@ -105,7 +105,9 @@ function contrastRatio(a,b){
 for(const width of [393,1180])for(const theme of ['light','dark'])test(`notes hero navigation stays readable with 44px targets at ${width}px in ${theme}`,()=>{
  const dom=render('notes'),d=dom.window.document;d.body.className='nijika '+theme;d.body.dataset.section='notes';
  const sheets=notesSheets(d),links=[...d.querySelectorAll('.notes-editorial-heading nav a')];
- assert.deepEqual(links.map(a=>a.getAttribute('href')),['#reading-paths','#notes-catalog']);
+ const resume=d.querySelector('[data-notes-resume]');assert.equal(resume.hidden,true);assert.equal(resume.hasAttribute('href'),false);
+ assert.equal(cascade(sheets,resume,'display',width).value,'none');resume.hidden=false;
+ assert.deepEqual(links.filter(a=>a!==resume).map(a=>a.getAttribute('href')),['#reading-paths','#notes-catalog']);
  for(const link of links){
   const size=cascade(sheets,link,'font-size',width);
   assert.equal(size.value,'13px');assert.equal(size.file,'atelier/css/editorial-index.css');

@@ -1,8 +1,10 @@
+import {initArticleReading} from './article-reading.js';
 import {$,$$,storage,toast} from './ui.js';
 import {articleText,textRange,revealRange} from './text-anchors.js';
 import {nextMatch,findMatches} from './reader-search.mjs';
 export function initReader(){
  const article=$('.article-body'),studio=$('.reading-studio');if(!article||!studio)return;
+ initArticleReading();
  const input=$('#reader-find'),status=$('[data-find-status]');let ranges=[],current=-1,timer,lastQuery=null;
  const highlight=()=>{if(!globalThis.CSS?.highlights||!globalThis.Highlight)return;CSS.highlights.set('reader-search',new Highlight(...ranges));CSS.highlights.set('reader-active',new Highlight(...(ranges[current]?[ranges[current]]:[])));};
  function move(delta){search();if(!ranges.length)return;current=nextMatch(current,ranges.length,delta);highlight();revealRange(ranges[current]);if(!globalThis.CSS?.highlights){getSelection().removeAllRanges();getSelection().addRange(ranges[current]);}status.textContent=(current+1)+' / '+ranges.length;}

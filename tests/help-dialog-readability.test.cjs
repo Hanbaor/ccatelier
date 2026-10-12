@@ -28,13 +28,16 @@ const parsed=new Map();
 function sheet(file,width){
  // Compiled theme is read-only. Every authored sheet is read from source, in the
  // real route's EJS order. No build or public-file writes occur in this test.
- if(!parsed.has(file))parsed.set(file,parse(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules);
+ if(!parsed.has(file))parsed.set(file,parse(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules);
  return screenRules(parsed.get(file),width);
 }
 function fixture(route,type,width,theme){
  const paths=sheetPaths(route,type),styles=paths.map(file=>`<style>${sheet(file,width)}</style>`).join('');
- const markup=ejs.render(help,{url_for:v=>'/'+v});
+ const markup=ejs.render(help,{page:['article','ordinary'].includes(route)?{}:{nijika:route},url_for:v=>'/'+v});
  const dom=new JSDOM(`${styles}<body class="nijika ${theme}" data-section="${route}">${markup}</body>`);
+ // Check readability in the available state; separate availability regressions
+ // run the real initializer before exposing the studio-only shortcut.
+ dom.window.document.querySelectorAll('[data-stage-help-action]').forEach(button=>{button.hidden=false;});
  return {dom,paths};
 }
 function contrast(a,b){
@@ -65,7 +68,7 @@ for(const [route,type] of routes)for(const width of [393,1180])for(const theme o
     assert.equal(computed.alignItems,'center');assert.equal(computed.width,'100%');
     assert.equal(computed.minHeight,'44px','the full row remains a touch target');
    }
-   assert.equal(doc.querySelectorAll('.help-links>a').length,5);assert.equal(doc.querySelectorAll('.help-links>button').length,2);
+   assert.equal(doc.querySelectorAll('.help-links>a').length,5);assert.equal(doc.querySelectorAll('.help-links>button').length,route==='studio'?2:1);
    assert.equal(doc.querySelector('.close-button').dataset.close,'help-dialog');
    // JSDOM does not resolve inherited CSS variables. Check the actual final body
    // palette separately; browser QA owns wrapping, geometry, focus and Escape.

@@ -56,3 +56,50 @@ test('archive generator uses the same decoded text for future offline snapshots'
  assert.equal(entry.text,expected);
  assert.equal(entry.excerpt,expected);
 });
+
+function exercisePost(){
+ const {CODE_PLACEHOLDER,ANALYSIS_PLACEHOLDER}=require('../tools/content-catalog.cjs');
+ return {...post(),title:'全排列',series:'hot100',
+  _content:'## 题目要求\n全排列 dfs\n\n## 代码实现\n'+CODE_PLACEHOLDER+'\n\n## 个人解析\n'+ANALYSIS_PLACEHOLDER+'\n\n[返回目录](/series/hot100/)',
+  content:'<h2>题目要求</h2><p>全排列 dfs</p><h2>代码实现</h2><div class="code-container"><figure><table><tr><td class="gutter"><pre>1</pre></td><td><pre>// 在这里填写你的代码</pre></td></tr></table></figure></div><h2>个人解析</h2><blockquote><p>'+ANALYSIS_PLACEHOLDER.slice(2)+'</p></blockquote><p>返回目录</p>'};
+}
+
+test('plain SearchDB indexes canonical exercise content without false unfinished-analysis hits or model mutation',async()=>{
+ const {hexo,generators,filters}=loadScript('scripts/nijika.js');filters.get('before_generate').call(hexo);
+ const original=exercisePost(),before={...original};
+ // Hexo models expose metadata via inherited getters; cloning must retain them.
+ const article=Object.create(original,{path:{get:()=>'/hot100/055/'}});
+ const entries=JSON.parse((await generators.get('json').call(hexo,{posts:[article]})).data);
+ const {findEntries}=await import('../source/atelier/js/search-core.mjs');
+ assert.equal(entries.length,1);assert.equal(entries[0].url,'/hot100/055/');
+ assert.equal(findEntries('全排列 dfs',entries).length,1);
+ assert.equal(findEntries('全排列 时间复杂度',entries).length,0);
+ assert.doesNotMatch(entries[0].content,/在这里填写|在这里补充|个人解析|代码实现/);
+ assert.deepEqual(original,before);assert.equal(article.content,original.content);
+});
+
+test('search preserves legitimate author text, partial work, code syntax, raw/html modes and disabled content',async()=>{
+ for(const format of ['striptags','raw','html']){
+  const {hexo,generators,filters}=loadScript('scripts/nijika.js',{root:'/lab/',search:{path:'search.json',field:'all',format,content:true}});filters.get('before_generate').call(hexo);
+  const empty=exercisePost(),partial=exercisePost(),ordinary={...exercisePost(),series:undefined};
+  partial._content+='\n\n## 个人解析\n实际推导的时间复杂度。';
+  partial.content+='<h2>个人解析</h2><p>实际推导的时间复杂度。</p><pre>vector&lt;int&gt; nums;</pre>';
+  const entries=JSON.parse((await generators.get('json').call(hexo,{posts:[empty,partial,ordinary],pages:[post()]})).data);
+  assert.equal(entries.length,4);assert.equal(entries[0].url,'/lab/code/');
+  if(format==='striptags'){
+   assert.doesNotMatch(entries[0].content,/在这里补充/);
+   assert.match(entries[1].content,/在这里补充/);assert.match(entries[1].content,/实际推导的时间复杂度/);assert.match(entries[1].content,/vector<int>/);
+   assert.match(entries[2].content,/在这里补充/);assert.doesNotMatch(entries[2].content,/\b1\b/,'SearchDB still removes gutter numbers');
+   assert.equal(entries[3].content,expected);
+  }else assert.equal(entries[0].content,format==='raw'?empty._content:empty.content.replace(/<td class="gutter">.*?<\/td>/g,''));
+ }
+ const {hexo,generators,filters}=loadScript('scripts/nijika.js',{search:{path:'search.json',field:'post',format:'striptags',content:false}});filters.get('before_generate').call(hexo);
+ assert.equal(JSON.parse((await generators.get('json').call(hexo,{posts:[exercisePost()]})).data)[0].content,'');
+});
+
+
+test('page-only plain SearchDB does not require or rewrite post models',async()=>{
+ const {hexo,generators,filters}=loadScript('scripts/nijika.js',{search:{path:'search.json',field:'page',format:'striptags',content:true}});filters.get('before_generate').call(hexo);
+ const entries=JSON.parse((await generators.get('json').call(hexo,{pages:[post()]})).data);
+ assert.equal(entries.length,1);assert.equal(entries[0].content,expected);
+});

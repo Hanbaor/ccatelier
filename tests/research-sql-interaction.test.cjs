@@ -117,9 +117,21 @@ test('actual SQLite worker can be terminated during an unbounded query and a fre
  try{
   const simple=await runner.run('empty-count','SELECT COUNT(*) AS n FROM artists');assert.deepEqual(simple.rows,[[3]]);
   const {SQL_CASES,listSqlDatasets,getSqlDataset}=await import('../source/atelier/js/research-sql-core.mjs');
-  for(const fixture of SQL_CASES)for(const dataset of listSqlDatasets(fixture.id)){const selected=getSqlDataset(fixture.id,dataset.id);assert.deepEqual(await runner.run(fixture.id,selected.reference,dataset.id),{...selected.expected,truncated:false});}
+  for(const fixture of SQL_CASES)for(const dataset of listSqlDatasets(fixture.id)){const selected=getSqlDataset(fixture.id,dataset.id);const {runEvidence,...result}=await runner.run(fixture.id,selected.reference,dataset.id);assert.deepEqual(result,{...selected.expected,truncated:false});assert.deepEqual(runEvidence.reference,{...selected.expected,truncated:false});assert.equal(runEvidence.sql,selected.reference);assert.equal(runEvidence.caseId,fixture.id);assert.equal(runEvidence.datasetId,dataset.id);}
   await assert.rejects(runner.run('empty-count','WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n) SELECT SUM(x) FROM n'),/超过/);
   assert.ok(instances[0].terminated);
   const recovered=await runner.run('top-ties','SELECT track, points FROM scores WHERE points=95 ORDER BY track');assert.deepEqual(recovered.rows,[['Blue',95],['Gold',95]]);assert.equal(instances.length,2);
  }finally{runner.stop()}
+});
+
+test('SQL run shortcut respects handled and legacy IME ownership while retaining Ctrl/Meta Enter variants',async()=>{
+ const s=await setup();try{
+  const field=s.panel().querySelector('[data-sql-editor]');
+  for(const modifier of ['ctrlKey','metaKey'])for(const flag of ['handled','isComposing','keyCode']){
+   const event=new s.dom.window.KeyboardEvent('keydown',{key:'Enter',[modifier]:true,bubbles:true,cancelable:true,...(flag==='handled'?{}:{[flag]:flag==='keyCode'?229:true})});if(flag==='handled')event.preventDefault();field.dispatchEvent(event);assert.equal(event.defaultPrevented,flag==='handled');assert.equal(s.calls.length,0);
+  }
+  for(const modifier of ['ctrlKey','metaKey'])for(const options of [{},{shiftKey:true},{repeat:true}]){
+   const before=s.calls.length,event=new s.dom.window.KeyboardEvent('keydown',{key:'Enter',[modifier]:true,bubbles:true,cancelable:true,...options});field.dispatchEvent(event);assert.equal(event.defaultPrevented,true);assert.equal(s.calls.length,before+1);s.requests.at(-1).resolve({columns:['name','tracks'],rows:[],truncated:false});await flush();
+  }
+ }finally{s.controller.destroy?.();s.dom.window.close();}
 });

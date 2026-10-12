@@ -26,6 +26,7 @@ body.nijika[data-section="atelier"]:not(.light) {
   --text:#cbc5b6;--muted:#aaa18d;--line:#383a32;--yellow:#e9c77d;
   background:var(--bg);
 }
+/* Native hash clearance belongs to the scroll container, not also its headings. */
 html {scroll-padding-top:110px;scrollbar-gutter:stable}
 button,input,select,textarea {font:inherit}
 button,select {touch-action:manipulation}
@@ -143,7 +144,7 @@ h1,h2 {text-wrap:balance}
 .pagination>a,.pagination>span {min-width:44px;min-height:44px;font-size:13px;border-radius:5px}
 .series-topics {top:110px;max-height:calc(100svh - 140px)}
 .series-topics>a {font-size:13px;padding-block:10px}
-.series-group {scroll-margin-top:110px}
+.series-group {scroll-margin-top:0px}
 .series-track {padding-block:18px}
 .series-track strong {font-size:16px}
 .series-track small,.series-track .track-number {font-size:12px}
@@ -221,7 +222,7 @@ h1,h2 {text-wrap:balance}
 .reader-speech button {font-size:11px;min-height:36px;padding-inline:7px}
 .reader-speech p {font-size:11px;line-height:1.8}
 .reading-studio .article-body.markdown-body {color:var(--text)}
-.reading-studio .article-body.markdown-body :is(h1,h2,h3,h4,h5,h6) {scroll-margin-top:110px}
+.reading-studio .article-body.markdown-body :is(h1,h2,h3,h4,h5,h6) {scroll-margin-top:0px}
 .reading-studio .article-body.markdown-body p {margin-block:0 1.1em}
 .reading-studio .article-body.markdown-body a {text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--yellow) 45%,transparent)}
 .reading-studio .article-body.markdown-body blockquote {border:0;border-radius:4px;padding:16px 20px;background:var(--surface)}
@@ -239,13 +240,14 @@ h1,h2 {text-wrap:balance}
 .reading-studio .neighbor-posts a {flex:1;min-width:0;padding:0;border:0;background:none;max-width:50%;gap:4px}
 .reading-studio .neighbor-posts small {font-size:12px;color:var(--muted)}
 .reading-studio .neighbor-posts span {font-size:15px;line-height:1.6}
+.reading-focused .reading-studio .neighbor-posts {display:none}
 .reading-focused .reading-studio .reader-columns {display:block;max-width:720px}
 .reading-focused .reader-frontmatter {display:contents}
 
 .reading-studio .reader-columns.reader-no-toc {display:block;max-width:720px}
 
 /* A duplicate opening title keeps its historic hash without a second visible heading. */
-.reading-studio .reader-title-anchor {display:block;height:0;margin:0;padding:0;scroll-margin-top:110px}
+.reading-studio .reader-title-anchor {display:block;height:0;margin:0;padding:0;scroll-margin-top:0px}
 .reading-studio .article-body.markdown-body>.reader-title-anchor+:is(h1,h2,h3,h4,h5,h6) {margin-top:0}
 
 .reading-studio .reading-nav {border:0;padding:0;margin:0 0 12px}
@@ -532,6 +534,9 @@ h1,h2 {text-wrap:balance}
   .reading-studio .article-body.markdown-body blockquote {padding:14px 18px}
   .neighbor-posts {display:grid;grid-template-columns:1fr;gap:12px}
   .neighbor-posts a {max-width:none;padding:18px}
+  /* Match the reader baseline specificity so phone links really get a full row. */
+  .reading-studio .neighbor-posts {display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+  .reading-studio .neighbor-posts a {max-width:none}
   .reader-encore>div {flex-wrap:wrap}
   .reader-encore button {min-height:44px}
   .section-mast {display:block}
@@ -616,9 +621,22 @@ h1,h2 {text-wrap:balance}
 .motion-off .archive-record,.motion-off .shelf-object {transition:none}
 .motion-off .archive-record:hover,.motion-off .shelf-object:hover {transform:none}
 @media print {
-  .site-header,.site-footer,.chapter-rail,.reader-options,.article-toolbox,.reading-nav,.reader-encore,.encore-comments,.surface-noise,.stage-field {display:none!important}
+  .site-header,.site-footer,.no-script-nav,.chapter-rail,.reader-options,.article-toolbox,.reading-nav,.reader-encore,.encore-comments,.surface-noise,.stage-field {display:none!important}
   .reading-page [data-reader-exclude],.reading-page .copy-code,.reading-page .code-workbench-open,.reading-page .chapter-copy,.reading-page .reader-comments,.reading-progress,.selection-note {display:none!important}
-  body.nijika {background:#fff!important;color:#111!important;--text:#222;--ink:#111;--yellow:#493616;--line:#ccc}
+  :root {color-scheme:light!important}
+  body.nijika {background:#fff!important;color:#111!important;color-scheme:light!important;--bg:#fff!important;--surface:#f6f6f6!important;--text:#222!important;--ink:#111!important;--muted:#595959!important;--yellow:#493616!important;--line:#ccc!important}
+  /* Imported syntax classes can still consume Redefine's system-dark palette. */
+  .reading-studio .article-body.markdown-body {
+    --highlight-background:var(--surface)!important;--highlight-foreground:var(--text)!important;
+    --highlight-keyword:var(--text)!important;--highlight-link:var(--text)!important;
+    --highlight-built-in:var(--text)!important;--highlight-number:var(--text)!important;
+    --highlight-string:var(--text)!important;--highlight-regexp:var(--text)!important;
+    --highlight-subst:var(--text)!important;--highlight-comment:var(--muted)!important;
+    --highlight-doctag:var(--text)!important;--highlight-meta:var(--text)!important;
+    --highlight-variable:var(--text)!important;--highlight-attr:var(--text)!important;
+    --highlight-section:var(--text)!important;--highlight-bullet:var(--text)!important;
+    --highlight-addition:var(--text)!important;--highlight-deletion:var(--text)!important;
+  }
   .reading-studio {padding:0;max-width:none}
   .reading-studio .reader-columns {display:block}
   .reading-studio .article-body.markdown-body {font-size:11pt!important}
@@ -631,3 +649,19 @@ h1,h2 {text-wrap:balance}
 .encore-comments .comment-status:empty {display:none}
 
 .encore-comments .comment-status .community-retry {display:inline-flex;align-items:center;vertical-align:middle;margin:0;margin-inline-start:12px;min-height:44px}
+
+/* Continuation belongs to the existing navigation, never a second toolbar. */
+.reading-studio .reading-nav {flex-wrap:wrap}
+.reading-studio .reading-nav .reading-resume {font:inherit;font-size:13px;min-height:44px;margin-left:auto;padding:4px 0;color:var(--muted);border:0;background:none}
+.reading-studio .reading-nav .reading-resume:hover {color:var(--yellow)}
+.reading-studio .reading-nav .reading-resume:focus-visible {outline:1px solid var(--yellow);outline-offset:4px}
+[data-notes-resume] {overflow-wrap:anywhere}
+
+/* Native navigation remains available until its dialog is usable. */
+.menu-fallback {align-items:center;justify-content:center;min-width:44px;min-height:44px;font-size:12px}
+.no-script-nav {justify-content:center;align-items:center;gap:8px 24px;flex-wrap:wrap;padding:18px var(--page-gutter);font-size:13px}
+.no-script-nav a {display:flex;align-items:center;min-height:44px}
+
+.menu-fallback:not([hidden]),.no-script-nav:not([hidden]) {display:flex}
+
+.site-header .menu-open[hidden],.menu-fallback[hidden],.no-script-nav[hidden] {display:none}

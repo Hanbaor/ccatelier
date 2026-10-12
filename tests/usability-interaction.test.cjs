@@ -40,7 +40,7 @@ test('queue edits retain logical focus and keep archive buttons synchronized wit
     for (const button of buttons) assert.equal(button.getAttribute('aria-pressed'), 'true');
     assert.equal(document.querySelector('.archive-record'), cards[0], 'state updates must not replace archive cards');
 
-    await import('../source/atelier/js/queue-list.js');
+    await import('../source/atelier/js/queue-list.js');await import('../source/atelier/js/queue-dialog.js');
     document.querySelector('.queue-open').click();
     await new Promise(resolve=>setImmediate(resolve));
     const rowFor = item => [...document.querySelectorAll('#queue-dialog .queue-row')].find(row => row.dataset.queuePath === item.path);

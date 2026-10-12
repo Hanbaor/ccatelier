@@ -34,8 +34,9 @@ test('practice artwork ships real 3:2 WebP sources within the image budget', () 
 });
 
 for (const prefix of ['/', '/lab/']) {
-  test(`practice header uses the new responsive art without changing controls (${prefix})`, () => {
+  test(`practice header uses the new responsive art without changing controls (${prefix})`, async () => {
     const html = ejs.render(read('custom/redefine/nijika/practice.ejs'), {
+      page: {practiceScores: (await require('../tools/build-practice-scores.cjs').buildPracticeScores()).map(({path,score}) => ({...score,path}))},
       url_for: value => prefix + value,
       partial: name => read(`custom/redefine/${name}.ejs`),
     });
@@ -43,7 +44,8 @@ for (const prefix of ['/', '/lab/']) {
     try {
       const doc = dom.window.document;
       const art = doc.querySelector('.practice-heading > img');
-      assert.equal(doc.querySelectorAll('img').length, 1);
+      assert.equal(doc.querySelectorAll('.practice-heading > img').length, 1);
+      assert.equal(doc.querySelectorAll('.practice-static-score img').length, 3);
       assert.equal(art.getAttribute('src'), `${prefix}atelier/images/v5/practice-room.webp`);
       assert.equal(art.getAttribute('srcset'), `${prefix}atelier/images/v5/practice-room-960.webp 960w, ${prefix}atelier/images/v5/practice-room.webp 1536w`);
       assert.equal(art.getAttribute('sizes'), '(max-width:600px) 90px, (max-width:850px) 190px, 240px');

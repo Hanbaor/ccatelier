@@ -23,7 +23,7 @@ test('real pinned SQLite validates every published reference and rejects origina
   assert.equal(overfit[0].state,'match');assert.ok(overfit.slice(1).some(row=>row.state!=='match'),fixture.id);
   const candidate=await runSqlSuite({caseId:fixture.id,sql:fixture.candidate,runner});assert.equal(candidate[0].state,'different');
  }
- assert.equal(checked,9);
+ assert.equal(checked,13);
 });
 test('suite executes sequentially, captures SQL, preserves errors and truncated uncertainty, and stops on cancellation',async()=>{
  const {runSqlSuite}=await suite;const requests=[],calls=[],updates=[];let current=true;
@@ -103,7 +103,7 @@ test('mixed errors, truncation and differences are announced as unjudged rather 
   assert.equal(s.$('[data-sql-suite-run]').disabled,false);
  }finally{s.close()}
 });
-test('shipped worker suite obeys timeout termination and recovers for all nine reference datasets',async()=>{
+test('shipped worker suite obeys timeout termination and recovers for all thirteen reference datasets',async()=>{
  const {Worker}=require('node:worker_threads'),{pathToFileURL}=require('node:url');
  const {createSqlRunner}=await import('../source/atelier/js/research-sql.js'),{runSqlSuite}=await suite,c=await core;
  const coreUrl=pathToFileURL(path.join(root,'source/atelier/js/research-sql-core.mjs')).href;

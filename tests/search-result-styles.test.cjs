@@ -19,7 +19,7 @@ function fixture(width,height,theme){
  // Apply real template order, including optional route sheets, with pixel media
  // conditions selected explicitly because JSDOM does not evaluate viewports.
  // This verifies cascade contracts; browser QA owns actual wrapping/geometry.
- const styles=paths.map(file=>'<style>'+screenRules(parse(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules,width,height)+'</style>').join('');
+ const styles=paths.map(file=>'<style>'+screenRules(parse(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules,width,height)+'</style>').join('');
  return new JSDOM(`${styles}<body class="nijika ${theme}"><dialog open id="search-dialog"><div id="search-results"><a href="/article/" class="search-result"><span class="result-copy"><mark>vector</mark> 容器<small>…vec.<mark>reserve</mark>(a) 当 a 大于当前容量时，将容量增加到至少 a；否则容量不变。它不会改变 size()。</small></span><small>离线副本</small></a></div></dialog></body>`);
 }
 for(const [width,height] of [[1280,900],[398,780],[360,640]])for(const theme of ['light','dark']){

@@ -49,9 +49,16 @@ test('real source yields a complete smaller initial graph with unchanged lazy UR
  const originals=new Map(fs.readdirSync(source).filter(name=>/\.m?js$/.test(name)).map(name=>[name,fs.readFileSync(path.join(source,name))]));
  const a=await buildMainEntry(source),b=await buildMainEntry(source);assert.equal(a.code,b.code);assert.deepEqual(a.metafile,b.metafile);
  fs.writeFileSync(path.join(dir,'atelier/js/main.js'),a.code);
- const before=graph(path.join(root,'source'),['atelier/js/main.js']),after=graph(dir,['atelier/js/main.js']);assert.equal(before.modules,22);assert.equal(after.modules,9);assert.ok(after.bytes<83000);
+ const before=graph(path.join(root,'source'),['atelier/js/main.js']),after=graph(dir,['atelier/js/main.js']);assert.equal(before.modules,23);assert.equal(after.modules,10);assert.ok(after.bytes<83000);
  const gzip=(base,files)=>files.reduce((sum,file)=>sum+gzipSync(fs.readFileSync(path.join(base,file.path)),{level:9}).length,0);assert.ok(gzip(dir,after.files)<gzip(path.join(root,'source'),before.files));
  const emitted=analyzeModule(a.code).imports;
+ assert.ok(!a.plan.bundled.has(path.join(source,'stage-engine.js')));
+ assert.ok(emitted.some(edge=>edge.kind==='dynamic-import'&&edge.path==='./stage-engine.js'));
+ assert.ok(!emitted.some(edge=>edge.kind==='import-statement'&&edge.path==='./stage-engine.js'));
+ assert.ok(a.plan.bundled.has(path.join(source,'community.js')),'community boot is entry-exclusive');
+ assert.ok(emitted.some(edge=>edge.kind==='import-statement'&&edge.path==='./community-shared.js'));
+ assert.ok(!emitted.some(edge=>edge.kind==='import-statement'&&edge.path==='./community.js'));
+ for(const file of ['ui.js','archive-store.js','live-dialog.js','community-shared.js'])assert.ok(!a.plan.bundled.has(path.join(source,file)),file+' retains a single shared identity');
  for(const file of a.plan.bundled)for(const edge of a.plan.edges.get(file))if(edge.kind==='dynamic-import'&&edge.target)assert.ok(emitted.some(item=>item.kind==='dynamic-import'&&path.resolve(source,item.path)===edge.target));
  for(const item of emitted)if(item.path.startsWith('.'))for(const prefix of ['/','/lab/']){const url=new URL(item.path,'https://test.invalid'+prefix+'atelier/js/main.js');assert.ok(fs.existsSync(path.join(dir,url.pathname.slice(prefix.length))));}
  for(const [name,bytes]of originals)assert.deepEqual(fs.readFileSync(path.join(source,name)),bytes,name);
@@ -91,10 +98,11 @@ test('offline manifests retain original URLs and a saved snapshot stores the gen
  for(const prefix of ['/','/lab/']){
   const routes=generators.get('live-archive').call({config:{root:prefix},base_dir:root},{posts:{sort:()=>({toArray:()=>[]})},data:{}}),manifest=JSON.parse(routes.find(route=>route.path==='atelier/data/offline-shell.json').data);
   assert.ok(manifest.includes(prefix+'atelier/js/main.js'));assert.ok(manifest.includes(prefix+'atelier/js/route-features.js'),'old exclusive URLs are intentionally retained');
-  for(const url of manifest)assert.ok(fs.existsSync(path.join(root,'source',url.slice(prefix.length))),url);
+  const assetPath=url=>{const relative=url.slice(prefix.length),authored=path.join(root,'source',relative);return fs.existsSync(authored)?authored:path.join(root,'public',relative);};
+  for(const url of manifest)assert.ok(fs.existsSync(assetPath(url)),url);
   const stores=new Map(),origin='https://atelier.test',key=value=>typeof value==='string'?new URL(value,origin).href:value.url;
   const caches={async open(name){if(!stores.has(name))stores.set(name,new Map());const data=stores.get(name);return {async put(url,response){data.set(key(url),response.clone());},async match(url){return data.get(key(url))?.clone();},async keys(){return [...data.keys()].map(url=>({url}));},async delete(url){return data.delete(key(url));}};},async keys(){return [...stores.keys()];},async delete(name){return stores.delete(name);}};
-  const fetch=async input=>{const url=new URL(key(input));if(url.pathname===prefix+'a/')return new Response('<script type="module" src="'+prefix+'atelier/js/main.js"></script>');if(url.pathname.endsWith('/archive.json'))return new Response(JSON.stringify({posts:[{path:prefix+'a/',title:'A'}]}));if(url.pathname.endsWith('/offline-shell.json'))return new Response(JSON.stringify(manifest));if(url.pathname===prefix+'atelier/js/main.js')return new Response(code);return new Response(fs.readFileSync(path.join(root,'source',url.pathname.slice(prefix.length))));};
+  const fetch=async input=>{const url=new URL(key(input));if(url.pathname===prefix+'a/')return new Response('<script type="module" src="'+prefix+'atelier/js/main.js"></script>');if(url.pathname.endsWith('/archive.json'))return new Response(JSON.stringify({posts:[{path:prefix+'a/',title:'A'}]}));if(url.pathname.endsWith('/offline-shell.json'))return new Response(JSON.stringify(manifest));if(url.pathname.endsWith('/offline-profile.json'))throw Error('Legacy fixture has no v2 profile');if(url.pathname===prefix+'atelier/js/main.js')return new Response(code);return new Response(fs.readFileSync(assetPath(url.pathname)));};
   const self={location:{origin},addEventListener(){},clients:{claim:async()=>{}},skipWaiting:async()=>{}};
   const context=vm.createContext({self,caches,fetch,URL,Response,Request,crypto,cacheableURL,articleResources,console});vm.runInContext(routes.find(route=>route.path==='live-sw.js').data.replace(/^import[^\n]+\n/gm,''),context);
   const saved=await context.handle({type:'save',path:prefix+'a/'}),snapshot=await caches.open(saved.rows[0].snapshot);

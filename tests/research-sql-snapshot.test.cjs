@@ -17,7 +17,7 @@ async function file(caseId='top-ties',datasetId='unique',sql='SELECT draft'){
  return{size:Buffer.byteLength(text),text:async()=>text};
 }
 
-test('all nine immutable built-in combinations execute expected reference and candidate boundaries',async()=>{
+test('all thirteen immutable built-in combinations execute expected reference and candidate boundaries',async()=>{
  const {SQL_CASES,listSqlDatasets,getSqlDataset,runFixtureQuery,compareResults}=await core;
  const SQL=await require('../source/atelier/vendor/sql.js/1.14.2/sql-wasm.js')({wasmBinary:fs.readFileSync(path.join(root,'source/atelier/vendor/sql.js/1.14.2/sql-wasm.wasm'))});
  let count=0;
@@ -27,9 +27,9 @@ test('all nine immutable built-in combinations execute expected reference and ca
   const reference=runFixtureQuery(SQL,item.id,fixture.reference,dataset.id);
   assert.deepEqual(reference,{...fixture.expected,truncated:false});
   const state=compareResults(runFixtureQuery(SQL,item.id,fixture.candidate,dataset.id),fixture.expected).state;
-  assert.equal(state,dataset.id==='default'||dataset.id==='no-tracks'?'different':'match',item.id+'/'+dataset.id);
+  assert.equal(state,dataset.id==='default'||dataset.id==='no-tracks'||(item.id==='join-fanout'&&dataset.id==='same-title')?'different':'match',item.id+'/'+dataset.id);
  }
- assert.equal(count,9);
+ assert.equal(count,13);
  assert.throws(()=>getSqlDataset('__proto__','default'));
  assert.throws(()=>getSqlDataset('top-ties','constructor'));
  assert.throws(()=>getSqlDataset('top-ties','default',2));
@@ -126,9 +126,9 @@ test('export downloads exact local draft, revokes URL and does not execute; file
  }finally{s.close()}
 });
 
-test('all nine dataset selections render their complete trusted rows and expected rows without extra case panels',async()=>{
+test('all thirteen dataset selections render their complete trusted rows and expected rows without extra case panels',async()=>{
  const {SQL_CASES,listSqlDatasets,getSqlDataset}=await core,s=await setup();try{
-  assert.equal(s.doc.querySelectorAll('[data-sql-case]').length,3);
+  assert.equal(s.doc.querySelectorAll('[data-sql-case]').length,4);
   for(const item of SQL_CASES){s.controller.select(item.id);
    for(const dataset of listSqlDatasets(item.id)){
     const fixture=getSqlDataset(item.id,dataset.id);s.$('[data-sql-dataset]').value=dataset.id;s.$('[data-sql-dataset]').dispatchEvent(new s.dom.window.Event('change'));
@@ -142,5 +142,15 @@ test('all nine dataset selections render their complete trusted rows and expecte
    }
   }
   assert.equal(s.calls.length,0);
+ }finally{s.close()}
+});
+
+test('fanout draft import restores exact dataset and SQL without running, then recovers the prior case',async()=>{
+ const s=await setup();try{
+  const prior=s.editor().value,f=(await core).getSqlCase('join-fanout');
+  await s.controller.importFile(await file(f.id,'same-title',f.reference));
+  assert.equal(s.panel().dataset.sqlCase,f.id);assert.equal(s.editor().value,f.reference);assert.equal(s.$('[data-sql-dataset]').value,'same-title');assert.equal(s.calls.length,0);
+  assert.equal(s.panel().querySelectorAll('[data-sql-fixture]').length,3);assert.match(s.$('[data-sql-status]').textContent,/尚未运行/);
+  s.$('[data-sql-restore-draft]').click();assert.equal(s.panel().dataset.sqlCase,'empty-count');assert.equal(s.editor().value,prior);assert.equal(s.calls.length,0);
  }finally{s.close()}
 });

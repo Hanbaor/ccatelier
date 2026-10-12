@@ -78,7 +78,7 @@ function screenRules(rules,width){return [...rules].flatMap(rule=>{
  return screenRules(rule.cssRules,width);
 }).join('\n');}
 function stylePaths(){const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'notes',introHtml:'<p>Original</p>'},theme:{nijika:{cover:''}},nijika_page_metadata:()=>({}),is_post:()=>false,is_page:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,url_for:p=>'/'+p,nijika_art_srcset:()=>'',open_graph:()=>'',export_config:()=>''});return [...html.matchAll(/<link rel="stylesheet" href="\/([^\"]+)"/g)].map(m=>m[1]);}
-const sheets=stylePaths().map(file=>parse(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules);
+const sheets=stylePaths().map(file=>parse(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules);
 function contrast(a,b){const lum=hex=>hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((n,v,i)=>n+v*[.2126,.7152,.0722][i],0);const [x,y]=[lum(a),lum(b)].sort((a,b)=>b-a);return (x+.05)/(y+.05);}
 for(const width of [360,768,1440])for(const theme of ['light','dark'])test(`real route stylesheet cascade keeps hidden/visible controls, readable type and touch targets at ${width}px ${theme}`,async()=>{
  const dom=new JSDOM(sheets.map(rules=>'<style>'+screenRules(rules,width)+'</style>').join('')+`<body class="nijika ${theme}">${markup()}</body>`,{url:'https://example.test/series/hot100/'});try{

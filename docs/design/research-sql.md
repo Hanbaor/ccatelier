@@ -1,12 +1,19 @@
 # Research room: Text-to-SQL teaching playground
 
-This is an original, three-case teaching artifact attached to the site's existing Database / Text-to-SQL interest. It does not represent a publication, benchmark, research result, model evaluation, or claim about the site author's work.
+This is an original, four-case teaching artifact attached to the site's existing Database / Text-to-SQL interest. It does not represent a publication, benchmark, research result, model evaluation, or claim about the site author's work.
 
 ## What it demonstrates
 
 1. A `LEFT JOIN` preserves an artist with no tracks. `COUNT(*)` returns one for that null-extended row; `COUNT(t.id)` returns zero. All three artists and all three tracks are visible.
 2. `LIMIT 1` excludes one of two top-scoring tracks. Filtering by `MAX(points)` keeps both. All three score rows are visible.
 3. A `NOT IN` subquery includes a `NULL` rehearsal track ID. Its matching track is excluded; both unmatched tracks produce unknown predicates and are also filtered out. Correlated `NOT EXISTS` keeps the two unrehearsed tracks. All three tracks and both rehearsal records are visible; SQL nulls display as `NULL`, never blank cells. Track IDs are non-null primary keys, and the question explicitly ignores unassigned rehearsals. Filtering nulls out of the subquery is another valid repair for this fixture, not a universal equivalence claim.
+
+
+4. Two independent one-to-many relations join artist-level tracks and rehearsals. Aster's two tracks and two rehearsals produce four joined rows, so `COUNT(t.id)` and `COUNT(r.id)` both return four instead of two. `COUNT(DISTINCT t.id)` and `COUNT(DISTINCT r.id)` count the respective primary-key entities; an artist with neither remains at zero. This repair applies to these entity counts, not arbitrary aggregation: `SUM(DISTINCT value)` can incorrectly merge distinct entities with the same value.
+
+The `join-fanout` case appends six original music-themed rows across three tables. Its three variants are `one-each` (the bad query happens to agree at cardinality one), `same-title` (different track IDs share a title, defeating deduplication by title), and `no-rehearsals` (tracks must survive an empty independent relation). The candidate's four dataset states are different / match / different / match. The reference agrees on all four. The default minimum witness has four rows, mask 29 in published source order: one artist, two tracks, and one rehearsal. It is the 46th cardinality-ordered subset, with candidate counts 2/2 and reference counts 2/1. Every smaller subset is independently checked by the minimizer tests. No search or runtime limits are raised.
+
+The original three case definitions and nine dataset combinations retain their IDs, order, data, queries, revision 1, and expected results. Snapshot and fragment-share formats remain v1 with `sql.js@1.14.2`; adding a new case does not migrate old drafts. The existing selectors, comparison, lazy plan/minimizer, history, import/export, and sharing panels handle the new case without an extra dashboard. The three introductory questions remain unchanged.
 
 The candidate and reference SQL execute against fresh copies of the displayed fixture. Reference output is verified against the hand-authored expected rows every run. Result comparison is positional by column, type-aware, duplicate-aware and order-aware. Column aliases do not affect agreement. All questions explicitly request ordering. The success label is “本例结果一致”, never a general SQL-equivalence verdict. Truncated output is never declared a match. Static markup duplicates only these small public fixtures and queries; tests enforce parity with the execution core.
 
@@ -70,7 +77,7 @@ The following are genuine EQP rows for the actual wrapped queries on the origina
 - The empty-count candidate and reference both have the same sequence of detail descriptions: `CO-ROUTINE query_result`, `SCAN a`, `BLOOM FILTER ON t (artist_id=?)`, `SEARCH t USING AUTOMATIC COVERING INDEX (artist_id=?) LEFT-JOIN`, `USE TEMP B-TREE FOR ORDER BY`, `SCAN query_result`. Their node IDs differ, and their results differ for Moss. Similar high-level plans do not establish equivalent results.
 - The original NOT IN query includes `[9,0,"LIST SUBQUERY 1"]`; the NOT EXISTS reference includes `[7,0,"CORRELATED SCALAR SUBQUERY 1"]`. These structures do not explain away the NULL semantics: the result comparison and example discussion remain necessary.
 
-`tests/research-sql-plan.test.cjs` compares candidate/reference plans for all nine fixed datasets with direct EQP from the shipped WASM, exercises the actual Worker transport for all datasets, repeats forbidden-input probes on the plan path, checks real output truncation, tests full prepared-statement checks and cleanup, and verifies lazy/cached rendering, XSS safety, retry state, deadlines and cancellation. Mocked timing/failure tests supplement real-engine tests; they are not evidence of browser rendering or real-world performance.
+`tests/research-sql-plan.test.cjs` compares candidate/reference plans for all thirteen fixed datasets with direct EQP from the shipped WASM, exercises the actual Worker transport for all datasets, repeats forbidden-input probes on the plan path, checks real output truncation, tests full prepared-statement checks and cleanup, and verifies lazy/cached rendering, XSS safety, retry state, deadlines and cancellation. Mocked timing/failure tests supplement real-engine tests; they are not evidence of browser rendering or real-world performance.
 
 ## Finite counterexample minimization
 
@@ -84,7 +91,7 @@ A witness shows the retained input rows and both actual outputs with the same ac
 
 Case/data changes, editing, reset/reference selection, a new Run, successful draft import/restore and page lifecycle changes invalidate witness evidence. Stop terminates a running search and marks it stopped. Generation tokens ignore late success/error responses. Search/replay preserves the primary query comparison, including its status message.
 
-`tests/research-sql-minimize.test.cjs` uses the shipped SQLite engine to establish the original minima (empty count: one row; tied maximum: two rows; NULL exclusion: two rows), independently enumerates every smaller subset, executes generated replay scripts, checks every one of the nine reference datasets exhaustively, and checks duplicate/order/NULL semantics. It also tests invalid masks, errors, truncation, unsupported volatile/stateful/metadata calls and lexical bypass probes, safe text rendering, lazy execution, exact-mask replay, stale-result cancellation, and a real runaway-query worker termination followed by successful fresh-worker recovery. A fresh independent Node process verifies that the emitted script configures the heap limit from its initial zero value and reproduces both nonempty query outputs; this avoids masking omitted runtime configuration by sharing a previously configured WASM instance. Wrapper-escaping/unclosed-comment inputs are explicitly rejected instead of allowing a candidate to swallow the reference query in the emitted script. These are executable correctness checks, not benchmark claims or browser visual evidence.
+`tests/research-sql-minimize.test.cjs` uses the shipped SQLite engine to establish the original minima (empty count: one row; tied maximum: two rows; NULL exclusion: two rows; join fan-out: four rows), independently enumerates every smaller subset, executes generated replay scripts, checks every one of the thirteen reference datasets exhaustively, and checks duplicate/order/NULL semantics. It also tests invalid masks, errors, truncation, unsupported volatile/stateful/metadata calls and lexical bypass probes, safe text rendering, lazy execution, exact-mask replay, stale-result cancellation, and a real runaway-query worker termination followed by successful fresh-worker recovery. A fresh independent Node process verifies that the emitted script configures the heap limit from its initial zero value and reproduces both nonempty query outputs; this avoids masking omitted runtime configuration by sharing a previously configured WASM instance. Wrapper-escaping/unclosed-comment inputs are explicitly rejected instead of allowing a candidate to swallow the reference query in the emitted script. These are executable correctness checks, not benchmark claims or browser visual evidence.
 
 ## Shareable input snapshots
 
@@ -112,15 +119,19 @@ normal arrivals never scroll or take focus. Arrival,
 hash changes and BFCache restoration never focus, scroll, execute, replace a draft
 or clear an existing result. The explicit “载入此实验” action uses the same validated
 transaction as file import, cancels pending execution/plan/suite/minimization and
-file reads, checkpoints all three cases' SQL and dataset selections, and leaves
+file reads, checkpoints every case's SQL and dataset selections, and leaves
 recent experiment history intact. Recovery can toggle back to the displaced drafts.
 Ignoring a link only dismisses the preview. Malformed input cannot enter the apply
 transaction. A snapshot carries input only: no results, schemas, credentials,
 user-supplied datasets or equivalence guarantees.
 
-`tests/research-sql-share.test.cjs` covers all nine fixture combinations, exact
+`tests/research-sql-share.test.cjs` covers all thirteen fixture combinations, exact
 Unicode and incomplete draft restoration, deterministic fuzz, malformed UTF-8 and
 base64, capacity and strict version/schema boundaries, XSS-safe previews, explicit
 clipboard behavior, dismissal, repeated initialization, all job cancellation paths,
 late file and clipboard completions, hidden pages and BFCache. It also checks the
 actual stylesheet cascade for readable disclosure and experiment-feedback text.
+
+### Join fan-out verification
+
+`tests/research-sql-fanout.test.cjs` verifies the real shipped SQLite Cartesian combinations, exact counts for all four datasets, failure of title-based DISTINCT, suite outcomes, exact minimum witness/replay, unchanged safety constants, and old v1 identities. The shared suites also cover all thirteen datasets, real worker execution, plans, exhaustive reference subset checks, exact draft/share round trips, and no-auto-execution dataset selection. A dedicated history interaction checks restoration of the new dataset without a run and isolation from earlier case drafts. These are executable fixture checks, not research results or browser visual verification.

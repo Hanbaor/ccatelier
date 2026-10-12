@@ -81,11 +81,11 @@ test('bridge uses existing Studio receiver: silent arrival, editable 16/32-step 
 });
 
 
-test('bridge source declares 13px text, 44px action minimums and one privacy explanation',()=>{
+test('bridge source declares 13px text, 44px action minimums and one privacy explanation',async()=>{
  const css=fs.readFileSync(path.resolve(__dirname,'../source/atelier/css/practice.css'),'utf8');
  assert.match(css,/\.practice-options \[data-practice-studio\] \{[^}]*min-height:44px;[^}]*font-size:13px/);
  assert.match(css,/\.practice-studio-preview p \{[^}]*font:13px\/1\.8/);
  assert.match(css,/\.practice-studio-actions a,\.practice-studio-actions button \{[^}]*min-height:44px;[^}]*font:13px/);
- const html=require('ejs').render(fs.readFileSync(path.resolve(__dirname,'../custom/redefine/nijika/practice.ejs'),'utf8'),{url_for:p=>'/'+p,partial:()=>''}),dom=new (require('jsdom').JSDOM)(html);
+ const html=require('ejs').render(fs.readFileSync(path.resolve(__dirname,'../custom/redefine/nijika/practice.ejs'),'utf8'),{page:{practiceScores:(await require('../tools/build-practice-scores.cjs').buildPracticeScores()).map(({path,score})=>({...score,path}))},url_for:p=>'/'+p,partial:()=>''}),dom=new (require('jsdom').JSDOM)(html);
  try{const preview=dom.window.document.querySelector('[data-practice-studio-preview]');assert.equal(preview.querySelectorAll('p').length,2);assert.match(preview.textContent,/链接包含所选节奏，不会自动存入项目库/);assert.doesNotMatch(preview.textContent,/不会自动保存/);}finally{dom.window.close();}
 });

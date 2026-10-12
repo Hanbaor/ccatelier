@@ -25,7 +25,7 @@ test('coursework purpose and public source precede process details in native rea
         assert.ok(body.firstElementChild.matches('p'));
         assert.ok(body.querySelector('.project-coursework-source'));
         assert.equal(body.closest('details'), null);
-        assert.equal(process.querySelectorAll('details').length, 3);
+        assert.equal(process.querySelectorAll('details').length, process.classList.contains('project-process-rag') ? 0 : 3);
         for (const detail of process.querySelectorAll('details')) {
           assert.equal(detail.open, false);
           assert.ok(detail.firstElementChild.matches('summary'));

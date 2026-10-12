@@ -86,7 +86,7 @@ const {parse:parseCSS}=require('rrweb-cssom');
 function studioSheets(){
  const html=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'studio'},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>true,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
  const head=new JSDOM(html),files=[...head.window.document.querySelectorAll('link[rel="stylesheet"]')].map(link=>link.getAttribute('href').slice(1));head.window.close();
- return files.map(file=>({file,rules:parseCSS(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules}));
+ return files.map(file=>({file,rules:parseCSS(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules}));
 }
 function resolveCSS(sheets,node,property,width,{oldMusicSelector=false}={}){
  let result={value:'',weight:-1,priority:-1};

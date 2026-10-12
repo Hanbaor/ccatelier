@@ -4,8 +4,9 @@ const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p
 const render=(name,extra={})=>new JSDOM(ejs.render(read(`custom/redefine/nijika/${name}.ejs`),{
  url_for:v=>'/'+String(v).replace(/^\//,''),partial:()=>'<svg aria-hidden="true"></svg>',...extra
 }));
-test('practice starts with the score, keeping optional controls and explanations available',()=>{
- const dom=render('practice'),d=dom.window.document;
+test('practice starts with the score, keeping optional controls and explanations available',async()=>{
+ const scores=await require('../tools/build-practice-scores.cjs').buildPracticeScores();
+ const dom=render('practice',{page:{practiceScores:scores.map(({path,score})=>({...score,path}))}}),d=dom.window.document;
  const before=(a,b)=>Boolean(d.querySelector(a).compareDocumentPosition(d.querySelector(b))&4);
  assert.ok(before('[data-practice-sheet]','.practice-options'));
  assert.ok(before('[data-practice-sheet]','[data-challenge]'));
@@ -17,12 +18,14 @@ test('practice starts with the score, keeping optional controls and explanations
  for(const name of ['play','stop','loop','start','end','metronome','drums']) assert.equal(d.querySelectorAll(`[data-practice-${name}]`).length,1);
  dom.window.close();
 });
-test('SQL run control precedes the examples without duplicating a live status or editor',()=>{
+test('SQL run control precedes the examples without duplicating a live status or editor',async()=>{
+ const {SQL_CASES}=await import('../source/atelier/js/research-sql-core.mjs');
  const dom=render('research'),d=dom.window.document;
  assert.equal(d.querySelectorAll('[data-sql-run]').length,1);
  assert.equal(d.querySelectorAll('[data-sql-status]').length,1);
  assert.ok(d.querySelector('[data-sql-run-bar]').compareDocumentPosition(d.querySelector('[data-sql-case]'))&4);
- assert.equal(d.querySelectorAll('[data-sql-editor]').length,3);
+ assert.equal(d.querySelectorAll('[data-sql-editor]').length,SQL_CASES.length);
+ for(const item of SQL_CASES) assert.equal(d.querySelectorAll(`[data-sql-case="${item.id}"] [data-sql-editor]`).length,1);
  dom.window.close();
 });
 test('header exposes the real music destination and marks rehearsal as its current section',()=>{

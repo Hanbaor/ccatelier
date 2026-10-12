@@ -25,6 +25,20 @@ function render(name, prefix = '/', writing = []) {
   return new JSDOM(ejs.render(read(`custom/redefine/nijika/${name}.ejs`), context));
 }
 const writing = [{title:'真实笔记 <example>',path:'writing/example/',date:'2026-10-10',excerpt:'真实摘要 <script>不执行</script>'},{title:'第二篇',path:'writing/second/',date:'2026-09-10'}];
+for (const prefix of ['/', '/lab/']) test(`rehearsal image link includes its visible label in its accessible name (${prefix})`, () => {
+  const dom = render('cover', prefix, writing);
+  try {
+    const link = dom.window.document.querySelector('.home-afterhours-art');
+    const caption = link.querySelector(':scope > span').cloneNode(true);
+    caption.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove());
+    const visibleLabel = caption.textContent.replace(/\s+/g, ' ').trim();
+    assert.equal(visibleLabel, 'REHEARSAL ROOM', 'keep the visible caption unchanged');
+    assert.ok(link.getAttribute('aria-label').startsWith(visibleLabel), 'spoken visible label matches the link name');
+    assert.match(link.getAttribute('aria-label'), /进入鼓谱排练室/, 'retain the Chinese destination context');
+    assert.equal(link.getAttribute('href'), prefix + 'studio/practice/');
+    assert.equal(link.hasAttribute('tabindex'), false, 'retain native link tab order');
+  } finally { dom.window.close(); }
+});
 for (const prefix of ['/', '/lab/']) {
  for (const name of ['cover','stage']) {
   test(`${name} exposes personal writing and existing destinations without JavaScript (${prefix})`,()=>{

@@ -59,7 +59,7 @@ test('post template uses one reading result for article and TOC without changing
 
 test('legacy anchor is a zero-height scroll target and following headings do not regain title spacing',()=>{
  const css=fs.readFileSync(path.join(root,'source/atelier/css/refinement.css'),'utf8');
- assert.match(css,/\.reader-title-anchor \{display:block;height:0;margin:0;padding:0;scroll-margin-top:110px\}/);assert.match(css,/\.reading-studio \.article-body\.markdown-body>\.reader-title-anchor\+:is\(h1,h2,h3,h4,h5,h6\) \{margin-top:0\}/);
+ assert.match(css,/\.reader-title-anchor \{display:block;height:0;margin:0;padding:0;scroll-margin-top:0px\}/);assert.match(css,/\.reading-studio \.article-body\.markdown-body>\.reader-title-anchor\+:is\(h1,h2,h3,h4,h5,h6\) \{margin-top:0\}/);
  const reset=css.match(/([^{}]+)\{margin-top:0\}/g).find(rule=>rule.includes('reader-title-anchor'));
  const readerCss=fs.readFileSync(path.join(root,'source/atelier/css/reader.css'),'utf8');
  const specificity=selector=>[0,(selector.match(/\.[a-z][\w-]*/gi)||[]).length,1]; // Both selectors have one type: h2/h3 or :is(h1,...,h6).

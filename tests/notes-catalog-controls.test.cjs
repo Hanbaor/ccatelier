@@ -5,7 +5,7 @@ function render(){return new JSDOM(ejs.render(read('custom/redefine/nijika/notes
 function sheets(document){
  const head=ejs.render(read('custom/redefine/nijika/head.ejs'),{page:{nijika:'notes'},theme:{nijika:{cover:'/cover.webp'}},nijika_page_metadata:()=>({}),is_post:()=>false,is_home:()=>false,is_archive:()=>false,is_category:()=>false,is_tag:()=>false,is_page:()=>false,url_for:p=>'/'+p,open_graph:()=>'',export_config:()=>''});
  const dom=new JSDOM(head),links=[...dom.window.document.querySelectorAll('link[rel=stylesheet]'),...document.querySelectorAll('link[rel=stylesheet]')];
- const result=links.map(link=>{const file=link.getAttribute('href').slice(1);return parse(read((file==='atelier/css/redefine.css'?'public/':'source/')+file)).cssRules;});dom.window.close();return result;
+ const result=links.map(link=>{const file=link.getAttribute('href').slice(1);return parse(read((['atelier/css/redefine.css','atelier/css/archive-global.css'].includes(file)?'public/':'source/')+file)).cssRules;});dom.window.close();return result;
 }
 // Inspect matching layout declarations in the actual route cascade, including media
 // queries. This checks the inherited column-direction regression without claiming

@@ -696,3 +696,53 @@ test('stopping an unstarted room through cleanup stays silent and leaves a zero 
  const f=await livehouse(t,{motionEnabled:false});f.hidePage();assert.equal(f.dialog.open,false);assert.equal(f.frames.size+f.intervals.size,0);assert.equal(f.contexts.length,0);
  f.open();const panel=f.find('[data-live-director]');panel.open=true;panel.dispatchEvent(new f.window.Event('toggle'));f.frame();f.close();assert.equal(f.frames.size+f.intervals.size,0);f.open();f.frame();assert.equal(f.find('[data-director-seek]').value,'0');assert.equal(f.find('.director-scrub output').textContent,'1 / 16 小节');assert.equal(f.progress.parentElement.getAttribute('aria-valuenow'),'0');assert.equal(f.find('.performance-hit'),null);assert.equal(f.frames.size+f.intervals.size,0);assert.equal(f.contexts.length,0);assert.deepEqual(f.errors,[]);
 });
+
+for(const failure of ['object URL','download click'])test(`failed recording export (${failure}) preserves take, reports recovery and can be retried`,async t=>{
+ const f=await livehouse(t);f.open();const r=recordingControls(f);finishSmallTake(f,r);
+ const button=f.find('[data-live-record-export]'),created=[],revoked=[],downloads=[];
+ let fail=true;
+ t.mock.method(URL,'createObjectURL',blob=>{if(fail&&failure==='object URL')throw Error('unavailable');created.push(blob);return 'blob:take-'+created.length;});
+ t.mock.method(URL,'revokeObjectURL',url=>revoked.push(url));
+ t.mock.method(f.window.HTMLAnchorElement.prototype,'click',function(){if(fail&&failure==='download click')throw Error('blocked');downloads.push({name:this.download,url:this.href});});
+ const cells=()=>[...r.strip.querySelectorAll('.has-hit')].map(cell=>cell.dataset.recordCell);
+ button.click();
+ assert.deepEqual(f.errors,[],'a failed download must not escape the recording handler');
+ assert.match(r.status.textContent,/下载失败.*保留/);assert.equal(f.dialog.open,true);assert.equal(button.disabled,false);assert.equal(r.replay.disabled,false);assert.equal(r.send.disabled,false);assert.deepEqual(cells(),['0','4']);assert.equal(f.window.localStorage.length,0);assert.equal(f.contexts.length,0);
+ assert.deepEqual(revoked,failure==='download click'?['blob:take-1']:[],'failed clicks revoke their object URL immediately');
+ fail=false;button.click();assert.equal(downloads.length,1);assert.equal(downloads[0].name,'cc-live-rhythm.json');assert.match(r.status.textContent,/已请求下载/);
+ const exported=JSON.parse(await created.at(-1).text());assert.deepEqual(exported.bars[0].hits.map(hit=>[hit.step,hit.type]),[[0,'kick'],[4,'snare']]);assert.equal(exported.bpm,120);
+ f.advance(30000);assert.ok(revoked.includes(downloads[0].url),'successful requests release their object URL after the download grace period');assert.deepEqual(f.errors,[]);
+});
+
+for(const mode of ['recording','replaying'])for(const lifecycle of ['hidden','pagehide','close'])test(`${lifecycle} cancels ${mode} and late sound enable while preserving the completed take`,async t=>{
+ const f=await livehouse(t,{deferredAudio:true});f.open();const r=recordingControls(f);finishSmallTake(f,r);
+ f.sound.click();const audio=f.contexts[0];
+ if(mode==='recording'){r.record.click();f.advance(2120);f.find('[data-live-pad="tom"]').click();}
+ else{r.replay.click();f.advance(60);}
+ if(lifecycle==='hidden')f.visibility(true);else if(lifecycle==='pagehide')f.hidePage();else f.close();
+ f.advance(1000);assert.equal(f.intervals.size+f.frames.size+f.timers.size,0);assert.equal(audio.state,'closed');
+ audio.resolveResume();await settle();f.advance(1000);
+ assert.equal(f.sound.getAttribute('aria-pressed'),'false');assert.equal(audio.started.length,0);assert.equal(f.intervals.size+f.frames.size+f.timers.size,0);
+ if(lifecycle==='hidden')f.visibility(false);else f.open();
+ assert.equal(r.record.getAttribute('aria-pressed'),'false');assert.equal(r.replay.getAttribute('aria-pressed'),'false');assert.deepEqual([...r.strip.querySelectorAll('.has-hit')].map(cell=>cell.dataset.recordCell),['0','4']);assert.equal(r.send.disabled,false);assert.equal(f.window.localStorage.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('director grids preserve browser, handled and composition ownership without disabling Shift or repeat arrows',async t=>{
+ const f=await livehouse(t);f.open();f.find('[data-live-director]').open=true;
+ for(const selector of ['.director-overview button','.director-drum-grid button']){
+  const first=f.find(selector);
+  for(const key of ['ArrowRight','ArrowLeft','ArrowUp','ArrowDown','Home','End'])for(const flag of ['handled','isComposing','keyCode','ctrlKey','metaKey','altKey','AltGraph']){
+   first.focus();const event=new f.window.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true,...(flag==='handled'||flag==='AltGraph'?{}:{[flag]:flag==='keyCode'?229:true})});
+   if(flag==='handled')event.preventDefault();if(flag==='AltGraph')Object.defineProperty(event,'getModifierState',{value:name=>name==='AltGraph'});
+   first.dispatchEvent(event);assert.equal(f.document.activeElement,first,selector+' '+key+' '+flag);assert.equal(event.defaultPrevented,flag==='handled');
+  }
+  for(const options of [{},{shiftKey:true},{repeat:true},{shiftKey:true,repeat:true}]){first.focus();const event=f.key(first,'ArrowRight',options);assert.equal(event.defaultPrevented,true);assert.notEqual(f.document.activeElement,first);}
+ }
+});
+test('livehouse drum keys leave already handled and legacy IME events alone, including held native pad activation',async t=>{
+ const f=await livehouse(t);f.open();const target=f.find('[data-live-close]'),pad=f.find('[data-live-pad="kick"]'),before=f.status.textContent;
+ for(const flag of ['handled','isComposing','keyCode'])for(const [owner,key,repeat] of [[target,'a',false],[pad,'Enter',true],[pad,' ',true]]){
+  const event=new f.window.KeyboardEvent('keydown',{key,repeat,bubbles:true,cancelable:true,...(flag==='handled'?{}:{[flag]:flag==='keyCode'?229:true})});if(flag==='handled')event.preventDefault();owner.dispatchEvent(event);assert.equal(event.defaultPrevented,flag==='handled');assert.equal(f.status.textContent,before);
+ }
+ assert.equal(f.key(target,'a').defaultPrevented,true);assert.notEqual(f.status.textContent,before);assert.equal(f.key(pad,'Enter',{repeat:true}).defaultPrevented,true);
+});

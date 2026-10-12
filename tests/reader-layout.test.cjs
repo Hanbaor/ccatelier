@@ -18,7 +18,8 @@ test('article template removes the entire right rail and keeps optional controls
    assert.equal(columns.children.length,chapters?3:2);
    assert.deepEqual([...columns.children].map(n=>n.className),chapters?['reader-frontmatter','reading-toc chapter-rail','reader-paper']:['reader-frontmatter','reader-paper']);
    assert.equal(options.open,false);
-   assert.equal(doc.querySelector('.reader-frontmatter button'),null);
+   assert.equal(doc.querySelectorAll('.reader-frontmatter button').length,1);
+   assert.equal(doc.querySelector('.reader-frontmatter [data-reading-resume]').hidden,true);
    assert.equal(doc.querySelector('.reader-encore,.reader-related,.chapter-meter,.chapter-library'),null);
    assert.equal(doc.querySelector('.reader-comments').open,false);assert.equal(options.closest('article'),doc.querySelector('.reader-paper'));
    if(chapters)assert.equal(doc.querySelector('.chapter-rail details').open,false,'mobile and no-script baseline is closed');else assert.ok(columns.classList.contains('reader-no-toc'));

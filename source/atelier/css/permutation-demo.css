@@ -1,5 +1,5 @@
 /* This file is fetched only after opening the article's optional trace. */
-.article-body .permutation-demo{margin:1.5rem 0 2rem;border:0;min-width:0;max-width:100%;font-size:.88em;scroll-margin-top:6rem}
+.article-body .permutation-demo{margin:1.5rem 0 2rem;border:0;min-width:0;max-width:100%;font-size:.88em;scroll-margin-top:0px}
 .article-body .permutation-demo>summary{display:list-item;list-style:disclosure-closed inside;width:fit-content;max-width:100%;min-height:44px;padding:.5rem 0;background:transparent;cursor:pointer;font-weight:500}
 .article-body .permutation-demo[open]>summary{list-style-type:disclosure-open;background:transparent}
 .article-body .permutation-demo>summary::marker{display:revert;font-size:.75em}

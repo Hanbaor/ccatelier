@@ -83,3 +83,18 @@ test('tablet comparison stacks complete query/result panels at the 900px breakpo
  assert.match(css,/@media\(max-width:900px\)\s*\{\s*\.sql-lab[^\n]*\.sql-comparison\s*\{grid-template-columns:minmax\(0,1fr\);gap:16px\}/);
  const source=fs.readFileSync(path.join(root,'source/atelier/js/research-sql.js'),'utf8');assert.match(source,/import\('\.\/research-sql-history\.mjs'\)/);assert.doesNotMatch(source,/^import .* from ['"].*history/m);
 });
+
+test('fanout history restores its dataset without execution and stays isolated from earlier cases',async()=>{
+ const s=await setup();try{
+  const {getSqlCase,runFixtureQuery}=await import('../source/atelier/js/research-sql-core.mjs');
+  const SQL=await require('../source/atelier/vendor/sql.js/1.14.2/sql-wasm.js')({wasmBinary:fs.readFileSync(path.join(root,'source/atelier/vendor/sql.js/1.14.2/sql-wasm.wasm'))});
+  edit(s,'SELECT older draft');s.controller.select('join-fanout');assert.equal(s.calls.length,0);assert.equal(s.history(),null);
+  const f=getSqlCase('join-fanout');dataset(s,'same-title');edit(s,f.reference);
+  await complete(s,runFixtureQuery(SQL,f.id,f.reference,'same-title'));assert.equal(s.calls.length,1);assert.match(s.history().textContent,/一致/);
+  dataset(s,'no-rehearsals');edit(s,f.candidate);restore(s);
+  assert.equal(s.editor().value,f.reference);assert.equal(s.doc.querySelector('[data-sql-dataset]').value,'same-title');assert.equal(s.calls.length,1);
+  assert.match(s.doc.querySelector('[data-sql-status]').textContent,/尚未运行/);
+  s.controller.select('empty-count');assert.equal(s.editor().value,'SELECT older draft');assert.equal(s.history(),null);
+  s.controller.select('join-fanout');assert.equal(s.editor().value,f.reference);assert.equal(s.history().querySelector('select').options.length,2);assert.equal(s.calls.length,1);
+ }finally{s.close()}
+});
